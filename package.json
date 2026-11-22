@@ -23,21 +23,21 @@
   },
   "dependencies": {
     "@honeyglass/utils": "github:honeyglass/utils#a6c8b941393ba0831b2909a54dae0a59d40f50bf",
-    "docx": "9.15.3",
+    "docx": "9.16.0",
     "jpeg-js": "0.4.4",
     "jszip": "3.10.2",
     "parse5": "8.1.1",
     "pngjs": "7.0.0",
-    "unpdf": "2.1.0",
-    "zod": "4.6.5"
+    "unpdf": "2.2.1",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/node": "24.19.2",
     "@types/pngjs": "6.0.5",
-    "lint-staged": "17.6.0",
-    "micromark": "4.0.2",
+    "lint-staged": "17.6.1",
+    "micromark": "4.0.3",
     "micromark-extension-gfm": "3.0.0",
-    "prettier": "3.9.10",
+    "prettier": "3.10.1",
     "typescript": "5.9.3"
   },
   "packageManager": "pnpm@12.9.0+sha512.8f64efa0b792986ca98ae568791bcd7722807e274c4f0c1d9853c62116495c584119db98762a2a5343b1684d361b9ae26fdd16d551666d7635346d3fae830ddd",
