@@ -40,6 +40,7 @@ pnpm run format:check
 pnpm readmes                  # writes the file lists of the folder READMEs; --check only compares
 sh tests/e2e/install.e2e.sh   # the install script in empty home folders, on the last commit
 pnpm baselines:update         # new Google PDFs and page images for changed showcase files (macOS)
+pnpm behavior:update          # records the program's answers again, after a change on purpose
 ```
 
 The install test clones this checkout, so it sees committed changes only. How to sign gws in once

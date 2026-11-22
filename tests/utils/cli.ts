@@ -1,7 +1,8 @@
 /**
  * The cli in a test: a data folder with the reference CV, and a call that answers parsed JSON.
  *
- * workspace: a data folder with the reference CV 'jane' and two profiles, and a working directory.
+ * workspace, seed: a data folder with the reference CV 'jane' and two profiles, and a working
+ * directory; seed fills a data folder the caller made.
  * call: runs oriko as a program reads it, and answers the exit code and the parsed answer.
  * terminal, piped: run oriko as a person at a terminal sees it, or as a program reads it, as text.
  * NEW_CV: the input of a second CV, 'erika'.
@@ -46,7 +47,13 @@ export type Space = { home: string; cwd: string; web?: Web; soffice?: string[] }
 export const workspace = (): Space => {
   const home = mkdtempSync(join(tmpdir(), 'oriko-home-'));
   const cwd = mkdtempSync(join(tmpdir(), 'oriko-cwd-'));
-  mkdirSync(join(home, 'cvs'));
+  seed(home);
+  return { home, cwd };
+};
+
+/** Fills the data folder `home` with the reference CV 'jane', its photo and two profiles. */
+export const seed = (home: string) => {
+  mkdirSync(join(home, 'cvs'), { recursive: true });
   const master = readFileSync(FIXTURE_URL, 'utf8').replace('"photo.png"', '"cvs/jane.png"');
   writeFileSync(join(home, 'cvs', 'jane.json'), master);
   writeFileSync(join(home, 'cvs', 'jane.png'), photo());
@@ -59,7 +66,6 @@ export const workspace = (): Space => {
     join(home, 'profiles', 'broken.json'),
     JSON.stringify({ blocks: { nobody: { hidden: true } } }),
   );
-  return { home, cwd };
 };
 
 export const call = async (space: Space, argv: string[], stdin: string | null = null) => {

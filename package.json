@@ -15,6 +15,7 @@
     "format:check": "prettier --check .",
     "baselines:update": "node tools/baselines/update.ts",
     "baselines:gws": "node tools/baselines/gws.ts",
+    "behavior:update": "node tests/utils/behavior.ts && prettier --write tests/fixtures/behavior.json",
     "readmes": "node tools/readmes/update.ts"
   },
   "engines": {
