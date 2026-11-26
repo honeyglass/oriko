@@ -14,8 +14,9 @@ check below from them.
 > [honeyglass/actions](https://github.com/honeyglass/actions/tree/main/supply-check).**
 > It runs before any dependency is installed, pinned to a full commit id like every other
 > action. It is an allow list: a dependency passes only as a registry version, an `npm:` alias,
-> a link to a folder this repository tracks, or a pinned commit of `honeyglass/utils`. A pnpm
-> setting passes only as the template sets it, and a pnpmfile or a `.npmrc` key never passes.
+> a link to a folder this repository tracks, or a pinned commit of `honeyglass/utils` or
+> `honeyglass/adx`. A pnpm setting passes only as the template sets it, and a pnpmfile, a
+> `.npmrc` key or a tracked path in a `node_modules` folder never passes.
 > After the install it runs a second time and fails the job on a symlink that leads out of the
 > checkout.
 
