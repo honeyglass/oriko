@@ -44,11 +44,11 @@ jobs:
       # commit of honeyglass/actions whose CI was green. The action sets up Node 24 and pnpm
       # through Corepack, which refuses a pnpm whose sha512 differs from the one in
       # package.json, and leaves both on for the steps below.
-      - uses: honeyglass/actions/supply-check@b11d19eaf8f4ef2d92163f8a0642c93bf06a7954
+      - uses: honeyglass/actions/supply-check@4118d0b1bf9a55f5cacb3de502f07a9523df5721
       - run: pnpm install --frozen-lockfile
       # Right after the install, before the steps below run code from node_modules: a link
       # there that dangles or leads out of the checkout fails the job.
-      - uses: honeyglass/actions/supply-check@b11d19eaf8f4ef2d92163f8a0642c93bf06a7954
+      - uses: honeyglass/actions/supply-check@4118d0b1bf9a55f5cacb3de502f07a9523df5721
         with:
           mode: links
       # Each supply check sets up Node 24 again, so the Node of this runner comes after the last.
@@ -85,7 +85,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: honeyglass/actions/supply-check@b11d19eaf8f4ef2d92163f8a0642c93bf06a7954
+      - uses: honeyglass/actions/supply-check@4118d0b1bf9a55f5cacb3de502f07a9523df5721
       - run: sh tests/e2e/install.e2e.sh
 
   # The quickstart line of the README as a user runs it, against what GitHub serves for main.
