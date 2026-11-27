@@ -106,18 +106,23 @@ test('a CV is chosen by --cv, by the profile, or as the only one', async () => {
 
 // A command on adx answers its fields in result; the old shell answers them beside ok.
 test('the program sends a moved command to adx and every other one to the old shell', () => {
-  const { home } = workspace();
+  const { home, cwd } = workspace();
+  const picture = tall(cwd);
   const program = fileURLToPath(new URL('../../bin/oriko.ts', import.meta.url));
   const answer = (...argv: string[]) => {
     const ran = spawnSync(process.execPath, [program, ...argv], { encoding: 'utf8', input: '' });
     return z.looseObject({ ok: z.boolean() }).parse(JSON.parse(ran.stdout));
   };
+  const code = (...argv: string[]) =>
+    z.array(z.object({ code: z.string() })).parse(answer(...argv).issues)[0]?.code;
   assert.equal('result' in answer('plan', '--home', home), true);
   assert.equal('cvs' in answer('cvs', '--home', home), true);
-  const [before] = z
-    .array(z.object({ code: z.string() }))
-    .parse(answer('--home', home, 'plan').issues);
-  assert.equal(before?.code, 'OPTION_BEFORE_COMMAND');
+  assert.equal(code('--home', home, 'plan'), 'OPTION_BEFORE_COMMAND');
+  // A command of a group moves alone; the group itself still lists its actions on the old shell.
+  const photo = ['--file', picture, '--profile', 'acme', '--dry-run'];
+  assert.equal('result' in answer('photo', 'set', '--home', home, ...photo), true);
+  assert.deepEqual(answer('photo', '--home', home).values, ['photo set']);
+  assert.equal(code('--home', home, 'photo', 'set', ...photo), 'OPTION_BEFORE_COMMAND');
 });
 
 // A missing default folder holds no CV; ORIKO_HOME moves the folder as --home does.
@@ -353,20 +358,92 @@ test('build refuses a photo it cannot read or that is no picture', async () => {
   assert.deepEqual([own?.code, own?.path], ['PHOTO_UNREADABLE', 'cv.person.photo']);
 });
 
+// A photo is kept data: the seed holds cvs/jane.png, so a new one for jane needs --replace.
 test('photo set stores the picture as a square PNG for a CV, or for one profile', async () => {
   const space = workspace();
   const source = tall(space.cwd);
-  assert.equal((await call(space, ['photo', 'set', source, '--dry-run'])).exit, 0);
+  const taken = await call(space, ['photo', 'set', '--file', source]);
+  assert.deepEqual([taken.exit, taken.codes], [1, ['ALREADY_EXISTS']]);
+  const replace = ['photo', 'set', '--file', source, '--replace'];
+  assert.equal((await call(space, [...replace, '--dry-run'])).exit, 0);
   assert.deepEqual(readFileSync(join(space.home, 'cvs', 'jane.png')), photo());
-  assert.equal((await call(space, ['photo', 'set', source])).exit, 0);
+  assert.equal((await call(space, replace)).exit, 0);
   assert.equal(PNG.sync.read(readFileSync(join(space.home, 'cvs', 'jane.png'))).height, 10);
-  assert.equal((await call(space, ['photo', 'set', source, '--profile', 'acme'])).exit, 0);
+  const first = await call(space, ['photo', 'set', '--file', source, '--profile', 'acme']);
+  assert.deepEqual(first.answer.result, {
+    photo: { file: 'profiles/acme.png', bytes: 70, replaces: false },
+    owner: {
+      file: 'profiles/acme.json',
+      bytes: 136,
+      replaces: true,
+      changes: { added: ['person'], changed: [], removed: [], more: 0 },
+    },
+  });
   assert.equal(PNG.sync.read(readFileSync(join(space.home, 'profiles', 'acme.png'))).width, 10);
   assert.equal(
     readFileSync(join(space.home, 'profiles', 'acme.json'), 'utf8').includes('profiles/acme.png'),
     true,
   );
   assert.equal((await call(space, ['build', '--profile', 'acme', '--out', 'acme.docx'])).exit, 0);
+  // A relative path starts at the working directory of the process, and a link is read through.
+  const acme = ['photo', 'set', '--profile', 'acme', '--replace', '--file'];
+  assert.equal((await call(space, [...acme, 'assets/placeholder.png'])).exit, 0);
+  assert.equal(PNG.sync.read(readFileSync(join(space.home, 'profiles', 'acme.png'))).width, 300);
+  symlinkSync(source, join(space.cwd, 'linked.png'));
+  assert.equal((await call(space, [...acme, join(space.cwd, 'linked.png')])).exit, 0);
+  assert.equal(PNG.sync.read(readFileSync(join(space.home, 'profiles', 'acme.png'))).width, 10);
+});
+
+// adx writes through a link at the photo that stays inside the data folder, into whatever file it
+// names; a link that leads out of it is replaced with --replace, and its target stays as it was.
+test('photo set writes through a link inside the data folder and never out of it', async () => {
+  const space = workspace();
+  const source = tall(space.cwd);
+  mkdirSync(join(space.home, 'store'));
+  writeFileSync(join(space.home, 'store', 'jane.png'), photo());
+  rmSync(join(space.home, 'cvs', 'jane.png'));
+  symlinkSync(join(space.home, 'store', 'jane.png'), join(space.home, 'cvs', 'jane.png'));
+  assert.equal((await call(space, ['photo', 'set', '--file', source, '--replace'])).exit, 0);
+  assert.deepEqual(
+    [
+      lstatSync(join(space.home, 'cvs', 'jane.png')).isSymbolicLink(),
+      PNG.sync.read(readFileSync(join(space.home, 'store', 'jane.png'))).width,
+    ],
+    [true, 10],
+  );
+  const victim = join(space.cwd, 'victim.png');
+  writeFileSync(victim, 'untouched');
+  symlinkSync(victim, join(space.home, 'profiles', 'acme.png'));
+  const out = await call(space, ['photo', 'set', '--file', source, '--profile', 'acme']);
+  assert.deepEqual([out.exit, out.codes], [1, ['ALREADY_EXISTS']]);
+  const replaced = ['photo', 'set', '--file', source, '--profile', 'acme', '--replace'];
+  assert.equal((await call(space, replaced)).exit, 0);
+  assert.deepEqual(
+    [
+      lstatSync(join(space.home, 'profiles', 'acme.png')).isSymbolicLink(),
+      readFileSync(victim, 'utf8'),
+    ],
+    [false, 'untouched'],
+  );
+  // A link to a stored file that is no photo leads the replace into that file.
+  rmSync(join(space.home, 'cvs', 'jane.png'));
+  symlinkSync('../profiles/acme.json', join(space.home, 'cvs', 'jane.png'));
+  const into = await call(space, ['photo', 'set', '--file', source, '--cv', 'jane', '--replace']);
+  const { photo: written } = z
+    .object({ photo: z.looseObject({ file: z.string(), replaces: z.boolean() }) })
+    .parse(into.answer.result);
+  assert.deepEqual([into.exit, written.file, written.replaces], [0, 'cvs/jane.png', true]);
+  assert.equal(PNG.sync.read(readFileSync(join(space.home, 'profiles', 'acme.json'))).width, 10);
+});
+
+// A part of the plan that adx refuses leaves the photo and the file that names it as they were.
+test('photo set writes nothing when one of its two files is refused', async () => {
+  const space = workspace();
+  const before = readFileSync(join(space.home, 'profiles', 'acme.json'), 'utf8');
+  writeFileSync(join(space.home, 'profiles', 'acme.png'), 'a photo the profile does not name');
+  const argv = ['photo', 'set', '--file', tall(space.cwd), '--profile', 'acme'];
+  assert.deepEqual((await call(space, argv)).codes, ['ALREADY_EXISTS']);
+  assert.equal(readFileSync(join(space.home, 'profiles', 'acme.json'), 'utf8'), before);
 });
 
 test('an edit command changes the CV file, and with --dry-run it does not', async () => {
@@ -440,7 +517,8 @@ test('every packaged example CV and profile fits and builds', async () => {
 
 test('refuses bad input with exit code 1 and the code of the reason', async () => {
   const space = workspace();
-  writeFileSync(join(space.cwd, 'notes.txt'), 'not a picture');
+  const notes = join(space.cwd, 'notes.txt');
+  writeFileSync(notes, 'not a picture');
   const { pages, ...withoutPages } = JSON.parse(readFileSync(FIXTURE_URL, 'utf8'));
   mkdirSync(join(space.cwd, 'broken-home', 'cvs'), { recursive: true });
   writeFileSync(join(space.cwd, 'broken-home', 'cvs', 'broken.json'), JSON.stringify(withoutPages));
@@ -474,20 +552,29 @@ test('refuses bad input with exit code 1 and the code of the reason', async () =
     [['plan', '--home', join(space.cwd, 'broken-home')], 'SCHEMA'],
     [['plan', '--profile', 'nobody'], 'NOT_IN_LIST'],
     [['preview', '--profile', 'nobody'], 'NOT_IN_LIST'],
-    [['photo', 'set', 'notes.txt', '--profile', '../cv'], 'UNKNOWN_PROFILE'],
+    [['photo', 'set', '--file', notes, '--profile', '../cv'], 'NOT_IN_LIST'],
     [['init', '--json', NEW_CV], 'MISSING_OPTION'],
     [['init', '--cv', '../evil', '--json', NEW_CV], 'SCHEMA'],
     [['init', '--cv', 'jane', '--json', NEW_CV], 'CV_EXISTS'],
     [['init', '--cv', 'erika', '--json', '{"language":"german"}'], 'SCHEMA'],
-    [['photo', 'set'], 'MISSING_INPUT'],
-    [['photo', 'set', 'missing.png'], 'FILE_NOT_FOUND'],
-    [['photo', 'set', 'notes.txt'], 'PHOTO_UNREADABLE'],
-    [['photo', 'set', 'notes.txt', '--profile', 'nobody'], 'UNKNOWN_PROFILE'],
+    [['photo', 'set'], 'SCHEMA'],
+    [['photo', 'set', '--file', join(space.cwd, 'missing.png')], 'NO_PICTURE'],
+    [['photo', 'set', '--file', notes], 'PHOTO_UNREADABLE'],
+    [['photo', 'set', '--file', notes, '--profile', 'nobody'], 'NOT_IN_LIST'],
+    [['photo', 'set', '--file', notes, '--home', join(space.cwd, 'broken-home')], 'SCHEMA'],
+    [['photo', 'set', '--file', notes, '--home', join(space.cwd, 'empty-home')], 'NO_CV'],
+    [['photo', 'set', '--file', notes, '--profile', 'badjson'], 'STORED_INVALID'],
   ];
+  mkdirSync(join(space.cwd, 'empty-home'));
+  writeFileSync(join(space.home, 'profiles', 'badjson.json'), '{');
   for (const [argv, code] of cases) {
     const { exit, codes } = await call(space, argv);
     assert.deepEqual([exit, codes.slice(0, 1)], [1, [code]], argv.join(' '));
   }
+  // photo set checks the stored file before it changes it, and the issue stands below its field.
+  const nul = await call(space, ['photo', 'set', '--file', notes, '--profile', 'nul']);
+  const [stored] = nul.answer.issues ?? [];
+  assert.deepEqual([stored?.code, stored?.path], ['SCHEMA', 'profile.person.photo']);
 });
 
 test('an option without a value answers the values it accepts', async () => {
@@ -564,11 +651,6 @@ test('a refusal names a command that lists the fitting values, and that command 
     [['show'], 'CV_REQUIRED', 'oriko show --cv'],
     [['show', '--cv', 'nobody'], 'UNKNOWN_CV', 'oriko show --cv'],
     [
-      ['photo', 'set', picture, '--profile', 'nobody', '--dry-run'],
-      'UNKNOWN_PROFILE',
-      'oriko plan --profile',
-    ],
-    [
       ['show', '--cv', 'jane', '--block', 'nobody'],
       'UNKNOWN_BLOCK',
       'oriko show --cv jane --block',
@@ -612,18 +694,30 @@ test('a refusal names a command that lists the fitting values, and that command 
       `oriko build --cv jane --out x.docx --home ${space.home} --style`,
     ],
     [['build'], 'SCHEMA', 'oriko schema build'],
+    [
+      ['photo', 'set', '--file', picture, '--profile', 'nobody', '--dry-run'],
+      'NOT_IN_LIST',
+      `oriko photo set --file ${picture} --home ${space.home} --profile`,
+    ],
+    [
+      ['photo', 'set', '--file', picture],
+      'CV_REQUIRED',
+      `oriko photo set --file ${picture} --home ${space.home} --cv`,
+    ],
   ];
   for (const [argv, code, command] of listing) {
     const [issue] = (await call(space, [...argv, '--home', space.home])).answer.issues ?? [];
     assert.deepEqual([issue?.code, issue?.command], [code, command], argv.join(' '));
     assert.equal((await call(space, command.split(' ').slice(1))).answer.ok, true, command);
   }
-  // Without any profile there is no name to list; the refusal points to the checked write.
+  // Without any profile the command of NOT_IN_LIST lists no name.
   rmSync(join(space.home, 'profiles'), { recursive: true });
-  const unknown = ['photo', 'set', picture, '--profile', 'acme', '--dry-run'];
+  const unknown = ['photo', 'set', '--file', picture, '--profile', 'acme'];
   const [none] = (await call(space, unknown)).answer.issues ?? [];
-  assert.deepEqual([none?.code, none?.command], ['UNKNOWN_PROFILE', 'oriko schema profile set']);
-  assert.match(String(none?.hint), /oriko profile set/);
+  const command = `oriko photo set --file ${picture} --home ${space.home} --profile`;
+  assert.deepEqual([none?.code, none?.command], ['NOT_IN_LIST', command]);
+  const listed = await call(space, command.split(' ').slice(1));
+  assert.deepEqual(listed.answer.result, { option: 'profile', values: [] });
 });
 
 // stdin can be read only once, so the CV of a piped input is found from the text read before.
@@ -726,7 +820,7 @@ test('checks the call against its command and names every mistake at once', asyn
       ],
     ],
     [['cvs', 'extra'], [['UNEXPECTED_ARGUMENT', 'extra']]],
-    [['photo', 'set', 'a.png', 'b.png'], [['UNEXPECTED_ARGUMENT', 'b.png']]],
+    [['photo', 'set', '--file', 'a.png', 'b.png'], [['UNEXPECTED_ARGUMENT', 'b.png']]],
     [['cvs', '--out', 'x.docx'], [['OPTION_NOT_ALLOWED', 'out']]],
     [['plan', '--out', 'x.docx'], [['UNKNOWN_OPTION', 'out']]],
     [['show', '--cv', 'jane', '--cv', 'jane'], [['REPEATED_OPTION', 'cv']]],
@@ -766,8 +860,8 @@ test('checks the call against its command and names every mistake at once', asyn
     [['block', '--json', '{}'], [['OPTION_NOT_ALLOWED', 'json']]],
     [['block', '--bogus'], [['UNKNOWN_OPTION', 'bogus']]],
     [['--profile'], [['OPTION_NOT_ALLOWED', 'profile']]],
-    [['photo', 'set'], [['MISSING_INPUT', 'file']]],
-    [['photo', 'set', 'missing.png'], [['FILE_NOT_FOUND', 'file']]],
+    [['photo', 'set'], [['SCHEMA', 'file']]],
+    [['photo', 'set', '--file', join(space.cwd, 'missing.png')], [['NO_PICTURE', 'file']]],
   ];
   for (const [argv, expected] of cases) {
     const { exit, answer } = await call(space, argv);
@@ -847,14 +941,14 @@ test('refuses a folder where a file belongs, and a file where a folder belongs',
     [['show', '--home', 'notes.txt/x'], 'PATH_REFUSED', 'home'],
     [['cvs', '--home', 'flat'], 'PATH_REFUSED', 'home'],
     [['show', '--home', 'nested'], 'NOT_A_FILE', 'cv'],
-    [['photo', 'set', '.'], 'NOT_A_FILE', 'file'],
-    [['photo', 'set', 'huge.png'], 'INPUT_TOO_LARGE', 'file'],
-    [['photo', 'set', 'pipe.png'], 'NOT_A_FILE', 'file'],
+    [['photo', 'set', '--file', space.cwd], 'PICTURE_NOT_A_FILE', 'file'],
+    [['photo', 'set', '--file', join(space.cwd, 'huge.png')], 'PICTURE_TOO_LARGE', 'file'],
+    [['photo', 'set', '--file', join(space.cwd, 'pipe.png')], 'PICTURE_NOT_A_FILE', 'file'],
     [['show', '--home', 'piped'], 'NOT_A_FILE', 'cv'],
     [['build', '--profile', 'piped', '--out', 'p.docx', '--dry-run'], 'NOT_A_FILE', undefined],
-    [['photo', 'set', 'locked.png'], 'PATH_REFUSED', 'file'],
-    [['photo', 'set', 'notes.txt/x.png'], 'PATH_REFUSED', 'file'],
-    [['photo', 'set', `${'a'.repeat(300)}.png`], 'PATH_REFUSED', 'file'],
+    [['photo', 'set', '--file', join(space.cwd, 'locked.png')], 'PATH_REFUSED', 'file'],
+    [['photo', 'set', '--file', join(space.cwd, 'notes.txt', 'x.png')], 'PATH_REFUSED', 'file'],
+    [['photo', 'set', '--file', join(space.cwd, `${'a'.repeat(300)}.png`)], 'PATH_REFUSED', 'file'],
     [['show', '--profile', 'acme', '--home', 'nowhere'], 'NO_CV', 'home'],
     [['show', '--profile', 'ghost'], 'UNKNOWN_CV', 'profile.cv'],
     [['plan', '--home', join(space.cwd, 'notes.txt')], 'ROOT_NOT_FOUND', undefined],

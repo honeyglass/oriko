@@ -16,6 +16,7 @@ const shapes = (next: Step[]) => next.map(step => [step.command ?? null, step.ne
 
 test('a success names its next steps, each a command with what it still needs', async () => {
   const space = workspace();
+  const picture = join(space.cwd, 'me.png');
   const cases: [string[], [string | null, string[]][]][] = [
     [
       [],
@@ -99,12 +100,27 @@ test('a success names its next steps, each a command with what it still needs', 
       [['oriko read --cv jane --notes job.txt --notes job.txt', []]],
     ],
     [
-      ['photo', 'set', '--cv', 'jane', '--dry-run', '--', '-me.png'],
-      [['oriko photo set --cv jane -- -me.png', []]],
+      ['photo', 'set', '--cv', 'jane', '--file', picture, '--replace', '--dry-run'],
+      [[`oriko photo set --file ${picture} --cv jane --home ${space.home} --replace`, []]],
+    ],
+    // A value that starts with a dash goes after '='; this one resolves against the working
+    // directory of the process to the placeholder of the package.
+    [
+      ['photo', 'set', '--profile', 'acme', '--file=-/../assets/placeholder.png', '--dry-run'],
+      [
+        [
+          `oriko photo set --file=-/../assets/placeholder.png --profile acme --home ${space.home}`,
+          [],
+        ],
+      ],
+    ],
+    [
+      ['photo', 'set', '--profile', 'acme', '--file', picture],
+      [[`oriko build --profile acme --home ${space.home}`, ['out']]],
     ],
   ];
   writeFileSync(join(space.cwd, 'job.txt'), 'Senior Go Engineer');
-  writeFileSync(join(space.cwd, '-me.png'), photo());
+  writeFileSync(picture, photo());
   mkdirSync(join(space.cwd, 'empty'));
   cpSync(join(space.home, 'cvs'), join(space.cwd, 'solo', 'cvs'), { recursive: true });
   for (const [argv, expected] of cases)

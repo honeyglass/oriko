@@ -32,8 +32,8 @@ The command runs the checks of `oriko plan` and stores nothing it refuses; fix a
 **`person.role` replaces the line under the name.**
 
 - Change the role only to the posting's wording for the same role and level.
-- `person.photo` is set by `oriko photo set <file> --profile NAME`, never by hand.
-- Set another photo only when the user asks for one.
+- `person.photo` is set by `oriko photo set --file <file> --profile NAME`, never by hand.
+- Set another photo only when the user asks for one; it replaces a stored photo only with `--replace`.
 
 ## order
 

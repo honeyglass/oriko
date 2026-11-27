@@ -1,16 +1,29 @@
 /**
  * The pictures the renderer needs, read from PNG or JPEG and written as PNG.
  *
- * squarePhoto: the middle square of a photo, at most 600 pixels wide, to store as the CV photo.
+ * squarePhoto: the picture a person names, read and cut to the square PNG the CV stores.
  * circlePhoto: a photo with everything outside its inscribed circle made transparent.
  * solidPng: a rectangle in one color.
  *
  * Google Docs keeps no clipping shape of a .docx, so the circle is part of the pixels.
  *
- * @example const stored = squarePhoto(readFileSync('portrait.jpg'));
+ * The picture may lie anywhere on the disk, and adx reads a file only inside a root, so this is
+ * oriko's own code: it reads through core/files.ts, with the photo byte limit and the refusal of
+ * what is no regular file, and turns each refusal into a code of the picture.
+ *
+ * @example const stored = await squarePhoto('/home/jane/Pictures/portrait.jpg');
  */
+import { resolve } from 'node:path';
+import { failed } from '@honeyglass/adx';
+import type { Code } from '@honeyglass/adx';
+import { trySync$ } from '@honeyglass/utils/ts';
 import jpeg from 'jpeg-js';
 import { PNG } from 'pngjs';
+import type { Rejection } from '../core/errors.ts';
+import { readBounded } from '../core/files.ts';
+import { FILE_LIMITS } from '../core/files.limits.ts';
+import type { Issues } from '../core/issues.ts';
+import * as issue from './issues.ts';
 
 type Pixels = { width: number; height: number; data: Uint8Array };
 type Area = { left: number; top: number; right: number; bottom: number };
@@ -34,11 +47,40 @@ function encoded({ width, height, data }: Pixels) {
 }
 
 /**
- * @param photo - the bytes of a PNG or JPEG file
- * @returns the bytes of a square PNG, cut from the middle and shrunk to at most 600 pixels
- * @throws when the bytes are no picture
+ * Only bytes that decode as a picture are stored, whatever the file is called.
+ *
+ * @param path - the picture; a relative path starts at the working directory of the process
+ * @returns the square PNG; at `file` NO_PICTURE, PICTURE_NOT_A_FILE, PICTURE_TOO_LARGE,
+ *   PATH_REFUSED or PHOTO_UNREADABLE
+ * @throws adx's SYSTEM_REFUSED, kind ask, for any other refusal of the system
  */
-export function squarePhoto(photo: Uint8Array) {
+export async function squarePhoto(path: string): Promise<Uint8Array | Issues<'file'>> {
+  const bytes = await readBounded(resolve(path), FILE_LIMITS.photoBytes, 'file');
+  if (bytes.error !== null) return unread(bytes.error);
+  const square = trySync$(() => squared(bytes.data));
+  if (square.error === null) return square.data;
+  return [issue.photoUnreadable.at('file', 'The photo is neither a PNG nor a JPEG picture')];
+}
+
+/** The code of the picture for each code of core/files.ts the caller fixes. */
+const UNREAD: Record<string, Code | undefined> = {
+  FILE_NOT_FOUND: issue.noPicture,
+  NOT_A_FILE: issue.pictureNotAFile,
+  INPUT_TOO_LARGE: issue.pictureTooLarge,
+  PATH_REFUSED: issue.pathRefused,
+};
+
+// SYSTEM_REFUSED is adx's own code, so its system error goes to adx whole, which sorts it.
+function unread(refused: Rejection): Issues<'file'> {
+  const [found] = refused.issues;
+  const declared = UNREAD[found?.code ?? ''];
+  if (found === undefined || declared === undefined)
+    throw failed('Nothing was written.', refused.refusal.cause);
+  return [declared.at('file', found.message)];
+}
+
+// The middle square, at most 600 pixels wide; it throws for bytes that are no picture.
+function squared(photo: Uint8Array) {
   const source = decoded(photo);
   const side = Math.min(source.width, source.height);
   const size = Math.min(side, PHOTO_SIDE);

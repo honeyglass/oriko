@@ -99,7 +99,7 @@ test('every issue code the skill names is a code oriko raises', async () => {
 
 test('reads commands and codes only from code spans, and keeps unknown ones as written', async () => {
   const text = [
-    "oriko keeps one master; the user's 'oriko plan' and `oriko photo set <file> --cv NAME`.",
+    "oriko keeps one master; the user's 'oriko plan' and `oriko photo set --file <file> --cv NAME`.",
     "`oriko plna --cv` and 'oriko block' and '$ORIKO_REPO/bin/oriko.ts' and `~/.oriko`.",
     "Codes: 'PAGE_OVERFLOW', `NO_CV`, 'SCHEMA', 'NO_SUCH_CODE' and PAGE_OVERFLOW in prose.",
     '```bash\noriko cvs\n```',

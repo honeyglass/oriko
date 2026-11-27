@@ -3,6 +3,7 @@
  *
  * Checked, checked: the checked CV, with the named profile applied, and the two files as read.
  * fileOf: the file an issue of the check or of the page plan lies in.
+ * noStoredCv, chosenName: the issue of a data folder without a CV, and the CV a call works on.
  *
  * Both files are read through the root `home`, which keeps them inside the data folder, with the
  * byte limit of the JSON input. adx refuses a file that is too large or holds no JSON.
@@ -38,7 +39,7 @@ export async function checked(
   profile: string | undefined,
 ): Promise<Checked | Issues<Stored>> {
   const names = await cvNames();
-  if (names.length === 0) return [noCv.issue('The data folder holds no CV')];
+  if (names.length === 0) return [noStoredCv()];
   const applied = profile === undefined ? undefined : await storedJson(profileFile(profile));
   const name = chosenName(names, cv, cvOf(applied));
   if (typeof name !== 'string') return name;
@@ -99,9 +100,18 @@ const cvOf = (profile: unknown) => {
   return parsed.success ? parsed.data.cv : undefined;
 };
 
-// --cv, the CV of the profile, or the only CV there is. adx found --cv in the list already, so
-// only the name a profile holds can be unknown.
-function chosenName(
+/** NO_CV, the one issue of a data folder that holds no CV, for every command alike. */
+export const noStoredCv = () => noCv.issue('The data folder holds no CV');
+
+/**
+ * adx found --cv in the list already, so only the name a profile holds can be unknown.
+ *
+ * @param names - the stored CVs, at least one
+ * @param explicit - the name `--cv` gives
+ * @param fromProfile - the CV the profile names, or nothing
+ * @returns --cv, the CV of the profile, or the only CV; CV_MISMATCH, CV_REQUIRED or UNKNOWN_CV
+ */
+export function chosenName(
   names: string[],
   explicit: string | undefined,
   fromProfile: string | undefined,

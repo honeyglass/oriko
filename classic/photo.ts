@@ -1,98 +1,107 @@
 /**
- * The command that swaps the photo: any PNG or JPEG becomes the square PNG the CV uses.
+ * The command `oriko photo set` on adx: any PNG or JPEG becomes the square PNG the CV uses.
  *
- * setPhoto: stores a picture as the photo of a CV, or of one profile.
+ * set: the command, which the tool lists under the words photo set.
  *
- * The picture is copied into the data folder, so the CV never depends on a file elsewhere.
- * Only bytes that decode as a picture are stored, whatever the file is called.
+ * The picture is copied into the data folder, so the CV never depends on a file elsewhere. The
+ * photo goes to `cvs/NAME.png`, or to `profiles/NAME.png` for a profile, and the CV or the profile
+ * names it. adx writes nothing when the plan refuses; else it stages both files whole and renames
+ * them one after the other, so a failed second rename leaves the photo moved, and the answer's state
+ * names it. A photo is kept data, so a stored one is replaced only with --replace (adx decision 70).
  *
- * @example const answer = await setPhoto({ home, cwd, source: 'portrait.jpg', profile: 'acme', isDryRun: false });
+ * @example const { exit, out } = await run(oriko, ['photo', 'set', '--file', '/tmp/me.png']);
  */
-import { join, resolve } from 'node:path';
-import { trySync$ } from '@honeyglass/utils/ts';
-import { done, rejected } from '../core/errors.ts';
-import type { Result } from '../core/errors.ts';
-import * as issue from './issues.old.ts';
-import * as coreIssue from '../core/issues.old.ts';
-import { FILE_LIMITS } from '../core/files.limits.ts';
+import { effect } from '@honeyglass/adx';
+import type { File } from '@honeyglass/adx';
+import { z } from 'zod';
 import { Master, Profile } from '../core/cv.schema.ts';
+import { rejected } from '../core/errors.ts';
+import { FILE_LIMITS } from '../core/files.limits.ts';
+import { cvFile, cvNames, home, profileFile } from '../core/home.ts';
+import { raised } from '../core/issues.ts';
+import type { Issues, Stored } from '../core/issues.ts';
+import { schemaIssues } from '../core/issues.old.ts';
+import { chosenName, noStoredCv } from '../core/load.ts';
+import { cv, profile } from '../core/options.ts';
+import { cvChoices, profileChoices } from '../core/sources.ts';
 import { squarePhoto } from './images.ts';
-import { readBounded, readJson, writeAll } from '../core/files.ts';
-import { chosenCv, profilePath } from '../core/home.old.ts';
 
-type Request = {
-  home: string;
-  cwd: string;
-  source: string | undefined;
-  cv: string | undefined;
-  profile: string | undefined;
-  isDryRun: boolean;
-};
-type Owner = { path: string; photo: string; content: unknown };
+export const set = effect({
+  does: 'stores the square photo of a CV, or of one profile',
+  input: z.object({
+    // The picture may lie anywhere on the disk, so it is a plain path that ./images.ts reads,
+    // not a file of a root.
+    file: z
+      .string()
+      .describe(
+        'the picture, a PNG or JPEG file anywhere on the disk; a relative path starts at the working directory',
+      ),
+    cv,
+    profile,
+  }),
+  // A path of this machine would stand in the schema, so the example names the placeholder of the
+  // package, relative to its root, for a profile without a photo of its own.
+  example: { file: 'assets/placeholder.png', profile: 'acme' },
+  values: { cv: cvChoices, profile: profileChoices },
+  plan: async ({ file, cv, profile }, { files, refuse }) => {
+    const owner = await ownerOf(cv, profile);
+    if (Array.isArray(owner)) return refuse(...owner);
+    const picture = await squarePhoto(file);
+    if (Array.isArray(picture)) return refuse(...picture);
+    return {
+      photo: files.write(home.file(owner.photo), picture),
+      owner: await files.update(owner.file, FILE_LIMITS.inputBytes, () => owner.text),
+    };
+  },
+});
+
+/** The file that names the photo, where the photo goes, and the file's new text. */
+type Owner = { file: File; photo: string; text: string };
 
 /**
- * @param request - the data folder, the picture to store and the profile it is for, if any
- * @returns where the photo was stored, relative to the data folder
+ * A profile has a photo of its own; without one, the CV of --cv or the only CV gets it.
+ *
+ * @param cv - the name `--cv` gives, which counts only without a profile
+ * @param profile - the name `--profile` gives
+ * @returns the owner; NO_CV, CV_REQUIRED, or SCHEMA below the field of the stored file
  */
-export async function setPhoto(request: Request): Promise<Result<Record<string, unknown>>> {
-  const { home, cwd, source, cv, profile, isDryRun } = request;
-  if (source === undefined) return rejected('photo set', [issue.missingPicture()]);
-  const owner = profile === undefined ? await cvOwner(home, cv) : await profileOwner(home, profile);
-  if (owner.error !== null) return owner;
-  const picture = await squared(resolve(cwd, source));
-  if (picture.error !== null) return picture;
-  const { path, photo, content } = owner.data;
-  if (isDryRun) return done({ command: 'photo set', photo, written: false });
-  const written = await writeAll(
-    [
-      { path: join(home, photo), content: picture.data },
-      { path, content: `${JSON.stringify(content, null, 2)}\n` },
-    ],
-    'home',
-  );
-  if (written.error !== null) return written;
-  return done({ command: 'photo set', photo, written: true });
+async function ownerOf(
+  cv: string | undefined,
+  profile: string | undefined,
+): Promise<Owner | Issues<Stored>> {
+  const names = await cvNames();
+  if (names.length === 0) return [noStoredCv()];
+  if (profile !== undefined)
+    return withPhoto('profile', profileFile(profile), `profiles/${profile}.png`);
+  const name = chosenName(names, cv, undefined);
+  if (typeof name !== 'string') return name;
+  return withPhoto('cv', cvFile(name), `cvs/${name}.png`);
 }
 
-// The CV with its photo set to cvs/NAME.png, the photo its profiles share.
-async function cvOwner(home: string, explicit: string | undefined): Promise<Result<Owner>> {
-  const cv = await chosenCv(home, explicit);
-  if (cv.error !== null) return cv;
-  const raw = await readJson(cv.data.path, 'cv');
-  if (raw.error !== null) return raw;
-  const master = Master.safeParse(raw.data);
-  if (master.success === false)
-    return rejected('photo set', coreIssue.schemaIssues(master.error, [], 'master'));
-  const photo = `cvs/${cv.data.name}.png`;
-  return done({
-    path: cv.data.path,
-    photo,
-    content: { ...master.data, person: { ...master.data.person, photo } },
-  });
-}
+/** The shape of each stored file, and the name `oriko schema` shows it by. */
+const SHAPES = {
+  cv: { schema: Master, name: 'master' },
+  profile: { schema: Profile, name: 'profile' },
+};
 
-// A profile with its own photo; the name is one profilePath() found among the existing files.
-async function profileOwner(home: string, name: string): Promise<Result<Owner>> {
-  const path = await profilePath(home, name);
-  if (path.error !== null) return path;
-  const raw = await readJson(path.data, 'profile');
-  if (raw.error !== null) return raw;
-  const profile = Profile.safeParse(raw.data);
-  if (profile.success === false)
-    return rejected('photo set', coreIssue.schemaIssues(profile.error, [], 'profile'));
-  const photo = `profiles/${name}.png`;
-  return done({
-    path: path.data,
-    photo,
-    content: { ...profile.data, person: { ...profile.data.person, photo } },
-  });
-}
-
-async function squared(path: string): Promise<Result<Uint8Array>> {
-  const bytes = await readBounded(path, FILE_LIMITS.photoBytes, 'file');
-  if (bytes.error !== null) return bytes;
-  const square = trySync$(() => squarePhoto(bytes.data));
-  if (square.error !== null)
-    return rejected('photo set', [{ ...issue.photoUnreadable(), path: 'file' }], square.error);
-  return done(square.data);
+/**
+ * The stored file is checked against its shape before it changes, so a broken CV is never written.
+ *
+ * @param field - the field of the call that names the stored file
+ * @param file - the stored CV or profile
+ * @param photo - the place of the photo inside the data folder
+ * @returns the owner with the file's text, its field person.photo set; SCHEMA below the field
+ */
+async function withPhoto(
+  field: Stored,
+  file: File,
+  photo: string,
+): Promise<Owner | Issues<Stored>> {
+  const stored = await file.json(FILE_LIMITS.inputBytes, z.unknown());
+  const { schema, name } = SHAPES[field];
+  const parsed = schema.safeParse(stored);
+  if (parsed.success === false)
+    return raised(() => field, rejected('photo set', schemaIssues(parsed.error, [], name)).error);
+  const content = { ...parsed.data, person: { ...parsed.data.person, photo } };
+  return { file, photo, text: `${JSON.stringify(content, null, 2)}\n` };
 }

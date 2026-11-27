@@ -10,7 +10,7 @@ oriko init --cv jane-doe --json '{"language":"en","firstName":"Jane","lastName":
 oriko contact add --json '{"value":{"icon":"mail","lines":["jane.doe@example.com"]}}'
 oriko block add --json '{"block":{"id":"northwind","kind":"job","section":"Professional Experience","from":"03/2021","to":"today","title":"Backend Engineer","place":"Berlin (DE)","employer":"Northwind GmbH","bullets":["Rebuilt the tracking service"]}}'
 oriko block add --json '{"block":{"id":"tools","kind":"list","section":"Skills","title":"Tools","items":["Go","Kafka","Terraform"]}}'
-oriko photo set ~/Pictures/portrait.jpg
+oriko photo set --file ~/Pictures/portrait.jpg --replace
 ```
 
 Read the job posting, from a file or an `https://` address; oriko stores its text beside the version:

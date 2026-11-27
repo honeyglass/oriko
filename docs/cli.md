@@ -43,7 +43,7 @@ what the option may hold.
 | `build --out <file>.docx` | writes the Word file, or with `<file>.pdf` its PDF through LibreOffice; `--style terminal` in the look of the preview, with `--credits` naming oriko and its author on the last page, `--dry-run` writes nothing |
 | `init`, `cv update` | create a CV, change its language, pages, person or contact title |
 | `block …`, `item …`, `contact …` | add, update, remove and move blocks, their items and contact lines |
-| `photo set <file>` | stores a PNG or JPEG as the square photo of a CV, or of one version |
+| `photo set --file <file>` | stores a PNG or JPEG as the square photo of a CV, or of one version; a stored photo is replaced only with `--replace` |
 | `read` | reads a posting (`--posting`, with `--profile`), notes (`--notes`) or an old CV (`--resume`) |
 | `profile set`, `profile show` | stores the version for one posting, checked against its CV, and shows it with its posting |
 

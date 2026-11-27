@@ -14,5 +14,14 @@ import { commandOf } from './route.ts';
 
 export function onAdx(argv: string[]) {
   const { name } = commandOf(readArgs(argv).words);
-  return name !== undefined && Object.hasOwn(commands, name);
+  return name !== undefined && isListed(commands, name.split(' '));
+}
+
+// A word leads to a command or to the table of a group; only a command counts, so a group
+// alone stays with the old shell. A command of adx is an object that has invoke.
+function isListed(table: object, words: string[]): boolean {
+  const [word = '', ...rest] = words;
+  const entry = new Map<string, unknown>(Object.entries(table)).get(word);
+  if (typeof entry !== 'object' || entry === null) return false;
+  return rest.length === 0 ? 'invoke' in entry : isListed(entry, rest);
 }

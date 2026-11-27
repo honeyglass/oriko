@@ -13,7 +13,6 @@ import { createCv } from '../cv/init.ts';
 import { listCvs } from '../cv/list.ts';
 import { showCv } from '../cv/show.ts';
 import { saveEdit } from '../edit/save.ts';
-import { setPhoto } from '../classic/photo.ts';
 import { readDocuments } from '../read/documents.ts';
 import { setProfile } from '../profile/set.ts';
 import { showProfile } from '../profile/show.ts';
@@ -43,10 +42,8 @@ export async function dispatched(call: Call): Promise<Result<Fields>> {
       return profileSet(call);
     case 'profile show':
       return showProfile(call.home, call.values.profile);
-    case 'photo set':
-      return photo(call, call.rest[0]);
-    // plan, preview and build run on adx: cli/interim.ts never sends them here, so only the
-    // edits are left.
+    // plan, preview, build and photo set run on adx: cli/interim.ts never sends them here, so
+    // only the edits are left.
     default:
       return edit(call, call.command);
   }
@@ -101,18 +98,6 @@ async function read(call: Call): Promise<Result<Fields>> {
     profileCv: await profileCv(call.home, values.profile),
     isReplace: values.replace === true,
     isDryRun: values['dry-run'] === true,
-  });
-}
-
-async function photo(call: Call, source: string | undefined): Promise<Result<Fields>> {
-  const isDryRun = call.values['dry-run'] === true;
-  return setPhoto({
-    home: call.home,
-    cwd: call.io.cwd,
-    source,
-    cv: call.values.cv,
-    profile: call.values.profile,
-    isDryRun,
   });
 }
 

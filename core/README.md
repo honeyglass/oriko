@@ -72,8 +72,8 @@ that still run on the old shell.
 - **Used by:**
   - [bin/](../bin/README.md): imports `files.limits.ts`, `files.ts`
   - [classic/](../classic/README.md): imports `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
-    `files.limits.ts`, `files.ts`, `home.old.ts`, `issues.old.ts`, `issues.ts`, `measure.ts`,
-    `metrics.ts`, `place.old.ts`, `zip.ts`
+    `files.limits.ts`, `files.ts`, `home.ts`, `issues.old.ts`, `issues.ts`, `load.ts`, `measure.ts`,
+    `metrics.ts`, `options.ts`, `place.old.ts`, `sources.ts`, `zip.ts`
   - [cli/](../cli/README.md): imports `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
     `files.limits.ts`, `home.old.ts`, `home.ts`, `issues.old.ts`, `issues.ts`, `load.old.ts`,
     `load.ts`, `options.old.ts`, `options.ts`, `place.ts`, `sources.ts`

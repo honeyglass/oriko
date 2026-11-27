@@ -223,6 +223,101 @@ each move, with their sources.
   kind: loss
   golden: no difference
   same gap as: W17
+- W19 classic/images.ts:58
+  gap: adx reads a file only inside a root (guide "Reading a file"; proto/oriko README "`photo set`
+  has the same gap", adx TODO #6)
+  call: `oriko photo set --file ~/Pictures/me.png --cv jane`
+  today: the picture is read from anywhere on the disk, with the photo byte limit and the refusal of
+  what is no regular file; a relative path starts at the working directory of the call
+  now: the same, by oriko's own code: `squarePhoto` reads through `readBounded` of `core/files.ts`,
+  with `FILE_LIMITS.photoBytes`, and resolves a relative path against the working directory of the
+  process
+  proposal: an allow-list of the folders the person opens, so a root can hold a file the person names
+  anywhere on the disk
+  kind: kept own code
+  golden: no difference
+- W20 classic/issues.ts:21
+  gap: a tool cannot raise a code adx owns (proto/oriko README "What does not fit yet")
+  call: `oriko photo set --file missing.png`, `oriko photo set --file .`, and
+  `oriko photo set --file huge.png` with 20,000,001 bytes
+  today: `FILE_NOT_FOUND`, `NOT_A_FILE` and `INPUT_TOO_LARGE` at `file`, kind fix
+  now: `NO_PICTURE`, `PICTURE_NOT_A_FILE` and `PICTURE_TOO_LARGE` at `file`, kind fix, with the
+  message and the hint of today; `PATH_REFUSED`, which adx does not own, keeps its name
+  proposal: a tool can raise one of adx's codes for a file the tool's own code read, at the field that
+  named the file
+  kind: loss
+  golden: no difference
+  same gap as: W2
+- W21 classic/images.ts:78
+  gap: a tool cannot raise a code adx owns (proto/oriko README "What does not fit yet")
+  call: `oriko photo set --file me.png`, where the read of `me.png` fails with a system error outside
+  the list of `core/files.ts` that the caller fixes, such as EIO
+  today: `SYSTEM_REFUSED` at `file`, kind ask, "The system refused …/me.png: EIO"
+  now: the system error goes to adx with `failed`: `SYSTEM_REFUSED`, kind ask, no path, "open of
+  …/me.png failed with EIO", adx's hint. Read in adx `src/core/unmapped.ts`, not measured: no test
+  can make a read fail with EIO
+  proposal: a tool can raise one of adx's codes for a file the tool's own code read, at the field that
+  named the file
+  kind: loss
+  golden: no difference
+  same gap as: W2
+- W22 classic/photo.ts:99
+  gap: a stored file read through a root answers adx's refusals, which stand at no field (guide
+  "Reading a file")
+  call: `oriko photo set --file me.png --profile badjson`, whose file holds `{`
+  today: `INVALID_JSON`, kind fix, path `""`; a profile past 1,000,000 bytes `INPUT_TOO_LARGE` at
+  `profile`
+  now: `STORED_INVALID`, kind ask, no path; a profile past 1,000,000 bytes (`--profile big`,
+  1,100,000 bytes) `STORED_INVALID`, kind ask, no path, "profiles/big.json holds more than 1000000
+  bytes", so the byte limit `FILE_LIMITS.inputBytes` stays
+  proposal: the issue of a stored file stands at the field of the call that names the file
+  kind: loss
+  golden: no difference
+  same gap as: W2
+- W23 classic/photo.ts:43
+  gap: the test kit can give a probe no file outside every root: `conformance` calls each example in
+  an empty working directory and copies only the seed of the data folder (guide "Testing your tool")
+  call: `conformance(t, oriko, { seed })`, which probes `oriko photo set`
+  today: no conformance; the old shell has no example
+  now: without an example, the probe "raw JSON input" fails ("has a required field and no example,
+  so no probe can call it validly") and five probes are todo. The example names the placeholder of
+  the package, `assets/placeholder.png`, relative to the repository's root, for the profile `acme`
+  of the seed, which has no photo of its own. It passes only while the process of the test runs in
+  the repository's root, and `conformance` with the program would run it in a scratch folder
+  proposal: the samples of the test kit can name files a probe finds at a plain path, such as a
+  folder copied in as the working directory of each probe, against which the call resolves the path
+  kind: workaround
+  golden: no difference
+- W24 classic/images.ts:58
+  gap: adx hands a handler no working directory of the call, and `run` of the test kit sets only the
+  root made with `cwd` and leaves `process.cwd()` as it is (guide "Testing your tool")
+  call: `run(oriko, ['photo', 'set', '--file', 'me.png'], { cwd })` in a test
+  today: the old shell resolves the picture against the working directory the test passes in
+  now: the picture is resolved against the working directory of the process, so a real call is the
+  same as today, and a test names the picture by its absolute path
+  proposal: a handler can ask for the working directory of the call, which the test kit sets with
+  `cwd`
+  kind: workaround
+  golden: no difference
+- W25 classic/photo.ts:51
+  gap: a write follows a link at its target to a file inside the root and writes through it, while
+  the guide says a link at the target is replaced (guide "Files the call names"; adx
+  `src/files/paths.ts`, `linkedFile`)
+  call: `oriko photo set --file me.png --replace`, where `cvs/jane.png` is a link to
+  `store/jane.png` of the data folder
+  today: the rename replaces the link with the photo; `store/jane.png` stays as it was
+  now: exit 0 with `"file": "cvs/jane.png"`; `cvs/jane.png` is still the link, and `store/jane.png`
+  holds the photo. The link may name any stored file: with `profiles/acme.png` a link to
+  `../cvs/jane.json`, `oriko photo set --file placeholder.png --profile acme` is `ALREADY_EXISTS`,
+  and with `--replace` it answers exit 0 with `"photo":{"file":"profiles/acme.png",
+  "replaces":true}`, and `cvs/jane.json` holds the PNG: a stored CV is replaced by a photo, and no
+  answer names it. A link that leads out of the data folder is replaced, with `--replace`, and its
+  target stays as it was
+  proposal: a link at the target of a write is replaced, as the guide says, or the answer names the
+  real file the write changed
+  kind: loss
+  golden: no difference
+  same gap as: W17
 
 ## Passing outside the golden
 
@@ -243,9 +338,16 @@ What holds only between two packages, and the package that ends it.
   `core/check.ts` onto adx.
 - `ORIKO_HOME` moves the data folder of the moved commands only; the old shell does not read it.
   Package 9 ends it.
-- An option before a moved command (`--home X plan`, `--home X build --out cv.docx`) is refused
-  with `OPTION_BEFORE_COMMAND`, while the old shell takes it before a command that is not moved.
-  Package 9 ends it.
+- An option before a moved command (`--home X plan`, `--home X build --out cv.docx`,
+  `--home X photo set --file me.png`) is refused with `OPTION_BEFORE_COMMAND`, while the old shell
+  takes it before a command that is not moved. Package 9 ends it.
+- The old `oriko schema photo set` still describes the old form: the picture as the word `file`
+  after the command, no `--file` and no `--replace`, as section 4 of the plan keeps the old schema
+  byte for byte. Calls: `schema photo set` and `schema`. Package 9 ends it, when `oriko schema` is
+  adx's.
+- A CV that today's `init` creates holds `cvs/NAME.png`, so its first `photo set` needs
+  `--replace`. Call: `photo set --file me.png --cv erika` after `init --cv erika`. Package 7 ends
+  it, when `init` names the shared `placeholder.png`.
 
 ## Golden changes
 
@@ -278,6 +380,10 @@ Every record that differs from the golden before the move, by its call number in
 | 57 | `build --style` | `{ ok, result: { option, values: [{ value }] } }` | adx's own: guide "Options and their values" |
 | 58 | `build --out x.docx --style nope --credits` | refusal shape; `NOT_IN_LIST` alone, with the command `oriko build --out x.docx --credits --style`, in place of `UNKNOWN_STYLE` and `CREDITS_NEED_TERMINAL` | listed: README "A value outside a list is `NOT_IN_LIST`"; adx's own: guide "Refusing bad input with a hint" (the layers) |
 | 59 | `build --out x.docx --dry-run=yes` | refusal shape; adx's `UNEXPECTED_VALUE` wording, with the command `oriko schema build` | adx's own: guide "The answer", "How adx reads a call" |
+| 118, 119, 120 | `photo set --file me.png --cv jane --dry-run`, `photo set --file me.png --cv jane`, `photo set --file me.png --profile acme` | the call names the picture with `--file`, in place of a word after the command | listed: README "`photo set --file me.png`" |
+| 118, 119 | `photo set --file me.png --cv jane --dry-run`, `photo set --file me.png --cv jane` | exit 1, refusal shape; `ALREADY_EXISTS` for `cvs/jane.png`, which the seed holds, hint "add --replace to overwrite cvs/jane.png", command the same call with `--replace --dry-run`; call 119 writes nothing, where today it wrote `cvs/jane.png` and `cvs/jane.json` | listed: README "A second `photo set` needs `--replace`" (70); adx's own: guide "The answer", "A command that changes something" |
+| 120 | `photo set --file me.png --profile acme` | `{ ok, applied, result: { photo, owner }, next }`: `photo` is `{ file, bytes, replaces }` of `profiles/acme.png`, `owner` the same of `profiles/acme.json` with `changes`; the step to `build` is the same; `profiles/acme.png` has mode 600, `profiles/acme.json` keeps 644 | listed: README "One answer shape", "A write answers `{ file, bytes, replaces }`, and `changes` on a replace"; section 5 of the plan for the mode of a photo; adx's own: guide "Files" (a new file gets 0600, an updated one keeps its mode) |
+| 121 | `photo set` | refusal shape; `SCHEMA` at `file` with adx's message and hint and the command `oriko schema photo set`, in place of `MISSING_INPUT` | listed: README "`photo set` without a file is adx's own refusal for a missing field"; adx's own: guide "The answer", "How adx reads a call" (a missing field) |
 
 ## Decisions of the coordinator
 
@@ -343,3 +449,24 @@ work stops only when an approach cannot work at all, and everything else is deci
   reason: nothing was built for the move, it is the kept own code of D4, and no check of adx is
   weakened, since adx starts no program; (b) would change which installations of LibreOffice
   oriko finds, with no call that asks for it
+- D8, before package 4
+  question: oriko's own code that reads a file the person names raises `FILE_NOT_FOUND`,
+  `NOT_A_FILE` and `INPUT_TOO_LARGE` today. adx owns these names, and a tool cannot declare
+  them. What are the codes called now
+  variants: (a) one code for every failed read; (b) a code of its own per case, named after the
+  thing that was read, with the kind and the hint of today; (c) no check of oriko's own, and
+  whatever the read throws goes to adx
+  choice: b, for the picture of `photo set`: `NO_PICTURE` (the name of adx's sketch),
+  `PICTURE_NOT_A_FILE` and `PICTURE_TOO_LARGE`. A code adx does not own keeps its name
+  reason: (a) hides from the caller what to fix; (c) drops the byte limit and the refusal of a
+  folder, two checks oriko has today; (b) keeps every check and tells the cases apart as today
+- D9, package 4
+  question: what does the `example` of `photo set` name. The test kit calls every command with
+  its example, and the picture lies in no root, so the kit can put none where the call finds it
+  variants: (a) no example; (b) the absolute path of a picture the package ships; (c) the path
+  of that picture relative to the root of the repository, `assets/placeholder.png`
+  choice: c
+  reason: with (a) the test kit fails, since a command with a required field and no example
+  cannot be called validly; (b) would put a path of one machine into `schema` and into the
+  golden; (c) passes while the test runs in the root of the repository (W23). The test of the
+  whole program in the last package runs elsewhere and is decided there
