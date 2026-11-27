@@ -47,13 +47,6 @@ test('a success names its next steps, each a command with what it still needs', 
     ],
     [['profiles'], [['oriko plan', ['profile']]]],
     [['show'], [['oriko show', ['block']]]],
-    [
-      ['plan', '--profile', 'acme'],
-      [
-        ['oriko preview --profile acme', []],
-        ['oriko build --profile acme', ['out']],
-      ],
-    ],
     [['preview', '--profile', 'acme'], [['oriko build --profile acme', ['out']]]],
     [['build', '--profile', 'acme', '--out', 'acme.docx'], [[null, []]]],
     [
@@ -117,10 +110,10 @@ test('an answer with nothing to follow names no step', async () => {
 // A step keeps every selector of the call, or a profile without a CV loses the one it needs.
 test('every next command is a call oriko knows', async () => {
   const space = workspace();
-  const answers = [[], ['cvs'], ['profiles'], ['show'], ['plan', '--profile', 'acme']];
+  const answers = [[], ['cvs'], ['profiles'], ['show'], ['preview', '--profile', 'acme']];
   await call(space, ['init', '--cv', 'erika', '--json', NEW_CV]);
   writeFileSync(join(space.home, 'profiles', 'open.json'), '{}');
-  answers.push(['plan', '--profile', 'open', '--cv', 'erika']);
+  answers.push(['preview', '--profile', 'open', '--cv', 'erika']);
   answers.push(['build', '--cv', 'jane', '--out', 'jane.docx', '--style', 'terminal', '--dry-run']);
   const commands = [];
   for (const argv of answers) commands.push(...(await steps(space, argv)));
@@ -141,8 +134,8 @@ test('every next command is a call oriko knows', async () => {
 // back, never as shell code: quoted, and joined by '=' where it starts with a dash.
 test('the steps keep the data folder of the call', async () => {
   const space = workspace();
-  const next = await steps(space, ['plan', '--profile', 'acme', '--home', space.home]);
-  assert.equal(next[0]?.command, `oriko preview --profile acme --home ${space.home}`);
+  const next = await steps(space, ['preview', '--profile', 'acme', '--home', space.home]);
+  assert.equal(next[0]?.command, `oriko build --profile acme --home ${space.home}`);
   const dashed = join(space.cwd, '-data');
   cpSync(space.home, dashed, { recursive: true });
   renameSync(join(dashed, 'cvs', 'jane.json'), join(dashed, 'cvs', 'x;touch PWNED.json'));

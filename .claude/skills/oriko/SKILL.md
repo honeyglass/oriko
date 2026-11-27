@@ -48,7 +48,7 @@ An option without a value lists the values it accepts, such as `oriko show --cv`
 
 ## The data folder
 
-The data folder is `~/.oriko`; when the user names another one, pass `--home <folder>` to every command.
+The data folder is `~/.oriko`; when the user names another one, pass `--home <folder>` to every command, as an absolute path.
 
 | Path                 | Content                                                                              |
 | :------------------- | :----------------------------------------------------------------------------------- |
@@ -100,7 +100,7 @@ Each such back edge is bounded: at most three returns, and the fourth refusal is
 | 'WRONG_EXTENSION', 'PATH_OUTSIDE', 'FOLDER_NOT_FOUND' | 5 Build                     | pass '--out' as a '.docx' or '.pdf' file inside the working directory                              |
 | 'UNKNOWN_STYLE', 'CREDITS_NEED_TERMINAL'              | 5 Build                     | keep '--style' and '--credits' as the user asked; when the two clash, STOP and ask                 |
 | 'URL_NOT_ALLOWED', 'PRIVATE_ADDRESS', 'HTTP_STATUS', 'TOO_MANY_REDIRECTS', 'ENCODING_NOT_ALLOWED', 'DOCUMENT_UNREADABLE', 'UNSUPPORTED_KIND', 'NO_TEXT' | 1 Posting, 7 Facts | STOP and ask the user for the text or a saved file; never fetch or save the page yourself |
-| 'CV_REQUIRED', 'UNKNOWN_CV', 'CV_MISMATCH', 'UNKNOWN_PROFILE' | any state | pass the name the user gave or 1 Posting chose; with none, STOP and ask |
+| 'CV_REQUIRED', 'UNKNOWN_CV', 'CV_MISMATCH', 'UNKNOWN_PROFILE', 'NOT_IN_LIST' | any state | pass the name the user gave or 1 Posting chose; with none, STOP and ask |
 | any other code                                        | the state that made it      | run the issue's 'command', follow its 'hint'                                                       |
 
 Raising `pages` in a master, or cutting a fact from it, is the user's decision: STOP and ask.

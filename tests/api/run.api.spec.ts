@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import {
   chmodSync,
   existsSync,
@@ -17,7 +17,9 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
+import { run as runOnAdx } from '@honeyglass/adx/test';
 import { z } from 'zod';
+import { oriko } from '../../cli/oriko.ts';
 import { run } from '../../cli/run.ts';
 import { NEW_CV, call, workspace } from '../utils/cli.ts';
 import type { Space } from '../utils/cli.ts';
@@ -33,15 +35,14 @@ const tall = (cwd: string) => {
   return path;
 };
 
+const Planned = z.object({ pages: z.array(z.unknown()) });
+
 test('plan answers the pages of the only CV, and of a profile by its name', async () => {
   const space = workspace();
   const { exit, answer } = await call(space, ['plan']);
-  assert.deepEqual(
-    [exit, answer.ok, Array.isArray(answer.pages) && answer.pages.length],
-    [0, true, 2],
-  );
+  assert.deepEqual([exit, answer.ok, Planned.parse(answer.result).pages.length], [0, true, 2]);
   const profiled = await call(space, ['plan', '--profile', 'acme']);
-  assert.equal(JSON.stringify(profiled.answer.pages).includes('freelance'), false);
+  assert.equal(JSON.stringify(profiled.answer.result).includes('freelance'), false);
 });
 
 test('cvs lists every CV with its language and whether it fits', async () => {
@@ -99,7 +100,149 @@ test('a CV is chosen by --cv, by the profile, or as the only one', async () => {
   assert.deepEqual((await call(space, ['plan', '--profile', 'acme', '--cv', 'erika'])).codes, [
     'CV_MISMATCH',
   ]);
-  assert.deepEqual((await call(space, ['plan', '--cv', 'nobody'])).codes, ['UNKNOWN_CV']);
+  assert.deepEqual((await call(space, ['plan', '--cv', 'nobody'])).codes, ['NOT_IN_LIST']);
+});
+
+// A command on adx answers its fields in result; the old shell answers them beside ok.
+test('the program sends a moved command to adx and every other one to the old shell', () => {
+  const { home } = workspace();
+  const program = fileURLToPath(new URL('../../bin/oriko.ts', import.meta.url));
+  const answer = (...argv: string[]) => {
+    const ran = spawnSync(process.execPath, [program, ...argv], { encoding: 'utf8', input: '' });
+    return z.looseObject({ ok: z.boolean() }).parse(JSON.parse(ran.stdout));
+  };
+  assert.equal('result' in answer('plan', '--home', home), true);
+  assert.equal('cvs' in answer('cvs', '--home', home), true);
+  const [before] = z
+    .array(z.object({ code: z.string() }))
+    .parse(answer('--home', home, 'plan').issues);
+  assert.equal(before?.code, 'OPTION_BEFORE_COMMAND');
+});
+
+// A missing default folder holds no CV; ORIKO_HOME moves the folder as --home does.
+test('plan finds the data folder by --home, by ORIKO_HOME, or holds no CV in a missing one', async () => {
+  const space = workspace();
+  const missing = JSON.parse((await runOnAdx(oriko, ['plan'])).out);
+  assert.deepEqual(missing.issues, [
+    {
+      code: 'NO_CV',
+      message: 'The data folder holds no CV',
+      hint: 'Check --home, or run the command for the input of a new CV',
+    },
+  ]);
+  const moved = await runOnAdx(oriko, ['plan'], { env: { ORIKO_HOME: space.home } });
+  assert.equal(moved.exit, 0);
+});
+
+// An issue inside a stored file stands below the field that names the file: cv or profile.
+const LONG_ROLE = 'Principal Distributed Systems Engineer and Platform Architect for Logistics';
+const TALL = Array.from({ length: 12 }, () => `${'word '.repeat(59)}end`);
+
+// One case per code the check and the page plan raise. An issue the CV alone has stands below
+// cv; one the profile brings stands below profile where the profile holds its path.
+test('plan refuses what the check and the page plan find, below the file that holds it', async () => {
+  const space = workspace();
+  const master = JSON.parse(readFileSync(FIXTURE_URL, 'utf8'));
+  const [northwind] = master.blocks;
+  const blocks = (id: string, change: object) =>
+    master.blocks.map((block: { id: string }) =>
+      block.id === id ? { ...block, ...change } : block,
+    );
+  const cvs: Record<string, object> = {
+    twice: { ...master, blocks: [northwind, northwind] },
+    short: { ...master, pages: 1 },
+    bare: { ...master, pages: undefined },
+    long: { ...master, person: { ...master.person, role: LONG_ROLE } },
+    tall: { ...master, blocks: blocks('northwind', { bullets: TALL }) },
+    untitled: { ...master, blocks: blocks('libraries', { title: undefined }) },
+  };
+  const profiles: Record<string, object> = {
+    lines: { blocks: { northwind: { bullets: ['a\nb'] } } },
+    role: { person: { role: LONG_ROLE } },
+    tall: { blocks: { northwind: { bullets: TALL } } },
+    untitled: { blocks: { libraries: { title: null } } },
+    added: { blocks: { libraries: { items: ['Gin', 'Nope'] } } },
+    raised: { blocks: { 'programming-languages': { items: [{ name: 'Rust', level: 5 }] } } },
+    fact: { blocks: { northwind: { employer: 'Elsewhere' } } },
+    moved: { order: ['cedar'] },
+  };
+  for (const [name, cv] of Object.entries(cvs))
+    writeFileSync(join(space.home, 'cvs', `${name}.json`), JSON.stringify(cv));
+  for (const [name, profile] of Object.entries(profiles))
+    writeFileSync(join(space.home, 'profiles', `${name}.json`), JSON.stringify(profile));
+  const cases: [string[], string, string, string | undefined][] = [
+    [['--cv', 'bare'], 'SCHEMA', 'cv.pages', 'oriko schema master'],
+    [
+      ['--profile', 'lines'],
+      'SCHEMA',
+      'profile.blocks.northwind.bullets.0',
+      'oriko schema profile',
+    ],
+    [['--cv', 'twice'], 'DUPLICATE_ID', 'cv.blocks.northwind', undefined],
+    [['--profile', 'broken'], 'UNKNOWN_BLOCK', 'profile.blocks.nobody', undefined],
+    [['--cv', 'untitled'], 'UNTITLED_NOT_ALONE', 'cv.blocks.libraries', undefined],
+    [['--profile', 'untitled'], 'UNTITLED_NOT_ALONE', 'profile.blocks.libraries', undefined],
+    [['--profile', 'added'], 'ITEM_NOT_IN_MASTER', 'profile.blocks.libraries.items', undefined],
+    [
+      ['--profile', 'raised'],
+      'LEVEL_RAISED',
+      'profile.blocks.programming-languages.items',
+      undefined,
+    ],
+    [['--profile', 'fact'], 'FACT_CHANGED', 'profile.blocks.northwind.employer', undefined],
+    [['--profile', 'moved'], 'JOB_MOVED', 'profile.order', undefined],
+    [['--cv', 'long'], 'ROLE_TOO_LONG', 'cv.person.role', undefined],
+    [['--profile', 'role'], 'ROLE_TOO_LONG', 'profile.person.role', undefined],
+    [['--cv', 'tall'], 'BLOCK_TOO_TALL', 'cv.blocks.northwind', undefined],
+    [['--profile', 'tall'], 'BLOCK_TOO_TALL', 'profile.blocks.northwind', undefined],
+    [['--cv', 'short'], 'PAGE_OVERFLOW', 'cv.pages', undefined],
+  ];
+  for (const [options, code, path, command] of cases) {
+    const { exit, answer } = await call(space, ['plan', ...options, ...cvOf(options)]);
+    const [issue] = answer.issues ?? [];
+    const named = command === undefined ? [] : [issue?.command];
+    const expected = command === undefined ? [] : [command];
+    assert.deepEqual(
+      [exit, issue?.code, issue?.path, ...named],
+      [1, code, path, ...expected],
+      options.join(' '),
+    );
+  }
+});
+
+// The profiles of the case above name no CV, and the data folder holds several.
+const cvOf = (options: string[]) => (options.includes('--profile') ? ['--cv', 'jane'] : []);
+
+// adx finds a name only among the regular files of the data folder, and reads each with a limit.
+test('plan takes only the stored CVs and profiles, and refuses one it cannot read', async () => {
+  const space = workspace();
+  const outside = join(space.cwd, 'outside.json');
+  writeFileSync(outside, readFileSync(join(space.home, 'cvs', 'jane.json')));
+  symlinkSync(outside, join(space.home, 'cvs', 'linked.json'));
+  symlinkSync(outside, join(space.home, 'profiles', 'linked.json'));
+  mkdirSync(join(space.home, 'cvs', 'folder.json'));
+  writeFileSync(join(space.home, 'cvs', 'torn.json'), '{"language":');
+  writeFileSync(join(space.home, 'profiles', 'big.json'), ' '.repeat(1_000_001));
+  const cases: [string[], string, string][] = [
+    [['--profile', '../cv'], 'NOT_IN_LIST', 'fix'],
+    [['--cv', '../cvs/jane'], 'NOT_IN_LIST', 'fix'],
+    [['--cv', 'linked'], 'NOT_IN_LIST', 'fix'],
+    [['--profile', 'linked'], 'NOT_IN_LIST', 'fix'],
+    [['--cv', 'folder'], 'NOT_IN_LIST', 'fix'],
+    [['--cv', 'torn'], 'STORED_INVALID', 'ask'],
+    [['--profile', 'big', '--cv', 'jane'], 'STORED_INVALID', 'ask'],
+  ];
+  for (const [options, code, kind] of cases) {
+    const { exit, answer, codes } = await call(space, ['plan', ...options]);
+    assert.deepEqual([exit, answer.kind, codes], [1, kind, [code]], options.join(' '));
+  }
+  // Without any profile, the command of the refusal lists none.
+  rmSync(join(space.home, 'profiles'), { recursive: true });
+  const [none] = (await call(space, ['plan', '--profile', 'acme'])).answer.issues ?? [];
+  const command = `oriko plan --home ${space.home} --profile`;
+  assert.deepEqual([none?.code, none?.command], ['NOT_IN_LIST', command]);
+  const listed = await call(space, command.split(' ').slice(1));
+  assert.deepEqual(listed.answer.result, { option: 'profile', values: [] });
 });
 
 test('preview answers the pages as text', async () => {
@@ -265,11 +408,12 @@ test('refuses bad input with exit code 1 and the code of the reason', async () =
     [['paint'], 'UNKNOWN_COMMAND'],
     [['plan', '--color'], 'UNKNOWN_OPTION'],
     [['preview', '--output', 'pdf'], 'UNKNOWN_OUTPUT'],
-    [['plan', '--home', 'missing'], 'NO_CV'],
+    [['plan', '--home', join(space.cwd, 'missing')], 'ROOT_NOT_FOUND'],
     [['profiles', '--home', 'missing'], 'NO_CV'],
-    [['plan', '--home', 'broken-home'], 'SCHEMA'],
-    [['plan', '--profile', 'nobody'], 'UNKNOWN_PROFILE'],
-    [['plan', '--profile', '../cv'], 'UNKNOWN_PROFILE'],
+    [['plan', '--home', join(space.cwd, 'broken-home')], 'SCHEMA'],
+    [['plan', '--profile', 'nobody'], 'NOT_IN_LIST'],
+    [['preview', '--profile', 'nobody'], 'UNKNOWN_PROFILE'],
+    [['preview', '--profile', '../cv'], 'UNKNOWN_PROFILE'],
     [['init', '--json', NEW_CV], 'MISSING_OPTION'],
     [['init', '--cv', '../evil', '--json', NEW_CV], 'SCHEMA'],
     [['init', '--cv', 'jane', '--json', NEW_CV], 'CV_EXISTS'],
@@ -294,10 +438,18 @@ test('an option without a value answers the values it accepts', async () => {
     option: 'cv',
     values: ['erika', 'jane'],
   });
-  assert.deepEqual(await values(['plan', '--profile']), {
+  assert.deepEqual(await values(['preview', '--profile']), {
     ok: true,
     option: 'profile',
     values: ['acme', 'broken'],
+  });
+  assert.deepEqual(await values(['plan', '--cv']), {
+    ok: true,
+    result: { option: 'cv', values: [{ value: 'erika' }, { value: 'jane' }] },
+  });
+  assert.deepEqual(await values(['plan', '--profile']), {
+    ok: true,
+    result: { option: 'profile', values: [{ value: 'acme' }, { value: 'broken' }] },
   });
   assert.deepEqual(await values(['build', '--style']), {
     ok: true,
@@ -348,9 +500,9 @@ test('a refusal names a command that lists the fitting values, and that command 
   const space = workspace();
   await call(space, ['init', '--cv', 'erika', '--json', NEW_CV]);
   const cases: [string[], string, string][] = [
-    [['plan'], 'CV_REQUIRED', 'oriko show --cv'],
-    [['plan', '--cv', 'nobody'], 'UNKNOWN_CV', 'oriko show --cv'],
-    [['plan', '--profile', 'nobody'], 'UNKNOWN_PROFILE', 'oriko plan --profile'],
+    [['preview'], 'CV_REQUIRED', 'oriko show --cv'],
+    [['preview', '--cv', 'nobody'], 'UNKNOWN_CV', 'oriko show --cv'],
+    [['preview', '--profile', 'nobody'], 'UNKNOWN_PROFILE', 'oriko plan --profile'],
     [
       ['show', '--cv', 'jane', '--block', 'nobody'],
       'UNKNOWN_BLOCK',
@@ -370,7 +522,7 @@ test('a refusal names a command that lists the fitting values, and that command 
     [['block', 'remove', '--cv', 'jane'], 'MISSING_INPUT', 'oriko schema block remove'],
     [['block', 'add', '--cv', 'jane', '--json'], 'MISSING_VALUE', 'oriko schema block add'],
     [['paint'], 'UNKNOWN_COMMAND', 'oriko schema'],
-    [['plan', '--color'], 'UNKNOWN_OPTION', 'oriko schema'],
+    [['preview', '--color'], 'UNKNOWN_OPTION', 'oriko schema'],
     [['init', '--json', NEW_CV], 'MISSING_OPTION', 'oriko show --cv'],
     [['build'], 'MISSING_OPTION', 'oriko schema build'],
     [
@@ -389,9 +541,20 @@ test('a refusal names a command that lists the fitting values, and that command 
     const listed = await call(space, `${command}${home}`.split(' ').slice(1));
     assert.equal(listed.answer.ok, true, command);
   }
+  // On adx the command lists the values of the field, with the --home of the call in it.
+  const listing: [string[], string, string][] = [
+    [['plan'], 'CV_REQUIRED', `oriko plan --home ${space.home} --cv`],
+    [['plan', '--cv', 'nobody'], 'NOT_IN_LIST', `oriko plan --home ${space.home} --cv`],
+    [['plan', '--profile', 'nobody'], 'NOT_IN_LIST', `oriko plan --home ${space.home} --profile`],
+  ];
+  for (const [argv, code, command] of listing) {
+    const [issue] = (await call(space, [...argv, '--home', space.home])).answer.issues ?? [];
+    assert.deepEqual([issue?.code, issue?.command], [code, command], argv.join(' '));
+    assert.equal((await call(space, command.split(' ').slice(1))).answer.ok, true, command);
+  }
   // Without any profile there is no name to list; the refusal points to the checked write.
   rmSync(join(space.home, 'profiles'), { recursive: true });
-  const [none] = (await call(space, ['plan', '--profile', 'acme'])).answer.issues ?? [];
+  const [none] = (await call(space, ['preview', '--profile', 'acme'])).answer.issues ?? [];
   assert.deepEqual([none?.code, none?.command], ['UNKNOWN_PROFILE', 'oriko schema profile set']);
   assert.match(String(none?.hint), /oriko profile set/);
 });
@@ -498,7 +661,9 @@ test('checks the call against its command and names every mistake at once', asyn
     ],
     [['cvs', 'extra'], [['UNEXPECTED_ARGUMENT', 'extra']]],
     [['photo', 'set', 'a.png', 'b.png'], [['UNEXPECTED_ARGUMENT', 'b.png']]],
-    [['plan', '--out', 'x.docx'], [['OPTION_NOT_ALLOWED', 'out']]],
+    [['preview', '--out', 'x.docx'], [['OPTION_NOT_ALLOWED', 'out']]],
+    [['plan', '--out', 'x.docx'], [['UNKNOWN_OPTION', 'out']]],
+    [['preview', '--cv', 'jane', '--cv', 'jane'], [['REPEATED_OPTION', 'cv']]],
     [['plan', '--cv', 'jane', '--cv', 'jane'], [['REPEATED_OPTION', 'cv']]],
     [['build', '--out', 'x.docx', '--dry-run=true'], [['UNEXPECTED_VALUE', 'dry-run']]],
     [
@@ -544,8 +709,8 @@ test('checks the call against its command and names every mistake at once', asyn
       argv.join(' '),
     );
   }
-  const notAllowed = (await call(space, ['plan', '--out', 'x.docx'])).answer.issues?.[0];
-  assert.equal(notAllowed?.command, 'oriko schema plan');
+  const notAllowed = (await call(space, ['preview', '--out', 'x.docx'])).answer.issues?.[0];
+  assert.equal(notAllowed?.command, 'oriko schema preview');
   const newName = (await call(space, ['init', '--cv'])).answer.issues?.[0];
   assert.equal(newName?.command, 'oriko show --cv');
 });
@@ -607,20 +772,22 @@ test('refuses a folder where a file belongs, and a file where a folder belongs',
   execFileSync('mkfifo', [join(space.home, 'cvs', 'pipe.png')]);
   const piped = { cv: 'jane', person: { photo: 'cvs/pipe.png' } };
   writeFileSync(join(space.home, 'profiles', 'piped.json'), JSON.stringify(piped));
-  const cases: [string[], string, string][] = [
-    [['plan', '--home', 'notes.txt'], 'NOT_A_FOLDER', 'home'],
-    [['plan', '--home', 'notes.txt/x'], 'PATH_REFUSED', 'home'],
+  const cases: [string[], string, string | undefined][] = [
+    [['preview', '--home', 'notes.txt'], 'NOT_A_FOLDER', 'home'],
+    [['preview', '--home', 'notes.txt/x'], 'PATH_REFUSED', 'home'],
     [['cvs', '--home', 'flat'], 'PATH_REFUSED', 'home'],
-    [['plan', '--home', 'nested'], 'NOT_A_FILE', 'cv'],
+    [['preview', '--home', 'nested'], 'NOT_A_FILE', 'cv'],
     [['photo', 'set', '.'], 'NOT_A_FILE', 'file'],
     [['photo', 'set', 'huge.png'], 'INPUT_TOO_LARGE', 'file'],
     [['photo', 'set', 'pipe.png'], 'NOT_A_FILE', 'file'],
-    [['plan', '--home', 'piped'], 'NOT_A_FILE', 'cv'],
+    [['preview', '--home', 'piped'], 'NOT_A_FILE', 'cv'],
     [['build', '--profile', 'piped', '--out', 'p.docx', '--dry-run'], 'NOT_A_FILE', 'person.photo'],
     [['photo', 'set', 'locked.png'], 'PATH_REFUSED', 'file'],
     [['photo', 'set', 'notes.txt/x.png'], 'PATH_REFUSED', 'file'],
     [['photo', 'set', `${'a'.repeat(300)}.png`], 'PATH_REFUSED', 'file'],
-    [['plan', '--profile', 'acme', '--home', 'nowhere'], 'NO_CV', 'home'],
+    [['preview', '--profile', 'acme', '--home', 'nowhere'], 'NO_CV', 'home'],
+    [['preview', '--profile', 'ghost'], 'UNKNOWN_CV', 'profile.cv'],
+    [['plan', '--home', join(space.cwd, 'notes.txt')], 'ROOT_NOT_FOUND', undefined],
     [['plan', '--profile', 'ghost'], 'UNKNOWN_CV', 'profile.cv'],
     [['build', '--out', 'sub/x.docx'], 'FOLDER_NOT_FOUND', 'out'],
     [['build', '--out', 'notes.txt/x.docx', '--dry-run'], 'NOT_A_FOLDER', 'out'],
@@ -657,7 +824,7 @@ test('a profile decides the CV for show and for the list of CVs', async () => {
   const space = workspace();
   await call(space, ['init', '--cv', 'erika', '--json', NEW_CV]);
   assert.equal((await call(space, ['show', '--profile', 'acme'])).answer.cv, 'jane');
-  assert.deepEqual((await call(space, ['plan', '--profile', 'acme', '--cv'])).answer.values, [
+  assert.deepEqual((await call(space, ['preview', '--profile', 'acme', '--cv'])).answer.values, [
     'jane',
   ]);
 });

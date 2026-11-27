@@ -40,20 +40,31 @@ from the other folders, so every feature can rely on it.
   their values quoted for a shell.
 - `place.old.ts`: plans the pages: it puts each block whole on a page, or names the blocks that do
   not fit.
+- `home.ts`: names the data folder and the working directory for adx, and the CV and profile
+  files in the data folder.
+- `issues.ts`: declares the codes `core/` raises on adx, and turns an issue of the check or of the
+  page plan into one of adx, below the field that names its file.
+- `load.ts`: reads the CV and the profile a command on adx names, picks the CV, checks both, and
+  decides which of the two files an issue lies in.
+- `options.ts`: describes the fields `--cv` and `--profile`, with the one text each has.
+- `place.ts`: describes the page plan as a schema, and plans the pages for a command on adx.
+- `sources.ts`: lists the stored CVs and profiles, the values `--cv` and `--profile` take.
 
 ## Example
 
 ```ts
-import { checked } from '../core/load.old.ts';
-import { place } from '../core/place.old.ts';
+import { checked } from '../core/load.ts';
+import { place } from '../core/place.ts';
 
-const cv = await checked(home, cvName, profileName);
-if (cv.error !== null) return cv;
-const plan = place(cv.data);
+const loaded = await checked(cv, profile);
+if (Array.isArray(loaded)) return refuse(...loaded);
+const placed = place(loaded);
+return Array.isArray(placed) ? refuse(...placed) : placed;
 ```
 
-A feature checks the CV first and plans the pages from it; each step gives back either `data` or
-an `error` to pass on.
+A command on adx checks the CV first and plans the pages from it; each step gives back its value
+or the issues, which the command refuses with. The files that end in `.old.ts` serve the commands
+that still run on the old shell.
 
 ## Connections
 
@@ -64,8 +75,8 @@ an `error` to pass on.
     `files.limits.ts`, `files.ts`, `home.old.ts`, `issues.old.ts`, `measure.ts`, `metrics.ts`,
     `place.old.ts`, `zip.ts`
   - [cli/](../cli/README.md): imports `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
-    `files.limits.ts`, `files.ts`, `home.old.ts`, `issues.old.ts`, `load.old.ts`, `options.old.ts`,
-    `place.old.ts`
+    `files.limits.ts`, `files.ts`, `home.old.ts`, `home.ts`, `issues.old.ts`, `load.old.ts`,
+    `load.ts`, `options.old.ts`, `options.ts`, `place.old.ts`, `place.ts`, `sources.ts`
   - [cv/](../cv/README.md): imports `check.ts`, `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
     `files.ts`, `home.old.ts`, `issues.old.ts`, `load.old.ts`, `place.old.ts`
   - [edit/](../edit/README.md): imports `check.ts`, `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,

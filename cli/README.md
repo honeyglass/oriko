@@ -12,6 +12,10 @@ It is the only folder that combines several features. A build, for example, uses
 from `core/`, the classic or terminal style (`--style`) from `classic/` or `terminal/`, and `pdf/`
 for the PDF.
 
+oriko moves onto the toolkit `@honeyglass/adx` one command at a time. A command in the table of
+`oriko.ts`, today `plan`, is read, checked and answered by adx in the one answer shape adx gives
+every tool; every other call still goes through the shell described here.
+
 ## Modules
 
 - `run.ts`: runs one call from start to end and ends with its exit code.
@@ -31,6 +35,9 @@ for the PDF.
 - `types.ts`: the types the modules share: a call, its surroundings and the fields of an answer.
 - `issues.old.ts`: the mistakes the shell itself refuses, such as an unknown option or command.
 - `next.old.ts`: picks the next steps that follow a successful answer.
+- `interim.ts`: decides whether a call goes to adx or to the old shell, by the command it names.
+- `oriko.ts`: the tool on adx: its name, its folders and the table of the commands that moved.
+- `plan.ts`: runs `plan` on adx: it checks the CV and its profile and places every block.
 
 ## Example
 
@@ -50,8 +57,8 @@ answer.
 - **Uses:**
   - [classic/](../classic/README.md): imports `docx.ts`, `photo.ts`
   - [core/](../core/README.md): imports `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
-    `files.limits.ts`, `files.ts`, `home.old.ts`, `issues.old.ts`, `load.old.ts`, `options.old.ts`,
-    `place.old.ts`
+    `files.limits.ts`, `files.ts`, `home.old.ts`, `home.ts`, `issues.old.ts`, `load.old.ts`,
+    `load.ts`, `options.old.ts`, `options.ts`, `place.old.ts`, `place.ts`, `sources.ts`
   - [cv/](../cv/README.md): imports `init.ts`, `list.ts`, `show.ts`
   - [edit/](../edit/README.md): imports `edit.schema.old.ts`, `save.ts`
   - [pdf/](../pdf/README.md): imports `convert.ts`, `limits.ts`
@@ -59,7 +66,7 @@ answer.
   - [read/](../read/README.md): imports `documents.ts`, `limits.ts`, `web.ts`
   - [terminal/](../terminal/README.md): imports `credits.ts`, `docx.ts`, `sheets.ts`
 - **Used by:**
-  - [bin/](../bin/README.md): imports `run.ts`
+  - [bin/](../bin/README.md): imports `interim.ts`, `oriko.ts`, `run.ts`
 
 ---
 

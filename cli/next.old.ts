@@ -55,8 +55,6 @@ export function nextSteps(facts: Facts): Step[] {
         step('block add', selector, ['json']),
         step('photo set', selector, ['file']),
       ];
-    case 'plan':
-      return [step('preview', selector), step('build', selector, ['out'])];
     case 'preview':
     case 'photo set':
       return [step('build', selector, ['out'])];

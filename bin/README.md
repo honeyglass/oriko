@@ -11,8 +11,9 @@ the other folders; this one only hands the call over to `cli/` and keeps its exi
 
 ## Modules
 
-- `oriko.ts`: starts oriko with the real terminal, the data folder `~/.oriko`, the network and the
-  places where LibreOffice may be installed.
+- `oriko.ts`: runs a command that moved onto adx through the tool of `cli/oriko.ts`, and starts
+  every other call with the real terminal, the data folder `~/.oriko`, the network and the places
+  where LibreOffice may be installed.
 
 ## Example
 
@@ -26,7 +27,7 @@ The second line runs `bin/oriko.ts` of the copy the installer keeps in `~/.local
 ## Connections
 
 - **Uses:**
-  - [cli/](../cli/README.md): imports `run.ts`
+  - [cli/](../cli/README.md): imports `interim.ts`, `oriko.ts`, `run.ts`
   - [core/](../core/README.md): imports `files.limits.ts`, `files.ts`
   - [pdf/](../pdf/README.md): imports `convert.ts`
   - [read/](../read/README.md): imports `web.ts`

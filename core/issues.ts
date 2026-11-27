@@ -1,0 +1,151 @@
+/**
+ * The codes core raises on adx, and the turn of an issue of oriko's pure code into one of adx.
+ *
+ * Issues: what a helper answers in place of its value, at least one issue at a field of the call.
+ * noCv, cvRequired, unknownCv, cvMismatch: what the data folder does not hold for a call.
+ * Stored, raised: the field that names a stored file, and an issue of the check of a CV or of the
+ * page plan below it.
+ *
+ * A code of adx has one hint. Where oriko's hint named the field or the column, the message of
+ * the issue already names it. The check and the page plan still answer the issues of the old
+ * shell, which serves the commands that have not moved yet; raised() turns each one.
+ *
+ * @example return raised(() => 'cv', placed.error);
+ */
+import { RefusalError } from '@honeyglass/utils/ts';
+import { check, code } from '@honeyglass/adx';
+import type { Code, Issue } from '@honeyglass/adx';
+import { z } from 'zod';
+import { Master, Profile } from './cv.schema.ts';
+import type { Issue as OldIssue, Rejection } from './errors.ts';
+
+export type Issues<F extends string> = [Issue<F>, ...Issue<F>[]];
+
+// What the data folder does not hold.
+export const noCv = code(
+  'NO_CV',
+  'fix',
+  'Check --home, or run the command for the input of a new CV',
+);
+export const cvRequired = code(
+  'CV_REQUIRED',
+  'fix',
+  'Run the command, then pass --cv with one of the CV names it lists',
+);
+export const unknownCv = code(
+  'UNKNOWN_CV',
+  'fix',
+  'Run the command and set the field cv of the profile to one of the CV names it lists',
+);
+export const cvMismatch = code(
+  'CV_MISMATCH',
+  'fix',
+  'Leave out --cv, or change the field cv of the profile',
+);
+
+// What the check of a CV and of its profile finds.
+const duplicateId = code('DUPLICATE_ID', 'fix', 'Give every block its own id');
+const unknownBlock = code(
+  'UNKNOWN_BLOCK',
+  'fix',
+  'Run the command and use one of the block ids it lists',
+);
+const untitledNotAlone = code(
+  'UNTITLED_NOT_ALONE',
+  'fix',
+  'Give the block a title, or make it the only block of its section',
+);
+const itemNotInMaster = code(
+  'ITEM_NOT_IN_MASTER',
+  'fix',
+  'Keep only items of the master, or add the item to the master first',
+);
+const levelRaised = code('LEVEL_RAISED', 'fix', 'Keep the level of the master, or a lower one');
+const factChanged = code(
+  'FACT_CHANGED',
+  'fix',
+  'Leave the field out of the profile, so the job keeps the value of the master',
+);
+const jobMoved = code(
+  'JOB_MOVED',
+  'fix',
+  'Take the job out of order, and hide an old or unrelated job instead of moving it',
+);
+
+// What does not fit the pages.
+const roleTooLong = code(
+  'ROLE_TOO_LONG',
+  'fix',
+  'Shorten the role, in the master or with "person.role" in the profile',
+);
+const blockTooTall = code(
+  'BLOCK_TOO_TALL',
+  'fix',
+  'Shorten the block, for example by removing items',
+);
+const pageOverflow = code(
+  'PAGE_OVERFLOW',
+  'fix',
+  'Hide or shorten blocks of that column, remove a page pin, or raise "pages"',
+);
+
+const RAISED: Record<string, Code | undefined> = {
+  DUPLICATE_ID: duplicateId,
+  UNKNOWN_BLOCK: unknownBlock,
+  UNTITLED_NOT_ALONE: untitledNotAlone,
+  ITEM_NOT_IN_MASTER: itemNotInMaster,
+  LEVEL_RAISED: levelRaised,
+  FACT_CHANGED: factChanged,
+  JOB_MOVED: jobMoved,
+  ROLE_TOO_LONG: roleTooLong,
+  BLOCK_TOO_TALL: blockTooTall,
+  PAGE_OVERFLOW: pageOverflow,
+};
+
+/** The field of the call that names a stored file: `cv` for the CV, `profile` for the profile. */
+export type Stored = 'cv' | 'profile';
+
+// The shape of each stored file, the same values the tool lists in its shapes.
+const SHAPE = { cv: Master, profile: Profile };
+
+/**
+ * The path of a stored file starts with the field of the call that names the file (adx decision
+ * 69), so `blocks.nobody` of the profile is `profile.blocks.nobody`.
+ *
+ * @param fileOf - the file an issue lies in
+ * @param refused - the refusal of the check or of the page plan
+ * @returns its issues with the same codes, messages and paths, below the field of their file
+ * @throws a bug refusal for a code this file lacks, or a refusal without an issue
+ */
+export function raised(fileOf: (found: OldIssue) => Stored, refused: Rejection): Issues<Stored> {
+  const [first, ...rest] = refused.issues.map(found => turned(fileOf(found), found));
+  if (first === undefined) throw notTurned('a refusal of the check holds no issue');
+  return [first, ...rest];
+}
+
+function turned(field: Stored, found: OldIssue): Issue<Stored> {
+  const path: [Stored, ...string[]] = [field, ...(found.path === '' ? [] : found.path.split('.'))];
+  if (found.code === 'SCHEMA') return schemaIssue(path, found.message);
+  const declared = RAISED[found.code];
+  if (declared === undefined) throw notTurned(`the code ${found.code} has no code of adx`);
+  return declared.at(path, found.message);
+}
+
+// adx owns SCHEMA, so only its check() raises it: with a part that always fails with the message.
+// `as` names the shape of the file, so the command of the issue shows that shape.
+function schemaIssue(path: [Stored, ...string[]], message: string): Issue<Stored> {
+  const [field] = path;
+  const { issues } = check(z.never(message), undefined, path, { as: SHAPE[field] });
+  const [issue] = issues ?? [];
+  if (issue === undefined) throw notTurned('the check of adx passed a part that always fails');
+  return issue;
+}
+
+const notTurned = (reason: string) =>
+  new RefusalError({
+    kind: 'bug',
+    step: 'raised',
+    reason,
+    next: 'stop and tell the person; the maintainer of oriko fixes core/issues.ts',
+    state: 'Nothing was written.',
+  });

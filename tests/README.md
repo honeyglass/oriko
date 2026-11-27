@@ -20,6 +20,8 @@ up here first. One test starts the program `bin/oriko.ts` itself, as a person or
   - `behavior.api.spec.ts`: starts `bin/oriko.ts` for every call in `utils/behavior.ts`, in a
     home with the reference CV and in an empty one, and checks stdout, stderr, the exit code and
     every file and folder each call writes against `fixtures/behavior.json`.
+  - `conformance.api.spec.ts`: runs the checks of adx's test kit on every command that runs on
+    adx, such as a value outside a list or an option given without a value.
   - `pdf.api.spec.ts`: checks that the PDF through LibreOffice shows the lines of the Google PDF;
     it is skipped without LibreOffice.
   - `stale.api.spec.ts`: fails when a showcase .docx no longer matches the sha256 in its

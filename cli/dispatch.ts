@@ -7,9 +7,8 @@
  */
 import { done } from '../core/errors.ts';
 import type { Result } from '../core/errors.ts';
-import { place } from '../core/place.old.ts';
 import { cvNames, profileNames } from '../core/home.old.ts';
-import { checked, profileCv } from '../core/load.old.ts';
+import { profileCv } from '../core/load.old.ts';
 import { createCv } from '../cv/init.ts';
 import { listCvs } from '../cv/list.ts';
 import { showCv } from '../cv/show.ts';
@@ -39,8 +38,6 @@ export async function dispatched(call: Call): Promise<Result<Fields>> {
       return showCv(call.home, call.values.cv, call.values.profile, call.values.block);
     case 'profiles':
       return listProfiles(call.home, call.values.cv);
-    case 'plan':
-      return plan(call);
     case 'preview':
       return previewed(call);
     case 'read':
@@ -53,6 +50,7 @@ export async function dispatched(call: Call): Promise<Result<Fields>> {
       return photo(call, call.rest[0]);
     case 'build':
       return build(call);
+    // plan runs on adx: cli/interim.ts never sends it here, so only the edits are left.
     default:
       return edit(call, call.command);
   }
@@ -120,12 +118,6 @@ async function photo(call: Call, source: string | undefined): Promise<Result<Fie
     profile: call.values.profile,
     isDryRun,
   });
-}
-
-async function plan(call: Call): Promise<Result<Fields>> {
-  const cv = await checked(call.home, call.values.cv, call.values.profile);
-  if (cv.error !== null) return cv;
-  return place(cv.data);
 }
 
 async function edit(call: Call, command: string): Promise<Result<Fields>> {

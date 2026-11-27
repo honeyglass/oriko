@@ -2509,146 +2509,137 @@
     "stdout": {
       "json": {
         "ok": true,
-        "pages": [
-          {
-            "left": {
-              "used": 732.2,
-              "free": 51.8,
-              "blocks": [
-                {
-                  "id": "northwind",
-                  "height": 192.9,
-                  "heading": {
-                    "text": "Professional Experience",
-                    "before": 583,
-                    "after": 0
+        "result": {
+          "pages": [
+            {
+              "left": {
+                "used": 732.2,
+                "free": 51.8,
+                "blocks": [
+                  {
+                    "id": "northwind",
+                    "height": 192.9,
+                    "heading": {
+                      "text": "Professional Experience",
+                      "before": 583,
+                      "after": 0
+                    }
+                  },
+                  {
+                    "id": "bluebird",
+                    "height": 119.4,
+                    "heading": null
+                  },
+                  {
+                    "id": "harbor",
+                    "height": 105.8,
+                    "heading": null
+                  },
+                  {
+                    "id": "lumen",
+                    "height": 133.1,
+                    "heading": null
                   }
-                },
-                {
-                  "id": "bluebird",
-                  "height": 119.4,
-                  "heading": null
-                },
-                {
-                  "id": "harbor",
-                  "height": 105.8,
-                  "heading": null
-                },
-                {
-                  "id": "lumen",
-                  "height": 133.1,
-                  "heading": null
-                }
-              ]
+                ]
+              },
+              "right": {
+                "used": 654.2,
+                "free": 129.8,
+                "blocks": [
+                  {
+                    "id": "programming-languages",
+                    "height": 184,
+                    "heading": {
+                      "text": "Skills",
+                      "before": 929,
+                      "after": 188
+                    }
+                  },
+                  {
+                    "id": "expertise",
+                    "height": 111,
+                    "heading": null
+                  },
+                  {
+                    "id": "libraries",
+                    "height": 65.2,
+                    "heading": null
+                  },
+                  {
+                    "id": "strengths",
+                    "height": 65.2,
+                    "heading": null
+                  },
+                  {
+                    "id": "additional-skills",
+                    "height": 65.2,
+                    "heading": null
+                  }
+                ]
+              }
             },
-            "right": {
-              "used": 654.2,
-              "free": 129.8,
-              "blocks": [
-                {
-                  "id": "programming-languages",
-                  "height": 184,
-                  "heading": {
-                    "text": "Skills",
-                    "before": 929,
-                    "after": 188
+            {
+              "left": {
+                "used": 391.4,
+                "free": 392.6,
+                "blocks": [
+                  {
+                    "id": "campus",
+                    "height": 135.9,
+                    "heading": {
+                      "text": "Professional Experience",
+                      "before": 260,
+                      "after": 0
+                    }
+                  },
+                  {
+                    "id": "freelance",
+                    "height": 119.4,
+                    "heading": null
+                  },
+                  {
+                    "id": "cedar",
+                    "height": 133.1,
+                    "heading": null
                   }
-                },
-                {
-                  "id": "expertise",
-                  "height": 111,
-                  "heading": null
-                },
-                {
-                  "id": "libraries",
-                  "height": 65.2,
-                  "heading": null
-                },
-                {
-                  "id": "strengths",
-                  "height": 65.2,
-                  "heading": null
-                },
-                {
-                  "id": "additional-skills",
-                  "height": 65.2,
-                  "heading": null
-                }
-              ]
+                ]
+              },
+              "right": {
+                "used": 324.6,
+                "free": 459.4,
+                "blocks": [
+                  {
+                    "id": "languages",
+                    "height": 92.9,
+                    "heading": {
+                      "text": "Languages",
+                      "before": 320,
+                      "after": 318
+                    }
+                  },
+                  {
+                    "id": "interests",
+                    "height": 82.7,
+                    "heading": {
+                      "text": "Interests",
+                      "before": 748,
+                      "after": 20
+                    }
+                  },
+                  {
+                    "id": "awards",
+                    "height": 149,
+                    "heading": {
+                      "text": "Awards",
+                      "before": 748,
+                      "after": 20
+                    }
+                  }
+                ]
+              }
             }
-          },
-          {
-            "left": {
-              "used": 391.4,
-              "free": 392.6,
-              "blocks": [
-                {
-                  "id": "campus",
-                  "height": 135.9,
-                  "heading": {
-                    "text": "Professional Experience",
-                    "before": 260,
-                    "after": 0
-                  }
-                },
-                {
-                  "id": "freelance",
-                  "height": 119.4,
-                  "heading": null
-                },
-                {
-                  "id": "cedar",
-                  "height": 133.1,
-                  "heading": null
-                }
-              ]
-            },
-            "right": {
-              "used": 324.6,
-              "free": 459.4,
-              "blocks": [
-                {
-                  "id": "languages",
-                  "height": 92.9,
-                  "heading": {
-                    "text": "Languages",
-                    "before": 320,
-                    "after": 318
-                  }
-                },
-                {
-                  "id": "interests",
-                  "height": 82.7,
-                  "heading": {
-                    "text": "Interests",
-                    "before": 748,
-                    "after": 20
-                  }
-                },
-                {
-                  "id": "awards",
-                  "height": 149,
-                  "heading": {
-                    "text": "Awards",
-                    "before": 748,
-                    "after": 20
-                  }
-                }
-              ]
-            }
-          }
-        ],
-        "next": [
-          {
-            "does": "draws the pages in the terminal",
-            "command": "oriko preview"
-          },
-          {
-            "does": "writes the Word file, or its PDF through LibreOffice",
-            "command": "oriko build",
-            "needs": ["out"]
-          }
-        ]
+          ]
+        }
       }
     },
     "stderr": {
@@ -2664,141 +2655,132 @@
     "stdout": {
       "json": {
         "ok": true,
-        "pages": [
-          {
-            "left": {
-              "used": 732.2,
-              "free": 51.8,
-              "blocks": [
-                {
-                  "id": "northwind",
-                  "height": 192.9,
-                  "heading": {
-                    "text": "Professional Experience",
-                    "before": 583,
-                    "after": 0
+        "result": {
+          "pages": [
+            {
+              "left": {
+                "used": 732.2,
+                "free": 51.8,
+                "blocks": [
+                  {
+                    "id": "northwind",
+                    "height": 192.9,
+                    "heading": {
+                      "text": "Professional Experience",
+                      "before": 583,
+                      "after": 0
+                    }
+                  },
+                  {
+                    "id": "bluebird",
+                    "height": 119.4,
+                    "heading": null
+                  },
+                  {
+                    "id": "harbor",
+                    "height": 105.8,
+                    "heading": null
+                  },
+                  {
+                    "id": "lumen",
+                    "height": 133.1,
+                    "heading": null
                   }
-                },
-                {
-                  "id": "bluebird",
-                  "height": 119.4,
-                  "heading": null
-                },
-                {
-                  "id": "harbor",
-                  "height": 105.8,
-                  "heading": null
-                },
-                {
-                  "id": "lumen",
-                  "height": 133.1,
-                  "heading": null
-                }
-              ]
+                ]
+              },
+              "right": {
+                "used": 654.2,
+                "free": 129.8,
+                "blocks": [
+                  {
+                    "id": "programming-languages",
+                    "height": 184,
+                    "heading": {
+                      "text": "Skills",
+                      "before": 929,
+                      "after": 188
+                    }
+                  },
+                  {
+                    "id": "expertise",
+                    "height": 111,
+                    "heading": null
+                  },
+                  {
+                    "id": "libraries",
+                    "height": 65.2,
+                    "heading": null
+                  },
+                  {
+                    "id": "strengths",
+                    "height": 65.2,
+                    "heading": null
+                  },
+                  {
+                    "id": "additional-skills",
+                    "height": 65.2,
+                    "heading": null
+                  }
+                ]
+              }
             },
-            "right": {
-              "used": 654.2,
-              "free": 129.8,
-              "blocks": [
-                {
-                  "id": "programming-languages",
-                  "height": 184,
-                  "heading": {
-                    "text": "Skills",
-                    "before": 929,
-                    "after": 188
+            {
+              "left": {
+                "used": 272,
+                "free": 512,
+                "blocks": [
+                  {
+                    "id": "campus",
+                    "height": 135.9,
+                    "heading": {
+                      "text": "Professional Experience",
+                      "before": 260,
+                      "after": 0
+                    }
+                  },
+                  {
+                    "id": "cedar",
+                    "height": 133.1,
+                    "heading": null
                   }
-                },
-                {
-                  "id": "expertise",
-                  "height": 111,
-                  "heading": null
-                },
-                {
-                  "id": "libraries",
-                  "height": 65.2,
-                  "heading": null
-                },
-                {
-                  "id": "strengths",
-                  "height": 65.2,
-                  "heading": null
-                },
-                {
-                  "id": "additional-skills",
-                  "height": 65.2,
-                  "heading": null
-                }
-              ]
+                ]
+              },
+              "right": {
+                "used": 324.6,
+                "free": 459.4,
+                "blocks": [
+                  {
+                    "id": "languages",
+                    "height": 92.9,
+                    "heading": {
+                      "text": "Languages",
+                      "before": 320,
+                      "after": 318
+                    }
+                  },
+                  {
+                    "id": "interests",
+                    "height": 82.7,
+                    "heading": {
+                      "text": "Interests",
+                      "before": 748,
+                      "after": 20
+                    }
+                  },
+                  {
+                    "id": "awards",
+                    "height": 149,
+                    "heading": {
+                      "text": "Awards",
+                      "before": 748,
+                      "after": 20
+                    }
+                  }
+                ]
+              }
             }
-          },
-          {
-            "left": {
-              "used": 272,
-              "free": 512,
-              "blocks": [
-                {
-                  "id": "campus",
-                  "height": 135.9,
-                  "heading": {
-                    "text": "Professional Experience",
-                    "before": 260,
-                    "after": 0
-                  }
-                },
-                {
-                  "id": "cedar",
-                  "height": 133.1,
-                  "heading": null
-                }
-              ]
-            },
-            "right": {
-              "used": 324.6,
-              "free": 459.4,
-              "blocks": [
-                {
-                  "id": "languages",
-                  "height": 92.9,
-                  "heading": {
-                    "text": "Languages",
-                    "before": 320,
-                    "after": 318
-                  }
-                },
-                {
-                  "id": "interests",
-                  "height": 82.7,
-                  "heading": {
-                    "text": "Interests",
-                    "before": 748,
-                    "after": 20
-                  }
-                },
-                {
-                  "id": "awards",
-                  "height": 149,
-                  "heading": {
-                    "text": "Awards",
-                    "before": 748,
-                    "after": 20
-                  }
-                }
-              ]
-            }
-          }
-        ],
-        "next": [
-          {
-            "does": "draws the pages in the terminal",
-            "command": "oriko preview --profile acme"
-          },
-          {
-            "does": "writes the Word file, or its PDF through LibreOffice",
-            "command": "oriko build --profile acme",
-            "needs": ["out"]
-          }
-        ]
+          ]
+        }
       }
     },
     "stderr": {
@@ -2815,17 +2797,14 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "check",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
             "code": "UNKNOWN_BLOCK",
-            "path": "blocks.nobody",
+            "path": "profile.blocks.nobody",
             "message": "No block has the id nobody",
             "hint": "Run the command and use one of the block ids it lists",
-            "command": "oriko show --cv jane --block"
+            "command": "oriko plan --profile"
           }
         ]
       }
@@ -2843,8 +2822,17 @@
     "stdout": {
       "json": {
         "ok": true,
-        "option": "profile",
-        "values": ["acme", "broken"]
+        "result": {
+          "option": "profile",
+          "values": [
+            {
+              "value": "acme"
+            },
+            {
+              "value": "broken"
+            }
+          ]
+        }
       }
     },
     "stderr": {
@@ -3486,16 +3474,13 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "oriko",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
-            "code": "OPTION_NOT_ALLOWED",
+            "code": "UNKNOWN_OPTION",
             "path": "dry-run",
-            "message": "The command plan takes no --dry-run",
-            "hint": "Run the command and use only the options it lists",
+            "message": "plan has no option --dry-run",
+            "hint": "Use an option the command lists",
             "command": "oriko schema plan"
           }
         ]
@@ -3515,16 +3500,14 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "oriko",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
             "code": "REPEATED_OPTION",
             "path": "cv",
-            "message": "The option --cv is given more than once",
-            "hint": "Give --cv once"
+            "message": "--cv came twice",
+            "hint": "Give each field once, as an option or in --json",
+            "command": "oriko schema plan"
           }
         ]
       }
@@ -3542,146 +3525,137 @@
     "stdout": {
       "json": {
         "ok": true,
-        "pages": [
-          {
-            "left": {
-              "used": 732.2,
-              "free": 51.8,
-              "blocks": [
-                {
-                  "id": "northwind",
-                  "height": 192.9,
-                  "heading": {
-                    "text": "Professional Experience",
-                    "before": 583,
-                    "after": 0
+        "result": {
+          "pages": [
+            {
+              "left": {
+                "used": 732.2,
+                "free": 51.8,
+                "blocks": [
+                  {
+                    "id": "northwind",
+                    "height": 192.9,
+                    "heading": {
+                      "text": "Professional Experience",
+                      "before": 583,
+                      "after": 0
+                    }
+                  },
+                  {
+                    "id": "bluebird",
+                    "height": 119.4,
+                    "heading": null
+                  },
+                  {
+                    "id": "harbor",
+                    "height": 105.8,
+                    "heading": null
+                  },
+                  {
+                    "id": "lumen",
+                    "height": 133.1,
+                    "heading": null
                   }
-                },
-                {
-                  "id": "bluebird",
-                  "height": 119.4,
-                  "heading": null
-                },
-                {
-                  "id": "harbor",
-                  "height": 105.8,
-                  "heading": null
-                },
-                {
-                  "id": "lumen",
-                  "height": 133.1,
-                  "heading": null
-                }
-              ]
+                ]
+              },
+              "right": {
+                "used": 654.2,
+                "free": 129.8,
+                "blocks": [
+                  {
+                    "id": "programming-languages",
+                    "height": 184,
+                    "heading": {
+                      "text": "Skills",
+                      "before": 929,
+                      "after": 188
+                    }
+                  },
+                  {
+                    "id": "expertise",
+                    "height": 111,
+                    "heading": null
+                  },
+                  {
+                    "id": "libraries",
+                    "height": 65.2,
+                    "heading": null
+                  },
+                  {
+                    "id": "strengths",
+                    "height": 65.2,
+                    "heading": null
+                  },
+                  {
+                    "id": "additional-skills",
+                    "height": 65.2,
+                    "heading": null
+                  }
+                ]
+              }
             },
-            "right": {
-              "used": 654.2,
-              "free": 129.8,
-              "blocks": [
-                {
-                  "id": "programming-languages",
-                  "height": 184,
-                  "heading": {
-                    "text": "Skills",
-                    "before": 929,
-                    "after": 188
+            {
+              "left": {
+                "used": 391.4,
+                "free": 392.6,
+                "blocks": [
+                  {
+                    "id": "campus",
+                    "height": 135.9,
+                    "heading": {
+                      "text": "Professional Experience",
+                      "before": 260,
+                      "after": 0
+                    }
+                  },
+                  {
+                    "id": "freelance",
+                    "height": 119.4,
+                    "heading": null
+                  },
+                  {
+                    "id": "cedar",
+                    "height": 133.1,
+                    "heading": null
                   }
-                },
-                {
-                  "id": "expertise",
-                  "height": 111,
-                  "heading": null
-                },
-                {
-                  "id": "libraries",
-                  "height": 65.2,
-                  "heading": null
-                },
-                {
-                  "id": "strengths",
-                  "height": 65.2,
-                  "heading": null
-                },
-                {
-                  "id": "additional-skills",
-                  "height": 65.2,
-                  "heading": null
-                }
-              ]
+                ]
+              },
+              "right": {
+                "used": 324.6,
+                "free": 459.4,
+                "blocks": [
+                  {
+                    "id": "languages",
+                    "height": 92.9,
+                    "heading": {
+                      "text": "Languages",
+                      "before": 320,
+                      "after": 318
+                    }
+                  },
+                  {
+                    "id": "interests",
+                    "height": 82.7,
+                    "heading": {
+                      "text": "Interests",
+                      "before": 748,
+                      "after": 20
+                    }
+                  },
+                  {
+                    "id": "awards",
+                    "height": 149,
+                    "heading": {
+                      "text": "Awards",
+                      "before": 748,
+                      "after": 20
+                    }
+                  }
+                ]
+              }
             }
-          },
-          {
-            "left": {
-              "used": 391.4,
-              "free": 392.6,
-              "blocks": [
-                {
-                  "id": "campus",
-                  "height": 135.9,
-                  "heading": {
-                    "text": "Professional Experience",
-                    "before": 260,
-                    "after": 0
-                  }
-                },
-                {
-                  "id": "freelance",
-                  "height": 119.4,
-                  "heading": null
-                },
-                {
-                  "id": "cedar",
-                  "height": 133.1,
-                  "heading": null
-                }
-              ]
-            },
-            "right": {
-              "used": 324.6,
-              "free": 459.4,
-              "blocks": [
-                {
-                  "id": "languages",
-                  "height": 92.9,
-                  "heading": {
-                    "text": "Languages",
-                    "before": 320,
-                    "after": 318
-                  }
-                },
-                {
-                  "id": "interests",
-                  "height": 82.7,
-                  "heading": {
-                    "text": "Interests",
-                    "before": 748,
-                    "after": 20
-                  }
-                },
-                {
-                  "id": "awards",
-                  "height": 149,
-                  "heading": {
-                    "text": "Awards",
-                    "before": 748,
-                    "after": 20
-                  }
-                }
-              ]
-            }
-          }
-        ],
-        "next": [
-          {
-            "does": "draws the pages in the terminal",
-            "command": "oriko preview --cv jane"
-          },
-          {
-            "does": "writes the Word file, or its PDF through LibreOffice",
-            "command": "oriko build --cv jane",
-            "needs": ["out"]
-          }
-        ]
+          ]
+        }
       }
     },
     "stderr": {
@@ -3698,16 +3672,20 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "oriko",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
             "code": "UNEXPECTED_ARGUMENT",
+            "path": "--",
+            "message": "plan takes no word after its options",
+            "hint": "Remove the word, or pass it as the value of an option",
+            "command": "oriko schema plan"
+          },
+          {
+            "code": "UNEXPECTED_ARGUMENT",
             "path": "--cv",
-            "message": "The command plan takes no word --cv",
-            "hint": "Run the command and pass only the words and options it lists",
+            "message": "plan takes no word after its options",
+            "hint": "Remove the word, or pass it as the value of an option",
             "command": "oriko schema plan"
           }
         ]
@@ -3727,17 +3705,14 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "home",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
-            "code": "UNKNOWN_CV",
+            "code": "NOT_IN_LIST",
             "path": "cv",
-            "message": "The data folder has no CV nope",
-            "hint": "Run the command and use one of the CV names it lists",
-            "command": "oriko show --cv"
+            "message": "\"nope\" is not in the list of cv",
+            "hint": "Use a value the list answers",
+            "command": "oriko plan --cv"
           }
         ]
       }
@@ -3838,10 +3813,12 @@
     "exit": 1,
     "stdout": {
       "lines": [
-        "Refused (fix) at check: the input has 1 issue(s).",
-        "Next: fix every listed issue and call again.",
-        "Nothing was written.",
-        "- UNKNOWN_BLOCK at blocks.nobody: \"No block has the id nobody\". Run the command and use one of the block ids it lists. Command: oriko show --cv jane --block",
+        "refused (fix): Nothing was changed.",
+        "",
+        "UNKNOWN_BLOCK at profile.blocks.nobody",
+        "  No block has the id nobody",
+        "  hint  Run the command and use one of the block ids it lists",
+        "  run   oriko plan --profile",
         ""
       ]
     },
@@ -4116,17 +4093,14 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "home",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
             "code": "CV_REQUIRED",
             "path": "cv",
             "message": "The data folder holds several CVs and the call names none",
             "hint": "Run the command, then pass --cv with one of the CV names it lists",
-            "command": "oriko show --cv"
+            "command": "oriko plan --cv"
           }
         ]
       }
@@ -4145,16 +4119,14 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "home",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
             "code": "CV_MISMATCH",
             "path": "cv",
             "message": "--cv names erika, but the profile belongs to jane",
-            "hint": "Leave out --cv, or change the field cv of the profile"
+            "hint": "Leave out --cv, or change the field cv of the profile",
+            "command": "oriko plan --profile acme --cv"
           }
         ]
       }
@@ -6659,24 +6631,56 @@
     "scenario": "seeded",
     "argv": ["plan", "--help"],
     "stdin": null,
-    "exit": 1,
+    "exit": 0,
     "stdout": {
       "json": {
-        "ok": false,
-        "kind": "fix",
-        "step": "oriko",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
-        "issues": [
-          {
-            "code": "UNKNOWN_OPTION",
-            "path": "help",
-            "message": "No option is called --help",
-            "hint": "Run the command and use one of the options it lists",
-            "command": "oriko schema"
-          }
-        ]
+        "ok": true,
+        "result": {
+          "command": "oriko plan",
+          "does": "places every block on the pages",
+          "fields": [
+            {
+              "field": "cv",
+              "option": "--cv",
+              "takes": "text",
+              "does": "the name of one CV; may be left out when the data folder holds one CV or the profile names it"
+            },
+            {
+              "field": "profile",
+              "option": "--profile",
+              "takes": "text",
+              "does": "the name of one profile; it names its CV in its field cv"
+            }
+          ],
+          "options": [
+            {
+              "option": "--json",
+              "takes": "json",
+              "does": "the whole input as one JSON object"
+            },
+            {
+              "option": "--output",
+              "takes": "text",
+              "does": "the form of the answer, text or json, in place of the one stdout picks"
+            },
+            {
+              "option": "--help",
+              "takes": "switch",
+              "does": "shows what the command takes"
+            },
+            {
+              "option": "--fields",
+              "takes": "text",
+              "does": "the fields of the answer, each whole; alone, it lists them"
+            },
+            {
+              "option": "--home",
+              "takes": "text",
+              "does": "the folder of the root home, in place of ORIKO_HOME"
+            }
+          ],
+          "example": {}
+        }
       }
     },
     "stderr": {

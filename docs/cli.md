@@ -73,15 +73,17 @@ always holds them:
 ```json
 {
   "ok": true,
-  "pages": [],
+  "command": "block update",
+  "written": true,
+  "fits": true,
   "next": [
     {
       "does": "draws the pages in the terminal",
-      "command": "oriko preview --profile go-e"
+      "command": "oriko preview --cv jane-doe"
     },
     {
       "does": "writes the Word file",
-      "command": "oriko build --profile go-e",
+      "command": "oriko build --cv jane-doe",
       "needs": ["out"]
     }
   ]
