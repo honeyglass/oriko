@@ -3,7 +3,7 @@
  *
  * schemaIssues, duplicateId, unknownBlock, untitledNotAlone: what the check of a CV finds.
  * itemsNotInMaster, levelRaised, factChanged, jobMoved: a fact of the master a profile changes.
- * fileNotFound, notAFile, notAFolder, tooLarge, invalidJson, pathOutside: the failures of a file.
+ * fileNotFound, notAFile, notAFolder, tooLarge, invalidJson: the failures of a file.
  * pathRefused, systemRefused: a refusal of the system on a path, by who can solve it.
  * noCv, cvRequired, unknownCv, unknownCvOfProfile, cvMismatch, unknownProfile: what the data
  * folder does not hold.
@@ -120,13 +120,6 @@ export const invalidJson = (what: string): Issue => ({
   path: '',
   message: `${what} is not valid JSON`,
   hint: 'Send one valid JSON value',
-});
-
-export const pathOutside = (option: string, path: string, folder: string): Issue => ({
-  code: 'PATH_OUTSIDE',
-  path: option,
-  message: `The path ${shown(path)} leaves the folder ${shown(folder)}`,
-  hint: 'Use a path inside that folder, without a link that leads out of it',
 });
 
 export const pathRefused = (path: string, option: string, code: string): Issue => ({

@@ -23,8 +23,7 @@ function refused(error: Rejection) {
 export function text(result: Result<Fields>, isTTY: boolean) {
   if (result.error === null) {
     const { next, ...data } = result.data;
-    const body =
-      typeof data.preview === 'string' ? data.preview : `${JSON.stringify(data, null, 2)}\n`;
+    const body = `${JSON.stringify(data, null, 2)}\n`;
     const lines = isTTY && Array.isArray(next) ? next.filter(isStep).map(nextLine) : [];
     return lines.length === 0 ? body : `${body}${lines.join('\n')}\n`;
   }

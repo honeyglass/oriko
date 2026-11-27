@@ -3,7 +3,7 @@
 The front door: the program you start when you type `oriko`.
 
 It connects the command line to the real world: the terminal, the data folder in your home
-directory, the network and the place where LibreOffice is installed. Everything else happens in
+directory and the network. Everything else happens in
 the other folders; this one only hands the call over to `cli/` and keeps its exit code.
 
 [install.sh](../install.sh) links `~/.local/bin/oriko` to `bin/oriko.ts`, and the `bin` field of
@@ -12,8 +12,7 @@ the other folders; this one only hands the call over to `cli/` and keeps its exi
 ## Modules
 
 - `oriko.ts`: runs a command that moved onto adx through the tool of `cli/oriko.ts`, and starts
-  every other call with the real terminal, the data folder `~/.oriko`, the network and the places
-  where LibreOffice may be installed.
+  every other call with the real terminal, the data folder `~/.oriko` and the network.
 
 ## Example
 
@@ -29,7 +28,6 @@ The second line runs `bin/oriko.ts` of the copy the installer keeps in `~/.local
 - **Uses:**
   - [cli/](../cli/README.md): imports `interim.ts`, `oriko.ts`, `run.ts`
   - [core/](../core/README.md): imports `files.limits.ts`, `files.ts`
-  - [pdf/](../pdf/README.md): imports `convert.ts`
   - [read/](../read/README.md): imports `web.ts`
 - **Used by:** no folder.
 

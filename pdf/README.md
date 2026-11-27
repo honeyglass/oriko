@@ -26,9 +26,8 @@ A file name that ends in `.pdf` sends the Word file through this folder.
 ## Connections
 
 - **Uses:**
-  - [core/](../core/README.md): imports `errors.ts`
+  - [core/](../core/README.md): imports `issues.ts`
 - **Used by:**
-  - [bin/](../bin/README.md): imports `convert.ts`
   - [cli/](../cli/README.md): imports `convert.ts`, `limits.ts`
 
 ---

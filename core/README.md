@@ -20,8 +20,8 @@ from the other folders, so every feature can rely on it.
   the largest sizes a CV may have.
 - `check.ts`: checks a CV and its profile, applies the profile, and gives back the CV to build or
   the list of problems.
-- `files.ts`: reads files and pipes up to a size limit, writes all files of one command or none,
-  and keeps a photo inside the data folder.
+- `files.ts`: reads files and pipes up to a size limit, and writes all files of one command or
+  none.
 - `files.limits.ts`: sets how large the JSON input, a photo, and a posting, notes or an old CV may
   be.
 - `metrics.ts`: holds every distance of the page, so the estimate and the finished file use the
@@ -45,7 +45,7 @@ from the other folders, so every feature can rely on it.
 - `issues.ts`: declares the codes `core/` raises on adx, and turns an issue of the check or of the
   page plan into one of adx, below the field that names its file.
 - `load.ts`: reads the CV and the profile a command on adx names, picks the CV, checks both, and
-  decides which of the two files an issue lies in.
+  decides which of the two files an issue lies in, the issue of the photo included.
 - `options.ts`: describes the fields `--cv` and `--profile`, with the one text each has.
 - `place.ts`: describes the page plan as a schema, and plans the pages for a command on adx.
 - `sources.ts`: lists the stored CVs and profiles, the values `--cv` and `--profile` take.
@@ -72,22 +72,22 @@ that still run on the old shell.
 - **Used by:**
   - [bin/](../bin/README.md): imports `files.limits.ts`, `files.ts`
   - [classic/](../classic/README.md): imports `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
-    `files.limits.ts`, `files.ts`, `home.old.ts`, `issues.old.ts`, `measure.ts`, `metrics.ts`,
-    `place.old.ts`, `zip.ts`
+    `files.limits.ts`, `files.ts`, `home.old.ts`, `issues.old.ts`, `issues.ts`, `measure.ts`,
+    `metrics.ts`, `place.old.ts`, `zip.ts`
   - [cli/](../cli/README.md): imports `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
-    `files.limits.ts`, `files.ts`, `home.old.ts`, `home.ts`, `issues.old.ts`, `load.old.ts`,
-    `load.ts`, `options.old.ts`, `options.ts`, `place.old.ts`, `place.ts`, `sources.ts`
+    `files.limits.ts`, `home.old.ts`, `home.ts`, `issues.old.ts`, `issues.ts`, `load.old.ts`,
+    `load.ts`, `options.old.ts`, `options.ts`, `place.ts`, `sources.ts`
   - [cv/](../cv/README.md): imports `check.ts`, `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
     `files.ts`, `home.old.ts`, `issues.old.ts`, `load.old.ts`, `place.old.ts`
   - [edit/](../edit/README.md): imports `check.ts`, `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
     `files.ts`, `home.old.ts`, `issues.old.ts`, `place.old.ts`
-  - [pdf/](../pdf/README.md): imports `errors.ts`
+  - [pdf/](../pdf/README.md): imports `issues.ts`
   - [profile/](../profile/README.md): imports `check.ts`, `cv.schema.ts`, `errors.ts`, `files.ts`,
     `home.old.ts`, `issues.old.ts`, `load.old.ts`, `options.old.ts`, `place.old.ts`
   - [read/](../read/README.md): imports `cv.schema.ts`, `errors.ts`, `files.limits.ts`, `files.ts`,
     `home.old.ts`, `issues.old.ts`
-  - [terminal/](../terminal/README.md): imports `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
-    `metrics.ts`, `place.old.ts`, `zip.ts`
+  - [terminal/](../terminal/README.md): imports `cv.limits.ts`, `cv.schema.ts`, `metrics.ts`,
+    `place.old.ts`, `zip.ts`
 
 ---
 

@@ -11,7 +11,7 @@ import * as issue from './issues.old.ts';
 import { isListed } from '../core/options.old.ts';
 import type { ListedOption, OptionName } from '../core/options.old.ts';
 import { chosenCv, cvNames, profileNames } from '../core/home.old.ts';
-import { COMMANDS, OUTPUTS, STYLES } from './commands.ts';
+import { COMMANDS, OUTPUTS } from './commands.ts';
 import type { Command, CommandName } from './commands.ts';
 import { profileCv } from '../core/load.old.ts';
 import { masterOf, outline } from '../cv/show.ts';
@@ -49,8 +49,6 @@ async function valuesOf(call: Call, option: ListedOption): Promise<Result<Fields
       return done({ option, values: await cvValues(call) });
     case 'profile':
       return done({ option, values: await profileNames(call.home) });
-    case 'style':
-      return done({ option, values: [...STYLES] });
     case 'output':
       return done({ option, values: [...OUTPUTS] });
     case 'block':

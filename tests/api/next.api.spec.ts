@@ -47,11 +47,22 @@ test('a success names its next steps, each a command with what it still needs', 
     ],
     [['profiles'], [['oriko plan', ['profile']]]],
     [['show'], [['oriko show', ['block']]]],
-    [['preview', '--profile', 'acme'], [['oriko build --profile acme', ['out']]]],
+    // A command on adx keeps the --home of the call, which the test names for every call.
+    [
+      ['plan', '--profile', 'acme'],
+      [
+        [`oriko preview --profile acme --home ${space.home}`, []],
+        [`oriko build --profile acme --home ${space.home}`, ['out']],
+      ],
+    ],
+    [
+      ['preview', '--profile', 'acme'],
+      [[`oriko build --profile acme --home ${space.home}`, ['out']]],
+    ],
     [['build', '--profile', 'acme', '--out', 'acme.docx'], [[null, []]]],
     [
       ['build', '--profile', 'acme', '--out', 'acme.docx', '--dry-run'],
-      [['oriko build --profile acme --out acme.docx', []]],
+      [[`oriko build --profile acme --out acme.docx --home ${space.home}`, []]],
     ],
     [
       ['init', '--cv', 'erika', '--json', NEW_CV],
@@ -175,8 +186,8 @@ test('the step after a dry run of a piped input still needs the input', async ()
 
 test('a terminal shows the steps below the answer, and piped text leaves them out', async () => {
   const space = workspace();
-  const shown = await terminal(space, ['preview', '--profile', 'acme']);
-  assert.match(shown, /\nNext: oriko build --profile acme \(needs --out\)\n$/);
-  const text = await piped(space, ['preview', '--profile', 'acme', '--output', 'text']);
+  const shown = await terminal(space, ['cvs']);
+  assert.match(shown, /\nNext: oriko show --cv jane\nNext: oriko profiles\n$/);
+  const text = await piped(space, ['cvs', '--output', 'text']);
   assert.equal(text.includes('Next:'), false);
 });

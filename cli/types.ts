@@ -18,8 +18,6 @@ export type Io = {
   isTTY: boolean;
   /** The network a download goes through. */
   web: Web;
-  /** The paths LibreOffice's program may have, for a PDF; the first one found runs. */
-  soffice: string[];
   /** The text piped in, or null when nothing is piped. */
   stdin: () => Promise<string | null>;
   write: (text: string) => void;

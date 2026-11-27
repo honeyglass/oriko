@@ -5,7 +5,11 @@ import { place } from '../../core/place.old.ts';
 import { render } from '../../classic/docx.ts';
 import { fixture, photo, unwrap } from '../utils/fixture.ts';
 
-const build = async () => unwrap(await render(fixture(), unwrap(place(fixture())), photo()));
+const build = async () => {
+  const docx = await render(fixture(), unwrap(place(fixture())), { bytes: photo(), file: 'cv' });
+  assert.ok(docx instanceof Uint8Array);
+  return docx;
+};
 
 test('renders the same bytes for the same input', async () => {
   assert.deepEqual(await build(), await build());
@@ -36,10 +40,14 @@ test('writes the date of a job after its title and the place after its employer'
   assert.ok(at('Northwind Logistics GmbH') < at('Berlin (DE)'));
 });
 
-test('refuses a photo that is no PNG', async () => {
-  const result = await render(fixture(), unwrap(place(fixture())), Buffer.from('not a png'));
-  assert.deepEqual(
-    result.error?.issues.map(issue => issue.code),
-    ['PHOTO_UNREADABLE'],
-  );
+// The issue stands below the file that names the photo, so a profile's photo is the profile's.
+test('refuses a photo that is no PNG, below the file that names it', async () => {
+  const plan = unwrap(place(fixture()));
+  const bytes = Buffer.from('not a png');
+  for (const file of ['cv', 'profile'] as const) {
+    const result = await render(fixture(), plan, { bytes, file });
+    assert.deepEqual(Array.isArray(result) ? result.map(issue => [issue.code, issue.path]) : [], [
+      ['PHOTO_UNREADABLE', [file, 'person', 'photo']],
+    ]);
+  }
 });

@@ -13,8 +13,8 @@ from `core/`, the classic or terminal style (`--style`) from `classic/` or `term
 for the PDF.
 
 oriko moves onto the toolkit `@honeyglass/adx` one command at a time. A command in the table of
-`oriko.ts`, today `plan`, is read, checked and answered by adx in the one answer shape adx gives
-every tool; every other call still goes through the shell described here.
+`oriko.ts`, today `plan`, `preview` and `build`, is read, checked and answered by adx in the one
+answer shape adx gives every tool; every other call still goes through the shell described here.
 
 ## Modules
 
@@ -26,8 +26,8 @@ every tool; every other call still goes through the shell described here.
 - `dispatch.ts`: hands a checked call to the feature that does the work.
 - `input.ts`: reads the JSON input of a command from `--json` or from stdin.
 - `values.ts`: lists the values an option accepts when it is given without one, such as `--cv`.
-- `build.ts`: runs `preview` and `build`, which need the page plan, a style and maybe the PDF.
-- `out.ts`: checks the `--out` file of a build, so it is written inside the working directory.
+- `build.ts`: runs `preview` and `build` on adx, which need the page plan, a style and maybe the
+  PDF; `build` writes its file inside the working directory.
 - `describe.ts`: answers `oriko schema` with the commands, the options and the input shapes.
 - `complete.ts`: adds the next steps to an answer, and the `--home` of the call to each command
   in it, so the command runs as it stands.
@@ -38,6 +38,8 @@ every tool; every other call still goes through the shell described here.
 - `interim.ts`: decides whether a call goes to adx or to the old shell, by the command it names.
 - `oriko.ts`: the tool on adx: its name, its folders and the table of the commands that moved.
 - `plan.ts`: runs `plan` on adx: it checks the CV and its profile and places every block.
+- `issues.ts`: the errors of `build` on adx: an `--out` file that is no .docx or .pdf, and
+  `--credits` without the terminal style.
 
 ## Example
 
@@ -57,8 +59,8 @@ answer.
 - **Uses:**
   - [classic/](../classic/README.md): imports `docx.ts`, `photo.ts`
   - [core/](../core/README.md): imports `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
-    `files.limits.ts`, `files.ts`, `home.old.ts`, `home.ts`, `issues.old.ts`, `load.old.ts`,
-    `load.ts`, `options.old.ts`, `options.ts`, `place.old.ts`, `place.ts`, `sources.ts`
+    `files.limits.ts`, `home.old.ts`, `home.ts`, `issues.old.ts`, `issues.ts`, `load.old.ts`,
+    `load.ts`, `options.old.ts`, `options.ts`, `place.ts`, `sources.ts`
   - [cv/](../cv/README.md): imports `init.ts`, `list.ts`, `show.ts`
   - [edit/](../edit/README.md): imports `edit.schema.old.ts`, `save.ts`
   - [pdf/](../pdf/README.md): imports `convert.ts`, `limits.ts`

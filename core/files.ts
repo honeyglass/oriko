@@ -6,19 +6,14 @@
  * existingText: the text a stored file holds, or null when there is none yet.
  * pathIssue: any refusal of the system on a path, as an issue for the caller.
  * isMissing: whether an error says that a path does not exist.
- * photoBytes: the photo a master file or a profile names, from the data folder only.
- * leaves: whether a path leaves its folder.
  * writeAll, NewFile: the files of one command, all written whole or none, never through a link.
- *
- * A master file or a profile may come from an agent that read a job posting. A path inside it
- * therefore opens nothing outside the data folder, also not through a link.
  *
  * @example const master = await readJson(masterPath(home), 'home');
  */
 import { constants } from 'node:fs';
-import { mkdir, open, realpath, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, open, rename, rm, writeFile } from 'node:fs/promises';
 import type { FileHandle } from 'node:fs/promises';
-import { dirname, isAbsolute, relative, resolve } from 'node:path';
+import { dirname } from 'node:path';
 import { $try, anyError, shown, trySync$ } from '@honeyglass/utils/ts';
 import { done, rejected } from './errors.ts';
 import type { Issue, Result } from './errors.ts';
@@ -151,27 +146,6 @@ export async function existingText(path: string): Promise<Result<string | null>>
   if (bytes.error === null) return done(bytes.data.toString('utf8'));
   const isMissing = bytes.error.issues.every(found => found.code === issue.FILE_NOT_FOUND);
   return isMissing ? done(null) : bytes;
-}
-
-/**
- * @param folder - the data folder
- * @param photo - the path the master file or the profile names, relative to that folder
- * @returns the bytes of the photo
- */
-export async function photoBytes(folder: string, photo: string): Promise<Result<Uint8Array>> {
-  const path = resolve(folder, photo);
-  const real = await $try(realpath(path));
-  if (real.error !== null)
-    return rejected('file', [pathIssue(real.error, path, 'person.photo')], real.error);
-  if (leaves(await realpath(folder), real.data))
-    return rejected('file', [issue.pathOutside('person.photo', photo, folder)]);
-  return readBounded(real.data, FILE_LIMITS.photoBytes, 'person.photo');
-}
-
-// True for the folder itself too: the check is for a file in the folder, never for the folder.
-export function leaves(folder: string, path: string) {
-  const fromFolder = relative(folder, path);
-  return fromFolder === '' || fromFolder.startsWith('..') || isAbsolute(fromFolder);
 }
 
 export type NewFile = { path: string; content: string | Uint8Array };

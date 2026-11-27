@@ -59,7 +59,13 @@ a refused version is never stored. An existing version is replaced only with `--
 answer names each part it adds, changes or removes, with `--dry-run` too.
 
 When another program reads the output instead of a terminal, `preview` answers JSON with the
-sheets in its field `preview`. Add `--output text` to get the plain sheets there too.
+sheets in `result.preview`. Add `--output text` to get the plain sheets there too, with the
+`Next:` lines below them.
+
+`build` answers the file it wrote in `result`: `file` relative to the working directory, `bytes`,
+`replaces`, `style` and `pages`. The file is built again from the CV each time, so `build`
+replaces it without `--replace`, writes nothing when it holds the same bytes (`unchanged: true`),
+and creates a missing folder of `--out`. `--out` is a relative path inside the working directory.
 
 `oriko` alone answers where to start: the data folder, its CVs and its profiles. A group without
 its action lists the actions, such as `oriko block` for `block add`, `block update`, `block remove`
@@ -67,8 +73,9 @@ and `block move`. A command takes only its own options and words; anything else 
 every mistake of the call in one answer.
 
 A success names what can follow in `next`, when anything can, with what each step still needs. At
-a terminal the steps print as `Next:` lines below the answer; piped text leaves them out, and JSON
-always holds them:
+a terminal the steps print as `Next:` lines below the answer. Piped text, with `--output text`,
+leaves them out for a command on the old shell, and prints them for a command on adx, such as
+`plan`, `preview` and `build`. JSON always holds them:
 
 ```json
 {
@@ -97,11 +104,13 @@ that step names `json` in `needs`:
 ```json
 {
   "ok": true,
+  "command": "block remove",
   "written": false,
+  "fits": true,
   "next": [
     {
       "does": "repeat the call without --dry-run to write",
-      "command": "oriko build --profile go-e --out go-e.docx"
+      "command": "oriko block remove --cv jane-doe --json '{\"id\":\"awards\"}'"
     }
   ]
 }
@@ -118,22 +127,32 @@ An option without a value lists the values it accepts:
 | `oriko plan --profile` | the names of all profiles |
 | `oriko show --cv jane-doe --block` | the outline of every block of that CV |
 | `oriko build --style` | `classic`, `terminal` |
-| `oriko preview --output` | `json`, `text` |
+| `oriko cvs --output` | `json`, `text` |
 
 ## A refusal
 
-A refusal the agent reads and acts on:
+A refusal the agent reads and acts on, here of `oriko preview --cv jane-doe` for a CV with
+`"pages": 1` and more than one page of blocks:
 
 ```json
 {
   "ok": false,
   "kind": "fix",
+  "state": "Nothing was changed.",
   "issues": [
     {
       "code": "PAGE_OVERFLOW",
-      "path": "pages",
-      "message": "These blocks of the left column land after page 1: campus",
-      "hint": "Hide or shorten blocks of the left column, remove a page pin, or raise \"pages\""
+      "path": "cv.pages",
+      "message": "These blocks of the left column land after page 1: campus, freelance, cedar",
+      "hint": "Hide or shorten blocks of that column, remove a page pin, or raise \"pages\"",
+      "command": "oriko preview --cv"
+    },
+    {
+      "code": "PAGE_OVERFLOW",
+      "path": "cv.pages",
+      "message": "These blocks of the right column land after page 1: languages, interests, awards",
+      "hint": "Hide or shorten blocks of that column, remove a page pin, or raise \"pages\"",
+      "command": "oriko preview --cv"
     }
   ]
 }
@@ -162,14 +181,17 @@ In a terminal, the same refusal reads as lines. When your CV needs more pages th
 preview names the blocks that do not fit and says what to change:
 
 ```text
-Refused (fix) at place: the input has 2 issue(s).
-Next: fix every listed issue and call again.
-Nothing was written.
-- PAGE_OVERFLOW at pages: "These blocks of the left column land after page 1: campus". Hide or shorten blocks of the left column, remove a page pin, or raise "pages".
+refused (fix): Nothing was changed.
+
+PAGE_OVERFLOW at cv.pages
+  These blocks of the left column land after page 1: campus
+  hint  Hide or shorten blocks of that column, remove a page pin, or raise "pages"
+  run   oriko preview --cv
 ```
 
-The first line says that oriko refused, that the input can be fixed (`fix`), and at which step
-(`place`, the page planning). Each line that starts with `-` names one problem and what to change.
+The first line says that oriko refused, that the input can be fixed (`fix`), and that nothing
+changed. Each block below names one problem, where it lies (`cv.pages`, the field `pages` of the
+CV), and what to change.
 
 ---
 

@@ -12,9 +12,10 @@
 import { tool } from '@honeyglass/adx';
 import { Master, Profile } from '../core/cv.schema.ts';
 import { home, work } from '../core/home.ts';
+import { build, preview } from './build.ts';
 import { plan } from './plan.ts';
 
-export const commands = { plan };
+export const commands = { plan, preview, build };
 
 export const oriko = tool({
   name: 'oriko',

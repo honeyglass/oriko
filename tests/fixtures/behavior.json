@@ -2639,7 +2639,18 @@
               }
             }
           ]
-        }
+        },
+        "next": [
+          {
+            "does": "draws the pages in the terminal",
+            "command": "oriko preview"
+          },
+          {
+            "does": "writes the Word file, or its PDF through LibreOffice",
+            "command": "oriko build",
+            "needs": ["out"]
+          }
+        ]
       }
     },
     "stderr": {
@@ -2780,7 +2791,18 @@
               }
             }
           ]
-        }
+        },
+        "next": [
+          {
+            "does": "draws the pages in the terminal",
+            "command": "oriko preview --profile acme"
+          },
+          {
+            "does": "writes the Word file, or its PDF through LibreOffice",
+            "command": "oriko build --profile acme",
+            "needs": ["out"]
+          }
+        ]
       }
     },
     "stderr": {
@@ -2848,7 +2870,9 @@
     "stdout": {
       "json": {
         "ok": true,
-        "preview": "╭─ Page 1 of 2 ────────────────────────────────────────┬───────────────────────────╮\n│                                                      │                           │\n│   ╭───────┐                                     Jane │ CONTACT ───────────────── │\n│   │       └┐                                     Doe │                           │\n│   │ ●   ●  │                 Senior Backend Engineer │ Germany, Berlin           │\n│   │•  ◡   •│                                         │ Example Street 1          │\n│   │ ── ─── │                                         │ 10115 Berlin              │\n│   ╰────────╯                                         │ +49 (0) 30 000 000        │\n│                                                      │ jane.doe@example.com      │\n│                                                      │ Profile »                 │\n│                                                      │                           │\n│ PROFESSIONAL EXPERIENCE ──────────────────────────── │ SKILLS ────────────────── │\n│                                                      │                           │\n│ ● Senior Backend Engineer            03/2021 – today │ Programming Languages     │\n│ │                                                    │   Go                ●●●●● │\n│ │ Northwind Logistics GmbH · Berlin (DE)             │   TypeScript        ●●●●○ │\n│ │ › Rebuilt the shipment tracking service            │   SQL               ●●●●○ │\n│ │ › Introduced contract tests                        │   Python            ●●●○○ │\n│ │ › Cut the deploy time to ten minutes               │   Rust              ●●○○○ │\n│ │ › Mentored four junior engineers                   │                           │\n│ │ › Role: Engineer, Architect, Mentor                │ Expertise                 │\n│                                                      │   APIs              ●●●●● │\n│ ● Backend Engineer                 06/2017 – 02/2021 │   Databases         ●●●●● │\n│ │                                                    │   Testing           ●●●●○ │\n│ │ Bluebird Payments AG · Hamburg (DE)                │   Observability     ●●●●○ │\n│ │ › Delivered the settlement engine                  │   Security          ●●●○○ │\n│ │ › Led the on-call rotation                         │                           │\n│ │ › Role: Engineer, On-call lead                     │ Libraries                 │\n│                                                      │   Gin, gRPC, React, Kafka │\n│ ● Backend Engineer                 01/2016 – 05/2017 │   Streams, Playwright     │\n│ │                                                    │                           │\n│ │ Harbor Analytics GmbH · Hamburg (DE)               │ Strengths                 │\n│ │ › Built the reporting pipeline                     │   Mentoring, Incident     │\n│ │ › Role: Engineer                                   │   handling, Clear writing │\n│                                                      │                           │\n│ ● Software Engineer                04/2014 – 12/2015 │ Additional Skills         │\n│ │                                                    │   PostgreSQL, Kubernetes, │\n│ │ Lumen Media GmbH · Bremen (DE)                     │   Terraform, Grafana      │\n│ │ › Delivered the video upload service               │                           │\n│ │ › Moved the monolith to services                   │                           │\n│ │ › Introduced code reviews                          │                           │\n│ │ › Role: Engineer, Planning                         │                           │\n├──────────────────────────────────────────────────────┴───────────────────────────┤\n│ Left  ■■■■■■■■■□ 93 % full     Right ■■■■■■■■□□ 83 % full                        │\n╰──────────────────────────────────────────────────────────────────────────────────╯\n\n╭─ Page 2 of 2 ────────────────────────────────────────┬───────────────────────────╮\n│                                                      │                           │\n│ PROFESSIONAL EXPERIENCE ──────────────────────────── │ LANGUAGES ─────────────── │\n│                                                      │                           │\n│ ● Software Engineer                10/2012 – 03/2014 │ German              ●●●●● │\n│ │                                                    │ English             ●●●●○ │\n│ │ Campus Software Lab · Berlin (DE)                  │ French              ●●○○○ │\n│ │ › Maintained the library booking system            │                           │\n│ │ › Role: Engineer                                   │                           │\n│                                                      │ INTERESTS ─────────────── │\n│ ● Junior Software Engineer         08/2008 – 04/2011 │                           │\n│ │                                                    │ Cycling, Chess, Open      │\n│ │ Cedar Systems GmbH · Kiel (DE)                     │ source, Baking            │\n│ │ › Trainee in application development               │                           │\n│ │ › Maintained the internal wiki                     │                           │\n│ │ › Fixed bugs in the order system                   │ AWARDS ────────────────── │\n│ │ › Role: Engineer                                   │                           │\n│                                                      │ Certified Kubernetes      │\n│                                                      │ Administrator             │\n│                                                      │ 09/2022                   │\n│                                                      │ Team Award                │\n│                                                      │ 03/2019                   │\n├──────────────────────────────────────────────────────┴───────────────────────────┤\n│ Left  ■■■□□□□□□□ 35 % full     Right ■■■■□□□□□□ 41 % full                        │\n╰──────────────────────────────────────────────────────────────────────────────────╯\n",
+        "result": {
+          "preview": "╭─ Page 1 of 2 ────────────────────────────────────────┬───────────────────────────╮\n│                                                      │                           │\n│   ╭───────┐                                     Jane │ CONTACT ───────────────── │\n│   │       └┐                                     Doe │                           │\n│   │ ●   ●  │                 Senior Backend Engineer │ Germany, Berlin           │\n│   │•  ◡   •│                                         │ Example Street 1          │\n│   │ ── ─── │                                         │ 10115 Berlin              │\n│   ╰────────╯                                         │ +49 (0) 30 000 000        │\n│                                                      │ jane.doe@example.com      │\n│                                                      │ Profile »                 │\n│                                                      │                           │\n│ PROFESSIONAL EXPERIENCE ──────────────────────────── │ SKILLS ────────────────── │\n│                                                      │                           │\n│ ● Senior Backend Engineer            03/2021 – today │ Programming Languages     │\n│ │                                                    │   Go                ●●●●● │\n│ │ Northwind Logistics GmbH · Berlin (DE)             │   TypeScript        ●●●●○ │\n│ │ › Rebuilt the shipment tracking service            │   SQL               ●●●●○ │\n│ │ › Introduced contract tests                        │   Python            ●●●○○ │\n│ │ › Cut the deploy time to ten minutes               │   Rust              ●●○○○ │\n│ │ › Mentored four junior engineers                   │                           │\n│ │ › Role: Engineer, Architect, Mentor                │ Expertise                 │\n│                                                      │   APIs              ●●●●● │\n│ ● Backend Engineer                 06/2017 – 02/2021 │   Databases         ●●●●● │\n│ │                                                    │   Testing           ●●●●○ │\n│ │ Bluebird Payments AG · Hamburg (DE)                │   Observability     ●●●●○ │\n│ │ › Delivered the settlement engine                  │   Security          ●●●○○ │\n│ │ › Led the on-call rotation                         │                           │\n│ │ › Role: Engineer, On-call lead                     │ Libraries                 │\n│                                                      │   Gin, gRPC, React, Kafka │\n│ ● Backend Engineer                 01/2016 – 05/2017 │   Streams, Playwright     │\n│ │                                                    │                           │\n│ │ Harbor Analytics GmbH · Hamburg (DE)               │ Strengths                 │\n│ │ › Built the reporting pipeline                     │   Mentoring, Incident     │\n│ │ › Role: Engineer                                   │   handling, Clear writing │\n│                                                      │                           │\n│ ● Software Engineer                04/2014 – 12/2015 │ Additional Skills         │\n│ │                                                    │   PostgreSQL, Kubernetes, │\n│ │ Lumen Media GmbH · Bremen (DE)                     │   Terraform, Grafana      │\n│ │ › Delivered the video upload service               │                           │\n│ │ › Moved the monolith to services                   │                           │\n│ │ › Introduced code reviews                          │                           │\n│ │ › Role: Engineer, Planning                         │                           │\n├──────────────────────────────────────────────────────┴───────────────────────────┤\n│ Left  ■■■■■■■■■□ 93 % full     Right ■■■■■■■■□□ 83 % full                        │\n╰──────────────────────────────────────────────────────────────────────────────────╯\n\n╭─ Page 2 of 2 ────────────────────────────────────────┬───────────────────────────╮\n│                                                      │                           │\n│ PROFESSIONAL EXPERIENCE ──────────────────────────── │ LANGUAGES ─────────────── │\n│                                                      │                           │\n│ ● Software Engineer                10/2012 – 03/2014 │ German              ●●●●● │\n│ │                                                    │ English             ●●●●○ │\n│ │ Campus Software Lab · Berlin (DE)                  │ French              ●●○○○ │\n│ │ › Maintained the library booking system            │                           │\n│ │ › Role: Engineer                                   │                           │\n│                                                      │ INTERESTS ─────────────── │\n│ ● Junior Software Engineer         08/2008 – 04/2011 │                           │\n│ │                                                    │ Cycling, Chess, Open      │\n│ │ Cedar Systems GmbH · Kiel (DE)                     │ source, Baking            │\n│ │ › Trainee in application development               │                           │\n│ │ › Maintained the internal wiki                     │                           │\n│ │ › Fixed bugs in the order system                   │ AWARDS ────────────────── │\n│ │ › Role: Engineer                                   │                           │\n│                                                      │ Certified Kubernetes      │\n│                                                      │ Administrator             │\n│                                                      │ 09/2022                   │\n│                                                      │ Team Award                │\n│                                                      │ 03/2019                   │\n├──────────────────────────────────────────────────────┴───────────────────────────┤\n│ Left  ■■■□□□□□□□ 35 % full     Right ■■■■□□□□□□ 41 % full                        │\n╰──────────────────────────────────────────────────────────────────────────────────╯\n"
+        },
         "next": [
           {
             "does": "writes the Word file, or its PDF through LibreOffice",
@@ -2941,6 +2965,9 @@
         "├──────────────────────────────────────────────────────┴───────────────────────────┤",
         "│ Left  ■■■□□□□□□□ 35 % full     Right ■■■■□□□□□□ 41 % full                        │",
         "╰──────────────────────────────────────────────────────────────────────────────────╯",
+        "",
+        "Next:",
+        "  oriko build --profile acme   writes the Word file, or its PDF through LibreOffice; needs out",
         ""
       ]
     },
@@ -3035,6 +3062,9 @@
         "├──────────────────────────────────────────────────────┴───────────────────────────┤",
         "│ Left  ■■■■■□□□□□ 50 % full     Right ■■■■■□□□□□ 54 % full                        │",
         "╰──────────────────────────────────────────────────────────────────────────────────╯",
+        "",
+        "Next:",
+        "  oriko build   writes the Word file, or its PDF through LibreOffice; needs out",
         ""
       ]
     },
@@ -3052,16 +3082,13 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "oriko",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
-            "code": "MISSING_OPTION",
+            "code": "SCHEMA",
             "path": "out",
-            "message": "The command build needs --out",
-            "hint": "Add the path of the .docx or .pdf file to write, inside the working directory",
+            "message": "Invalid input: expected string, received undefined",
+            "hint": "Pass the input the schema of the command shows",
             "command": "oriko schema build"
           }
         ]
@@ -3081,16 +3108,14 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "oriko",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
             "code": "MISSING_VALUE",
             "path": "out",
-            "message": "The option --out has no value",
-            "hint": "Add the path of the .docx or .pdf file to write, inside the working directory"
+            "message": "--out came without a value",
+            "hint": "Give the option a value",
+            "command": "oriko schema build"
           }
         ]
       }
@@ -3108,14 +3133,17 @@
     "stdout": {
       "json": {
         "ok": true,
-        "out": "cv.docx",
-        "style": "classic",
-        "bytes": 23742,
-        "pages": 2,
-        "written": false,
+        "applied": false,
+        "result": {
+          "file": "cv.docx",
+          "bytes": 23742,
+          "replaces": false,
+          "style": "classic",
+          "pages": 2
+        },
         "next": [
           {
-            "does": "repeat the call without --dry-run to write",
+            "does": "writes the Word file, or its PDF through LibreOffice",
             "command": "oriko build --out cv.docx"
           }
         ]
@@ -3134,11 +3162,14 @@
     "stdout": {
       "json": {
         "ok": true,
-        "out": "cv.docx",
-        "style": "classic",
-        "bytes": 23742,
-        "pages": 2,
-        "written": true,
+        "applied": true,
+        "result": {
+          "file": "cv.docx",
+          "bytes": 23742,
+          "replaces": false,
+          "style": "classic",
+          "pages": 2
+        },
         "next": [
           {
             "does": "upload the .docx to Google Docs, then choose File, Download, PDF; or build a .pdf with LibreOffice"
@@ -3165,11 +3196,15 @@
     "stdout": {
       "json": {
         "ok": true,
-        "out": "cv.docx",
-        "style": "classic",
-        "bytes": 23742,
-        "pages": 2,
-        "written": true,
+        "applied": true,
+        "result": {
+          "file": "cv.docx",
+          "bytes": 23742,
+          "replaces": false,
+          "unchanged": true,
+          "style": "classic",
+          "pages": 2
+        },
         "next": [
           {
             "does": "upload the .docx to Google Docs, then choose File, Download, PDF; or build a .pdf with LibreOffice"
@@ -3180,13 +3215,7 @@
     "stderr": {
       "lines": [""]
     },
-    "files": {
-      "work/cv.docx": {
-        "sha256": "4a1c47b67e44ea2007f599cbb8266e832c133f3ea58fa3e2d185c420ef28fc56",
-        "mode": "644",
-        "bytes": 23742
-      }
-    }
+    "files": {}
   },
   {
     "scenario": "seeded",
@@ -3196,11 +3225,14 @@
     "stdout": {
       "json": {
         "ok": true,
-        "out": "term.docx",
-        "style": "terminal",
-        "bytes": 11404,
-        "pages": 2,
-        "written": true,
+        "applied": true,
+        "result": {
+          "file": "term.docx",
+          "bytes": 11404,
+          "replaces": false,
+          "style": "terminal",
+          "pages": 2
+        },
         "next": [
           {
             "does": "upload the .docx to Google Docs, then choose File, Download, PDF; or build a .pdf with LibreOffice"
@@ -3228,10 +3260,7 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "build",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
             "code": "WRONG_EXTENSION",
@@ -3256,16 +3285,13 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "build",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
             "code": "PATH_OUTSIDE",
             "path": "out",
-            "message": "The path ../cv.docx leaves the folder <ROOT>/work",
-            "hint": "Use a path inside that folder, without a link that leads out of it"
+            "message": "../cv.docx leads out of the root work",
+            "hint": "Name a path inside the folder of the root"
           }
         ]
       }
@@ -3279,21 +3305,21 @@
     "scenario": "seeded",
     "argv": ["build", "--out", "nodir/cv.docx"],
     "stdin": null,
-    "exit": 1,
+    "exit": 0,
     "stdout": {
       "json": {
-        "ok": false,
-        "kind": "fix",
-        "step": "build",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
-        "issues": [
+        "ok": true,
+        "applied": true,
+        "result": {
+          "file": "nodir/cv.docx",
+          "bytes": 23742,
+          "replaces": false,
+          "style": "classic",
+          "pages": 2
+        },
+        "next": [
           {
-            "code": "FOLDER_NOT_FOUND",
-            "path": "out",
-            "message": "There is no folder <ROOT>/work/nodir",
-            "hint": "Create the folder, or write into the working directory"
+            "does": "upload the .docx to Google Docs, then choose File, Download, PDF; or build a .pdf with LibreOffice"
           }
         ]
       }
@@ -3301,7 +3327,17 @@
     "stderr": {
       "lines": [""]
     },
-    "files": {}
+    "files": {
+      "work/nodir": {
+        "folder": true,
+        "mode": "700"
+      },
+      "work/nodir/cv.docx": {
+        "sha256": "4a1c47b67e44ea2007f599cbb8266e832c133f3ea58fa3e2d185c420ef28fc56",
+        "mode": "644",
+        "bytes": 23742
+      }
+    }
   },
   {
     "scenario": "seeded",
@@ -3311,8 +3347,17 @@
     "stdout": {
       "json": {
         "ok": true,
-        "option": "style",
-        "values": ["classic", "terminal"]
+        "result": {
+          "option": "style",
+          "values": [
+            {
+              "value": "classic"
+            },
+            {
+              "value": "terminal"
+            }
+          ]
+        }
       }
     },
     "stderr": {
@@ -3329,23 +3374,14 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "build",
-        "reason": "the input has 2 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
-            "code": "UNKNOWN_STYLE",
+            "code": "NOT_IN_LIST",
             "path": "style",
-            "message": "No look is called nope",
-            "hint": "Run the command and use one of the looks it lists: classic, terminal",
-            "command": "oriko build --style"
-          },
-          {
-            "code": "CREDITS_NEED_TERMINAL",
-            "path": "credits",
-            "message": "The option --credits works only in the terminal look",
-            "hint": "Add --style terminal, or leave out --credits"
+            "message": "\"nope\" is not in the list of style",
+            "hint": "Use a value the list answers",
+            "command": "oriko build --out x.docx --credits --style"
           }
         ]
       }
@@ -3364,16 +3400,14 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "oriko",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
             "code": "UNEXPECTED_VALUE",
             "path": "dry-run",
-            "message": "The option --dry-run takes no value",
-            "hint": "Write --dry-run alone"
+            "message": "--dry-run is a switch and takes no value",
+            "hint": "Give the switch without a value",
+            "command": "oriko schema build"
           }
         ]
       }
@@ -3655,7 +3689,18 @@
               }
             }
           ]
-        }
+        },
+        "next": [
+          {
+            "does": "draws the pages in the terminal",
+            "command": "oriko preview --cv jane"
+          },
+          {
+            "does": "writes the Word file, or its PDF through LibreOffice",
+            "command": "oriko build --cv jane",
+            "needs": ["out"]
+          }
+        ]
       }
     },
     "stderr": {

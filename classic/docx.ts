@@ -10,7 +10,7 @@
  * LibreOffice sets the same .docx apart from Google Docs in a few places. Its .docx carries other
  * values there, so its PDF shows the page Google Docs shows; LOOKS holds both sets.
  *
- * @example const docx = await render(cv, plan, readFileSync('photo.png'));
+ * @example const docx = await render(cv, plan, { bytes: readFileSync('photo.png'), file: 'cv' });
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -38,9 +38,8 @@ import {
   WidthType,
 } from 'docx';
 import type { IParagraphOptions, IRunOptions, ITableCellOptions, ParagraphChild } from 'docx';
-import { done, rejected } from '../core/errors.ts';
-import type { Result } from '../core/errors.ts';
-import * as issue from './issues.old.ts';
+import type { Issues, Stored } from '../core/issues.ts';
+import * as issue from './issues.ts';
 import { CV_LIMITS, ICONS } from '../core/cv.limits.ts';
 import type { Block, Master } from '../core/cv.schema.ts';
 import { spacedRole } from '../core/measure.ts';
@@ -112,23 +111,30 @@ type Images = {
 type Cell = Paragraph | Table;
 type Job = Extract<Block, { kind: 'job' }>;
 
+const UNREADABLE = 'The photo is neither a PNG nor a JPEG picture';
+
+/** The bytes of the photo, and the stored file whose `person.photo` names it: `cv` or `profile`. */
+export type Photo = { bytes: Uint8Array; file: Stored };
+
 /**
  * @param cv - a checked CV
  * @param plan - the plan place() made for this CV
- * @param photo - the bytes of the photo, a PNG or JPEG file
+ * @param photo - the photo, a PNG or JPEG file, and the file that names it
  * @param engine - the program that sets the .docx; Google Docs when left out
- * @returns the bytes of the .docx, the same for the same input
+ * @returns the bytes of the .docx, the same for the same input; PHOTO_UNREADABLE at
+ *   `person.photo` below the file that names the photo
  */
 export async function render(
   cv: Master,
   plan: Plan,
-  photo: Uint8Array,
+  photo: Photo,
   engine: Engine = 'google',
-): Promise<Result<Uint8Array>> {
-  const round = trySync$(() => circlePhoto(photo));
-  if (round.error !== null) return rejected('render', [issue.photoUnreadable()], round.error);
+): Promise<Uint8Array | Issues<Stored>> {
+  const round = trySync$(() => circlePhoto(photo.bytes));
+  if (round.error !== null)
+    return [issue.photoUnreadable.at([photo.file, 'person', 'photo'], UNREADABLE)];
   const images = { photo: round.data, ...packagedImages() };
-  return done(await stable(await Packer.toBuffer(document(cv, plan, images, LOOKS[engine]))));
+  return stable(await Packer.toBuffer(document(cv, plan, images, LOOKS[engine])));
 }
 
 function packagedImages() {

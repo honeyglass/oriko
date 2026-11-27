@@ -56,9 +56,10 @@ export async function checked(
  *
  * @param cv - the CV as its file holds it
  * @param profile - the profile as its file holds it, or nothing
- * @returns the file of each issue of the check or of the page plan with the profile applied
+ * @returns the file of each issue of the check, of the page plan or of the photo, with the
+ *   profile applied
  */
-export function fileOf(cv: unknown, profile: unknown): (found: Issue) => Stored {
+export function fileOf(cv: unknown, profile: unknown): (found: Found) => Stored {
   if (profile === undefined) return () => 'cv';
   const own = new Set(aloneIssues(cv).map(keyOf));
   return found =>
@@ -72,7 +73,10 @@ function aloneIssues(cv: unknown): Issue[] {
   return place(alone.data).error?.issues ?? [];
 }
 
-const keyOf = (found: Issue) => `${found.code} ${found.path}`;
+/** What fileOf reads of an issue: its code, and its path in the CV with the profile applied. */
+type Found = Pick<Issue, 'code' | 'path'>;
+
+const keyOf = (found: Found) => `${found.code} ${found.path}`;
 
 // Whether the value holds a key at each part of the path; the empty path is the value itself.
 function holds(value: unknown, path: string) {

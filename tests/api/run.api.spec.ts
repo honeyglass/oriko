@@ -3,12 +3,13 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import {
   chmodSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
-  realpathSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -24,7 +25,7 @@ import { run } from '../../cli/run.ts';
 import { NEW_CV, call, workspace } from '../utils/cli.ts';
 import type { Space } from '../utils/cli.ts';
 import { docx, pdf } from '../utils/documents.ts';
-import { sofficePaths } from '../../pdf/convert.ts';
+import { libreOffice, sofficePaths } from '../../pdf/convert.ts';
 import { fakeSoffice } from '../utils/soffice.ts';
 import { fakeWeb } from '../utils/web.ts';
 import { FIXTURE_URL, photo } from '../utils/fixture.ts';
@@ -245,53 +246,111 @@ test('plan takes only the stored CVs and profiles, and refuses one it cannot rea
   assert.deepEqual(listed.answer.result, { option: 'profile', values: [] });
 });
 
+const Previewed = z.object({ preview: z.string() });
+const Built = z.looseObject({ file: z.string(), bytes: z.number(), style: z.string() });
+
 test('preview answers the pages as text', async () => {
   const { exit, answer } = await call(workspace(), ['preview', '--profile', 'acme']);
   assert.equal(exit, 0);
-  assert.equal(typeof answer.preview === 'string' && answer.preview.includes('Page 2 of 2'), true);
+  assert.equal(Previewed.parse(answer.result).preview.includes('Page 2 of 2'), true);
 });
 
 test('preview and the terminal build add the credits with --credits', async () => {
   const space = workspace();
   const { answer } = await call(space, ['preview', '--credits']);
-  assert.equal(typeof answer.preview === 'string' && answer.preview.includes('MADE WITH'), true);
+  assert.equal(Previewed.parse(answer.result).preview.includes('MADE WITH'), true);
   const built = await call(space, ['build', '--out', 't.docx', '--style', 'terminal', '--credits']);
   assert.equal(built.exit, 0);
 });
 
+// The file is derived, so a build replaces it without --replace; a missing folder is created.
 test('build writes the .docx, and with --dry-run it writes nothing', async () => {
   const space = workspace();
   assert.equal((await call(space, ['build', '--out', 'out.docx', '--dry-run'])).exit, 0);
   assert.equal(existsSync(join(space.cwd, 'out.docx')), false);
   assert.equal((await call(space, ['build', '--out', 'out.docx'])).exit, 0);
   assert.equal(readFileSync(join(space.cwd, 'out.docx')).subarray(0, 2).toString(), 'PK');
-  const terminal = await call(space, ['build', '--out', 'term.docx', '--style', 'terminal']);
-  assert.deepEqual([terminal.exit, terminal.answer.style], [0, 'terminal']);
-  assert.equal(readFileSync(join(space.cwd, 'term.docx')).subarray(0, 2).toString(), 'PK');
+  const terminal = await call(space, ['build', '--out', 'out.docx', '--style', 'terminal']);
+  const { replaces, style } = Built.parse(terminal.answer.result);
+  assert.deepEqual([terminal.exit, replaces, style], [0, true, 'terminal']);
+  assert.equal(statSync(join(space.cwd, 'out.docx')).mode & 0o777, 0o644);
+  assert.equal((await call(space, ['build', '--out', 'sub/x.docx'])).exit, 0);
+  assert.equal(existsSync(join(space.cwd, 'sub', 'x.docx')), true);
 });
 
-test('build writes a .pdf through LibreOffice, and asks the person when it is missing', async () => {
+// adx writes through a link at --out to a file inside the working directory: the link stays,
+// and its target takes the new bytes and the mode of the build.
+test('build writes through a link at --out to a file of the working directory', async () => {
+  const space = workspace();
+  writeFileSync(join(space.cwd, 'real.docx'), 'original', { mode: 0o600 });
+  symlinkSync('real.docx', join(space.cwd, 'link.docx'));
+  const built = await call(space, ['build', '--style', 'terminal', '--out', 'link.docx']);
+  const { file, replaces } = Built.parse(built.answer.result);
+  assert.deepEqual([built.exit, file, replaces], [0, 'link.docx', true]);
+  assert.equal(lstatSync(join(space.cwd, 'link.docx')).isSymbolicLink(), true);
+  const real = join(space.cwd, 'real.docx');
+  assert.equal(readFileSync(real).subarray(0, 2).toString(), 'PK');
+  assert.equal(statSync(real).mode & 0o777, 0o644);
+});
+
+// LibreOffice is found in one place, which the test replaces with a script that answers as it does.
+test('build writes a .pdf through LibreOffice, and asks the person when it is missing', async t => {
   const space = workspace();
   const scripts = mkdtempSync(join(tmpdir(), 'oriko-soffice-'));
+  const program = t.mock.method(libreOffice, 'program', async () => undefined);
   const missing = await call(space, ['build', '--out', 'cv.pdf']);
   assert.deepEqual(
-    [missing.exit, missing.answer.kind, missing.codes],
-    [1, 'ask', ['NOT_INSTALLED']],
+    [missing.exit, missing.answer.kind, missing.codes, missing.answer.issues?.[0]?.path],
+    [1, 'ask', ['NOT_INSTALLED'], 'out'],
   );
-  const failing = { ...space, soffice: ['/nowhere/soffice', fakeSoffice(scripts, 'fails')] };
-  const failed = await call(failing, ['build', '--out', 'cv.pdf']);
-  assert.deepEqual([failed.answer.kind, failed.codes], ['ask', ['SYSTEM_REFUSED']]);
+  program.mock.mockImplementation(async () => fakeSoffice(scripts, 'fails'));
+  const failed = await call(space, ['build', '--out', 'cv.pdf']);
+  assert.deepEqual([failed.answer.kind, failed.codes], ['ask', ['CONVERSION_FAILED']]);
   assert.equal(existsSync(join(space.cwd, 'cv.pdf')), false);
-  const working = { ...space, soffice: [fakeSoffice(scripts, 'writes')] };
-  const built = await call(working, ['build', '--out', 'cv.pdf', '--style', 'terminal']);
-  assert.deepEqual([built.exit, built.answer.bytes, built.answer.next], [0, 13, undefined]);
+  program.mock.mockImplementation(async () => fakeSoffice(scripts, 'writes'));
+  const dry = await call(space, ['build', '--out', 'cv.pdf', '--style', 'terminal', '--dry-run']);
+  assert.equal(Built.parse(dry.answer.result).bytes, 13);
+  const built = await call(space, ['build', '--out', 'cv.pdf', '--style', 'terminal']);
+  assert.deepEqual(
+    [built.exit, Built.parse(built.answer.result).bytes, built.answer.next],
+    [0, 13, undefined],
+  );
   assert.equal(readFileSync(join(space.cwd, 'cv.pdf'), 'utf8'), '%PDF-1.7 fake');
   const word = await call(space, ['build', '--out', 'cv.docx']);
   assert.equal(Array.isArray(word.answer.next) && word.answer.next.length, 1);
+  program.mock.restore();
   assert.equal(
     sofficePaths().every(path => /soffice|libreoffice/.test(path)),
     true,
   );
+});
+
+// The photo is read through the data folder with its byte limit, and only the classic look reads it.
+test('build refuses a photo it cannot read or that is no picture', async () => {
+  const space = workspace();
+  writeFileSync(join(space.home, 'cvs', 'bad.png'), 'not a picture');
+  writeFileSync(join(space.home, 'cvs', 'huge.png'), Buffer.alloc(20_000_001));
+  const photos = { gone: 'cvs/gone.png', bad: 'cvs/bad.png', huge: 'cvs/huge.png' };
+  for (const [name, photo] of Object.entries(photos))
+    writeFileSync(
+      join(space.home, 'profiles', `${name}.json`),
+      JSON.stringify({ cv: 'jane', person: { photo } }),
+    );
+  const cases: [string, string, string | undefined][] = [
+    ['gone', 'FILE_NOT_FOUND', undefined],
+    ['bad', 'PHOTO_UNREADABLE', 'profile.person.photo'],
+    ['huge', 'STORED_INVALID', undefined],
+  ];
+  for (const [profile, code, path] of cases) {
+    const argv = ['build', '--profile', profile, '--out', 'p.docx', '--dry-run'];
+    const [issue] = (await call(space, argv)).answer.issues ?? [];
+    assert.deepEqual([issue?.code, issue?.path], [code, path], profile);
+  }
+  const terminal = ['build', '--profile', 'gone', '--out', 'p.docx', '--style', 'terminal'];
+  assert.equal((await call(space, terminal)).exit, 0);
+  writeFileSync(join(space.home, 'cvs', 'jane.png'), 'not a picture');
+  const [own] = (await call(space, ['build', '--out', 'p.docx'])).answer.issues ?? [];
+  assert.deepEqual([own?.code, own?.path], ['PHOTO_UNREADABLE', 'cv.person.photo']);
 });
 
 test('photo set stores the picture as a square PNG for a CV, or for one profile', async () => {
@@ -399,21 +458,23 @@ test('refuses bad input with exit code 1 and the code of the reason', async () =
     [['plan', '--profile', 'split'], 'SCHEMA'],
     [['plan', '--profile', 'absolute'], 'SCHEMA'],
     [['build', '--out', '../out.docx'], 'PATH_OUTSIDE'],
+    [['build', '--out', join(space.cwd, 'out.docx')], 'PATH_OUTSIDE'],
     [['build', '--out', 'out.txt'], 'WRONG_EXTENSION'],
-    [['build'], 'MISSING_OPTION'],
-    [['build', '--out', 'out.docx', '--style', 'neon'], 'UNKNOWN_STYLE'],
+    [['build'], 'SCHEMA'],
+    [['build', '--out', 'out.docx', '--style', 'neon'], 'NOT_IN_LIST'],
     [['build', '--out', 'out.docx', '--credits'], 'CREDITS_NEED_TERMINAL'],
     [['block', 'remove', '--json', '{broken'], 'INVALID_JSON'],
     [['block', 'remove'], 'MISSING_INPUT'],
     [['paint'], 'UNKNOWN_COMMAND'],
     [['plan', '--color'], 'UNKNOWN_OPTION'],
-    [['preview', '--output', 'pdf'], 'UNKNOWN_OUTPUT'],
+    [['cvs', '--output', 'pdf'], 'UNKNOWN_OUTPUT'],
+    [['preview', '--output', 'pdf'], 'NOT_IN_LIST'],
     [['plan', '--home', join(space.cwd, 'missing')], 'ROOT_NOT_FOUND'],
     [['profiles', '--home', 'missing'], 'NO_CV'],
     [['plan', '--home', join(space.cwd, 'broken-home')], 'SCHEMA'],
     [['plan', '--profile', 'nobody'], 'NOT_IN_LIST'],
-    [['preview', '--profile', 'nobody'], 'UNKNOWN_PROFILE'],
-    [['preview', '--profile', '../cv'], 'UNKNOWN_PROFILE'],
+    [['preview', '--profile', 'nobody'], 'NOT_IN_LIST'],
+    [['photo', 'set', 'notes.txt', '--profile', '../cv'], 'UNKNOWN_PROFILE'],
     [['init', '--json', NEW_CV], 'MISSING_OPTION'],
     [['init', '--cv', '../evil', '--json', NEW_CV], 'SCHEMA'],
     [['init', '--cv', 'jane', '--json', NEW_CV], 'CV_EXISTS'],
@@ -438,7 +499,7 @@ test('an option without a value answers the values it accepts', async () => {
     option: 'cv',
     values: ['erika', 'jane'],
   });
-  assert.deepEqual(await values(['preview', '--profile']), {
+  assert.deepEqual(await values(['show', '--profile']), {
     ok: true,
     option: 'profile',
     values: ['acme', 'broken'],
@@ -453,10 +514,9 @@ test('an option without a value answers the values it accepts', async () => {
   });
   assert.deepEqual(await values(['build', '--style']), {
     ok: true,
-    option: 'style',
-    values: ['classic', 'terminal'],
+    result: { option: 'style', values: [{ value: 'classic' }, { value: 'terminal' }] },
   });
-  assert.deepEqual(await values(['preview', '--output']), {
+  assert.deepEqual(await values(['cvs', '--output']), {
     ok: true,
     option: 'output',
     values: ['json', 'text'],
@@ -499,10 +559,15 @@ test('an option without a value and without a list is refused by its name', asyn
 test('a refusal names a command that lists the fitting values, and that command runs', async () => {
   const space = workspace();
   await call(space, ['init', '--cv', 'erika', '--json', NEW_CV]);
+  const picture = tall(space.cwd);
   const cases: [string[], string, string][] = [
-    [['preview'], 'CV_REQUIRED', 'oriko show --cv'],
-    [['preview', '--cv', 'nobody'], 'UNKNOWN_CV', 'oriko show --cv'],
-    [['preview', '--profile', 'nobody'], 'UNKNOWN_PROFILE', 'oriko plan --profile'],
+    [['show'], 'CV_REQUIRED', 'oriko show --cv'],
+    [['show', '--cv', 'nobody'], 'UNKNOWN_CV', 'oriko show --cv'],
+    [
+      ['photo', 'set', picture, '--profile', 'nobody', '--dry-run'],
+      'UNKNOWN_PROFILE',
+      'oriko plan --profile',
+    ],
     [
       ['show', '--cv', 'jane', '--block', 'nobody'],
       'UNKNOWN_BLOCK',
@@ -513,18 +578,12 @@ test('a refusal names a command that lists the fitting values, and that command 
       'UNKNOWN_BLOCK',
       'oriko show --cv jane --block',
     ],
-    [
-      ['build', '--cv', 'jane', '--out', 'x.docx', '--style', 'neon'],
-      'UNKNOWN_STYLE',
-      'oriko build --style',
-    ],
-    [['preview', '--output', 'pdf'], 'UNKNOWN_OUTPUT', 'oriko --output'],
+    [['cvs', '--output', 'pdf'], 'UNKNOWN_OUTPUT', 'oriko --output'],
     [['block', 'remove', '--cv', 'jane'], 'MISSING_INPUT', 'oriko schema block remove'],
     [['block', 'add', '--cv', 'jane', '--json'], 'MISSING_VALUE', 'oriko schema block add'],
     [['paint'], 'UNKNOWN_COMMAND', 'oriko schema'],
-    [['preview', '--color'], 'UNKNOWN_OPTION', 'oriko schema'],
+    [['cvs', '--color'], 'UNKNOWN_OPTION', 'oriko schema'],
     [['init', '--json', NEW_CV], 'MISSING_OPTION', 'oriko show --cv'],
-    [['build'], 'MISSING_OPTION', 'oriko schema build'],
     [
       ['profile', 'set', '--json', '{"cv":"jane"}'],
       'MISSING_OPTION',
@@ -546,6 +605,13 @@ test('a refusal names a command that lists the fitting values, and that command 
     [['plan'], 'CV_REQUIRED', `oriko plan --home ${space.home} --cv`],
     [['plan', '--cv', 'nobody'], 'NOT_IN_LIST', `oriko plan --home ${space.home} --cv`],
     [['plan', '--profile', 'nobody'], 'NOT_IN_LIST', `oriko plan --home ${space.home} --profile`],
+    [['preview'], 'CV_REQUIRED', `oriko preview --home ${space.home} --cv`],
+    [
+      ['build', '--cv', 'jane', '--out', 'x.docx', '--style', 'neon'],
+      'NOT_IN_LIST',
+      `oriko build --cv jane --out x.docx --home ${space.home} --style`,
+    ],
+    [['build'], 'SCHEMA', 'oriko schema build'],
   ];
   for (const [argv, code, command] of listing) {
     const [issue] = (await call(space, [...argv, '--home', space.home])).answer.issues ?? [];
@@ -554,7 +620,8 @@ test('a refusal names a command that lists the fitting values, and that command 
   }
   // Without any profile there is no name to list; the refusal points to the checked write.
   rmSync(join(space.home, 'profiles'), { recursive: true });
-  const [none] = (await call(space, ['preview', '--profile', 'acme'])).answer.issues ?? [];
+  const unknown = ['photo', 'set', picture, '--profile', 'acme', '--dry-run'];
+  const [none] = (await call(space, unknown)).answer.issues ?? [];
   assert.deepEqual([none?.code, none?.command], ['UNKNOWN_PROFILE', 'oriko schema profile set']);
   assert.match(String(none?.hint), /oriko profile set/);
 });
@@ -569,7 +636,6 @@ test('a refusal of a piped input finds the CV the input names', async () => {
     home: space.home,
     cwd: space.cwd,
     web: fakeWeb({}, {}).web,
-    soffice: [],
     isTTY: false,
     stdin: async () => piped.shift() ?? null,
     write: text => (out += text),
@@ -661,17 +727,19 @@ test('checks the call against its command and names every mistake at once', asyn
     ],
     [['cvs', 'extra'], [['UNEXPECTED_ARGUMENT', 'extra']]],
     [['photo', 'set', 'a.png', 'b.png'], [['UNEXPECTED_ARGUMENT', 'b.png']]],
-    [['preview', '--out', 'x.docx'], [['OPTION_NOT_ALLOWED', 'out']]],
+    [['cvs', '--out', 'x.docx'], [['OPTION_NOT_ALLOWED', 'out']]],
     [['plan', '--out', 'x.docx'], [['UNKNOWN_OPTION', 'out']]],
-    [['preview', '--cv', 'jane', '--cv', 'jane'], [['REPEATED_OPTION', 'cv']]],
+    [['show', '--cv', 'jane', '--cv', 'jane'], [['REPEATED_OPTION', 'cv']]],
     [['plan', '--cv', 'jane', '--cv', 'jane'], [['REPEATED_OPTION', 'cv']]],
+    [['init', '--cv', 'erika', '--dry-run=true'], [['UNEXPECTED_VALUE', 'dry-run']]],
     [['build', '--out', 'x.docx', '--dry-run=true'], [['UNEXPECTED_VALUE', 'dry-run']]],
+    // A value outside its list stops the call before the checks of the command run.
+    [['build', '--out', 'x.txt', '--style', 'neon', '--credits'], [['NOT_IN_LIST', 'style']]],
     [
-      ['build', '--out', 'x.txt', '--style', 'neon', '--credits', '--dry-run'],
+      ['build', '--out', 'x.txt', '--credits', '--dry-run'],
       [
-        ['UNKNOWN_STYLE', 'style'],
-        ['CREDITS_NEED_TERMINAL', 'credits'],
         ['WRONG_EXTENSION', 'out'],
+        ['CREDITS_NEED_TERMINAL', 'credits'],
       ],
     ],
     [
@@ -709,17 +777,17 @@ test('checks the call against its command and names every mistake at once', asyn
       argv.join(' '),
     );
   }
-  const notAllowed = (await call(space, ['preview', '--out', 'x.docx'])).answer.issues?.[0];
-  assert.equal(notAllowed?.command, 'oriko schema preview');
+  const notAllowed = (await call(space, ['cvs', '--out', 'x.docx'])).answer.issues?.[0];
+  assert.equal(notAllowed?.command, 'oriko schema cvs');
   const newName = (await call(space, ['init', '--cv'])).answer.issues?.[0];
   assert.equal(newName?.command, 'oriko show --cv');
 });
 
-test('names the same next step for --out, whether it is missing or empty', async () => {
+test('names the same next step for --cv of init, whether it is missing or empty', async () => {
   const space = workspace();
   const hint = async (argv: string[]) =>
     z.looseObject({ hint: z.string() }).parse((await call(space, argv)).answer.issues?.[0]).hint;
-  assert.equal(await hint(['build']), await hint(['build', '--out']));
+  assert.equal(await hint(['init']), await hint(['init', '--cv']));
 });
 
 test('oriko alone answers where to start: the CVs and the profiles of the data folder', async () => {
@@ -764,6 +832,8 @@ test('refuses a folder where a file belongs, and a file where a folder belongs',
   writeFileSync(join(space.cwd, 'flat', 'cvs'), 'a file where the folder of CVs belongs');
   mkdirSync(join(space.cwd, 'nested', 'cvs', 'jane.json'), { recursive: true });
   mkdirSync(join(space.cwd, 'd.docx'));
+  symlinkSync(join(space.cwd, 'd.docx'), join(space.cwd, 'dirlink.docx'));
+  symlinkSync('loop.docx', join(space.cwd, 'loop.docx'));
   mkdirSync(join(space.cwd, 'sealed'), { mode: 0o555 });
   mkdirSync(join(space.cwd, 'sealed-home'), { mode: 0o555 });
   execFileSync('mkfifo', [join(space.cwd, 'pipe.png')]);
@@ -773,26 +843,26 @@ test('refuses a folder where a file belongs, and a file where a folder belongs',
   const piped = { cv: 'jane', person: { photo: 'cvs/pipe.png' } };
   writeFileSync(join(space.home, 'profiles', 'piped.json'), JSON.stringify(piped));
   const cases: [string[], string, string | undefined][] = [
-    [['preview', '--home', 'notes.txt'], 'NOT_A_FOLDER', 'home'],
-    [['preview', '--home', 'notes.txt/x'], 'PATH_REFUSED', 'home'],
+    [['show', '--home', 'notes.txt'], 'NOT_A_FOLDER', 'home'],
+    [['show', '--home', 'notes.txt/x'], 'PATH_REFUSED', 'home'],
     [['cvs', '--home', 'flat'], 'PATH_REFUSED', 'home'],
-    [['preview', '--home', 'nested'], 'NOT_A_FILE', 'cv'],
+    [['show', '--home', 'nested'], 'NOT_A_FILE', 'cv'],
     [['photo', 'set', '.'], 'NOT_A_FILE', 'file'],
     [['photo', 'set', 'huge.png'], 'INPUT_TOO_LARGE', 'file'],
     [['photo', 'set', 'pipe.png'], 'NOT_A_FILE', 'file'],
-    [['preview', '--home', 'piped'], 'NOT_A_FILE', 'cv'],
-    [['build', '--profile', 'piped', '--out', 'p.docx', '--dry-run'], 'NOT_A_FILE', 'person.photo'],
+    [['show', '--home', 'piped'], 'NOT_A_FILE', 'cv'],
+    [['build', '--profile', 'piped', '--out', 'p.docx', '--dry-run'], 'NOT_A_FILE', undefined],
     [['photo', 'set', 'locked.png'], 'PATH_REFUSED', 'file'],
     [['photo', 'set', 'notes.txt/x.png'], 'PATH_REFUSED', 'file'],
     [['photo', 'set', `${'a'.repeat(300)}.png`], 'PATH_REFUSED', 'file'],
-    [['preview', '--profile', 'acme', '--home', 'nowhere'], 'NO_CV', 'home'],
-    [['preview', '--profile', 'ghost'], 'UNKNOWN_CV', 'profile.cv'],
+    [['show', '--profile', 'acme', '--home', 'nowhere'], 'NO_CV', 'home'],
+    [['show', '--profile', 'ghost'], 'UNKNOWN_CV', 'profile.cv'],
     [['plan', '--home', join(space.cwd, 'notes.txt')], 'ROOT_NOT_FOUND', undefined],
     [['plan', '--profile', 'ghost'], 'UNKNOWN_CV', 'profile.cv'],
-    [['build', '--out', 'sub/x.docx'], 'FOLDER_NOT_FOUND', 'out'],
     [['build', '--out', 'notes.txt/x.docx', '--dry-run'], 'NOT_A_FOLDER', 'out'],
     [['build', '--out', 'd.docx', '--dry-run'], 'NOT_A_FILE', 'out'],
-    [['build', '--out', 'sealed/x.docx'], 'PATH_REFUSED', 'out'],
+    [['build', '--out', 'sealed/x.docx'], 'SYSTEM_REFUSED', undefined],
+    [['build', '--out', 'loop.docx', '--dry-run'], 'SYSTEM_REFUSED', undefined],
     [['init', '--cv', 'erika', '--json', NEW_CV, '--home', 'sealed-home'], 'PATH_REFUSED', 'home'],
   ];
   for (const [argv, code, path] of cases) {
@@ -801,19 +871,16 @@ test('refuses a folder where a file belongs, and a file where a folder belongs',
     assert.deepEqual([exit, issue?.code, issue?.path], [1, code, path], argv.join(' '));
   }
   assert.deepEqual(readdirSync(join(space.cwd, 'sealed')), []);
-  // The check reads --out as the write does: a link there is replaced, never followed, and the
-  // working directory is the same folder by any path that leads to it.
-  symlinkSync(join(space.cwd, 'd.docx'), join(space.cwd, 'dirlink.docx'));
-  symlinkSync('loop.docx', join(space.cwd, 'loop.docx'));
-  for (const out of ['dirlink.docx', 'loop.docx', join(realpathSync(space.cwd), 'real.docx')])
-    assert.equal((await call(space, ['build', '--out', out, '--dry-run'])).exit, 0, out);
-  // The write goes to the folder the check resolved, and the answer names that folder.
+  // A link to a folder at --out is replaced by the write, never followed.
+  assert.equal((await call(space, ['build', '--out', 'dirlink.docx', '--dry-run'])).exit, 0);
+  // A link to a folder inside the working directory leads the write there; the answer names
+  // the path as the call gave it.
   mkdirSync(join(space.cwd, 'reports'));
   symlinkSync(join(space.cwd, 'reports'), join(space.cwd, 'latest'));
   const built = (await call(space, ['build', '--out', 'latest/cv.docx'])).answer;
   assert.deepEqual(
-    [built.out, existsSync(join(space.cwd, 'reports', 'cv.docx'))],
-    ['reports/cv.docx', true],
+    [Built.parse(built.result).file, existsSync(join(space.cwd, 'reports', 'cv.docx'))],
+    ['latest/cv.docx', true],
   );
   chmodSync(join(space.home, 'cvs'), 0o555);
   const edit = await call(space, ['block', 'remove', '--json', JSON.stringify({ id: 'awards' })]);
@@ -824,7 +891,7 @@ test('a profile decides the CV for show and for the list of CVs', async () => {
   const space = workspace();
   await call(space, ['init', '--cv', 'erika', '--json', NEW_CV]);
   assert.equal((await call(space, ['show', '--profile', 'acme'])).answer.cv, 'jane');
-  assert.deepEqual((await call(space, ['preview', '--profile', 'acme', '--cv'])).answer.values, [
+  assert.deepEqual((await call(space, ['show', '--profile', 'acme', '--cv'])).answer.values, [
     'jane',
   ]);
 });

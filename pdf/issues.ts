@@ -1,28 +1,23 @@
 /**
- * The issues of a PDF build, each made by one function.
+ * The codes of a PDF build, each declared once with its kind and hint.
  *
  * notInstalled, conversionFailed: LibreOffice missing, or failing on the .docx.
  *
- * @example if (soffice === undefined) return rejected('build', [issue.notInstalled()]);
+ * Both are for the person to solve, so both are of kind ask. CONVERSION_FAILED has a name of its
+ * own, since adx owns SYSTEM_REFUSED. A code has one hint, so the install commands of each system
+ * stand in the message of NOT_INSTALLED.
+ *
+ * @example if (soffice === undefined) return [issue.notInstalled.at('out', INSTALL_COMMANDS)];
  */
-import { causeText } from '@honeyglass/utils/ts';
-import { NOT_INSTALLED, SYSTEM_REFUSED } from '../core/errors.ts';
-import type { Issue } from '../core/errors.ts';
+import { code } from '@honeyglass/adx';
 
-export const notInstalled = (): Issue => ({
-  code: NOT_INSTALLED,
-  path: 'out',
-  message: 'A PDF needs LibreOffice, and it is not installed',
-  hint:
-    'Ask the person to install LibreOffice, then call again: on macOS brew install --cask ' +
-    'libreoffice, on Debian or Ubuntu sudo apt install libreoffice, on Windows winget install ' +
-    'TheDocumentFoundation.LibreOffice, or from https://www.libreoffice.org/download. Without ' +
-    'it, build a .docx and save it as PDF in Google Docs',
-});
-
-export const conversionFailed = (error: Error): Issue => ({
-  code: SYSTEM_REFUSED,
-  path: 'out',
-  message: `LibreOffice wrote no PDF: ${causeText(error)}`,
-  hint: 'Tell the person what LibreOffice answered; a .docx saved as PDF in Google Docs works without it',
-});
+export const notInstalled = code(
+  'NOT_INSTALLED',
+  'ask',
+  'Ask the person to install LibreOffice, then call again; without it, build a .docx and save it as PDF in Google Docs',
+);
+export const conversionFailed = code(
+  'CONVERSION_FAILED',
+  'ask',
+  'Tell the person what LibreOffice answered; a .docx saved as PDF in Google Docs works without it',
+);

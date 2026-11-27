@@ -65,7 +65,7 @@ each move, with their sources.
   folder that is no regular file is passed over
   call: `oriko plan --home …/inlink`, where `cvs/jane.json` is a link to `store/jane.json`
   inside the data folder
-  today: `oriko cvs` lists jane with `fits: true`, and the old shell reads her, as `oriko preview
+  today: `oriko cvs` lists jane with `fits: true`, and the old shell reads her, as `oriko show
   --home …/inlink` still does. A folder
   or a pipe at `cvs/NAME.json` is refused with `NOT_A_FILE` at `cv`. A regular file `cvs`
   (`--home …/flat`) is refused with `PATH_REFUSED` at `home`, ENOTDIR in the message. A link at
@@ -111,26 +111,141 @@ each move, with their sources.
   proposal: adx fills the list command only for an issue at the field itself, not below it
   kind: loss
   golden: no difference
+- W10 pdf/convert.ts:56
+  gap: adx runs no program of the system and hands a handler no way to find one, and its test kit
+  stands in only for the servers of remotes (proto/oriko README "LibreOffice runs outside adx",
+  guide "Testing your tool")
+  call: `oriko build --out cv.pdf`
+  today: oriko's own code finds soffice among `sofficePaths()`, which on Windows builds its places
+  from the variables `PROGRAMFILES` and `PROGRAMFILES(X86)`. It runs the program with a temporary
+  folder from `tmpdir()`, which follows `TMPDIR`, and hands LibreOffice the whole environment plus
+  `FONTCONFIG_FILE`. A test passes the path of a fake program in through `Space.soffice`
+  now: the same code, with the same three uses of the environment, which stay as kept own code.
+  The one place that finds the program is `libreOffice.program`.
+  In a test: the test replaces `libreOffice.program` in its own process with `mock.method`, so
+  `build` runs through `run` of the test kit, and no variable of the test names the program
+  proposal: a tool can declare a program it runs, found among a list of places, and the test kit
+  can stand in for it as it does for a server
+  kind: kept own code
+  golden: no difference
+- W11 classic/docx.ts:62
+  gap: a root is a folder of the person; the files a package ships lie in none (proto/oriko README
+  "Two files of the package lie in no root")
+  call: `oriko build --out cv.docx`, and `oriko build --out cv.pdf` for the fonts
+  today: the icons under `assets/` and the fonts under `assets/fonts` are read with node:fs
+  now: the same, by oriko's own code; the fonts reach LibreOffice through its font configuration
+  (pdf/convert.ts:89)
+  proposal: a tool can declare a read-only root for the files it ships
+  kind: kept own code
+  golden: no difference
+- W12 cli/build.ts:149
+  gap: a file read through a root answers adx's refusals, which stand at no field, and a file past
+  the limit is `STORED_INVALID` (guide "Reading a file")
+  call: `oriko build --profile piped --out p.docx --dry-run`, whose profile names `cvs/pipe.png`, a
+  pipe
+  today: `NOT_A_FILE` at `person.photo`; a missing photo `FILE_NOT_FOUND`, a link out of the data
+  folder `PATH_OUTSIDE`, a photo past 20,000,000 bytes `INPUT_TOO_LARGE` of kind fix, each at
+  `person.photo`
+  now: `NOT_A_FILE`, `FILE_NOT_FOUND` and `PATH_OUTSIDE` with no path, in adx's words, such as
+  "cvs/pipe.png is no file"; a photo past the limit `STORED_INVALID`, kind ask, no path. The byte
+  limit `FILE_LIMITS.photoBytes` stays
+  proposal: the issue of a file that a stored value names stands at the field of the call that named
+  the stored file, below it at the path of the value
+  kind: loss
+  golden: no difference
+  same gap as: W2
+- W13 classic/docx.ts:135
+  gap: adx fills the command of an issue below a field from the source of that field (decision 69,
+  "adx fills `command` from the source of the first part")
+  call: `oriko build --profile bad --out p.docx`, whose profile names a photo that is no picture
+  today: `PHOTO_UNREADABLE` at `person.photo`, with no command
+  now: `PHOTO_UNREADABLE` at `profile.person.photo`, or `cv.person.photo` for the photo of the CV
+  (decision 69), with the command `oriko build --out p.docx --profile`, a list of profiles that does
+  not help with the fix
+  proposal: adx fills the list command only for an issue at the field itself, not below it
+  kind: loss
+  golden: no difference
+  same gap as: W9
+- W14 cli/build.ts:63
+  gap: a path field of a root takes a path relative to the root only; an absolute path is
+  `PATH_OUTSIDE` also when it leads inside the root (adx `src/files/paths.ts`, `partsOf`; guide
+  "Files the call names")
+  call: `oriko build --out "$PWD/cv.docx"`
+  today: writes `cv.docx` into the working directory and answers `out: "cv.docx"`
+  now: `PATH_OUTSIDE` at `out`, "… leads out of the root work"
+  proposal: a path field takes an absolute path whose real place lies inside the root, and answers
+  it relative to the root
+  kind: loss
+  golden: no difference
+- W15 cli/build.ts:97
+  gap: adx answers a system error of a write as `SYSTEM_REFUSED`, kind ask, at no field, whatever
+  the error (guide "Files the call names", "A full disk")
+  call: `oriko build --out sealed/cv.docx`, where `sealed` is a folder the caller may not write to
+  today: `PATH_REFUSED` at `out`, kind fix, "The system refused …/sealed/cv.docx: EACCES"
+  now: `SYSTEM_REFUSED`, kind ask, no path, "open of …/sealed/.<uuid>.adx-tmp failed with EACCES";
+  the agent stops and asks the person where it could pass another `--out`
+  proposal: a system error on a path the input names stands at that field, and its kind follows who
+  can solve it: a missing right for the caller, a full disk for the person
+  kind: loss
+  golden: no difference
+- W16 cli/build.ts:63
+  gap: adx resolves the target of a write before it stages the file, and a link at the target that
+  leads nowhere fails there (adx `src/files/paths.ts`, `target`)
+  call: `oriko build --out loop.docx --dry-run`, where `loop.docx` is a link to itself
+  today: exit 0; the real run replaces the link with the file, as it replaces any link at `--out`
+  now: `SYSTEM_REFUSED`, kind ask, no path, "realpath of …/loop.docx failed with ELOOP"
+  proposal: a link at the target of a write that leads nowhere is replaced like any other link
+  kind: loss
+  golden: no difference
+- W17 cli/build.ts:97
+  gap: a write answers its file as the call named it, cleaned, not by its real place inside the root
+  (guide "Files the call names")
+  call: `oriko build --out latest/cv.docx`, where `latest` is a link to the folder `reports` of the
+  working directory
+  today: writes `reports/cv.docx` and answers `out: "reports/cv.docx"`
+  now: writes `reports/cv.docx` and answers `file: "latest/cv.docx"`; no answer names the folder the
+  file landed in
+  proposal: a write answers the real place of its file inside the root beside the path the call gave
+  kind: loss
+  golden: no difference
+- W18 cli/build.ts:97
+  gap: a write follows a link at its target to a file inside the root and writes through it, while
+  the guide says a link at the target is replaced and adx never writes through a link (guide "Files
+  the call names"; adx `src/files/paths.ts`, `linkedFile`)
+  call: `oriko build --style terminal --out link.docx`, where `link.docx` is a link to `real.docx`
+  of the working directory, 8 bytes with mode 600
+  today: the rename replaces the link with the built file; `real.docx` stays as it was
+  now: exit 0 with `"file":"link.docx"` and `"replaces":true`; `link.docx` is still the link, and
+  `real.docx` holds the built file with mode 644. oriko could keep the old behavior only by reading
+  the working directory itself
+  proposal: a link at the target of a write is replaced, as the guide says, or the answer names the
+  real file the write changed
+  kind: loss
+  golden: no difference
+  same gap as: W17
 
 ## Passing outside the golden
 
 What holds only between two packages, and the package that ends it.
 
 - `NO_CV` has no command, where the old shell names `oriko schema init`, and its hint still says
-  "run the command". Call: `plan` on a data folder without a CV. Package 7 adds the hint to
-  `init`.
+  "run the command". Calls: `plan`, `preview` and `build --out cv.docx` on a data folder without a
+  CV. Package 7 adds the hint to `init`.
 - `UNKNOWN_BLOCK` and `UNKNOWN_CV` inside a profile carry adx's command `oriko plan … --profile`,
-  a list of profiles, while their hints promise block ids and CV names. Calls:
-  `plan --profile broken`, `plan --profile ghost`. Package 7 adds the hints to `show` and `cvs`.
+  a list of profiles, while their hints promise block ids and CV names; `preview` and `build`
+  name `oriko preview … --profile` and `oriko build … --profile` the same way. Calls:
+  `plan --profile broken`, `plan --profile ghost`, `preview --profile broken`. Package 7 adds the
+  hints to `show` and `cvs`.
 - A `SCHEMA` issue inside a patch of a block in a profile names `oriko schema profile`, where the
-  old shell names `oriko schema block`. Call: `plan --profile NAME` whose patch of a block fails
-  its schema. The command names `oriko schema block` again once the check of a profile runs
-  through adx's `check()` with the real shapes, in the package that moves `core/check.ts` onto
-  adx.
+  old shell names `oriko schema block`. Calls: `plan --profile NAME` and `preview --profile NAME`
+  whose patch of a block fails its schema. The command names `oriko schema block` again once the
+  check of a profile runs through adx's `check()` with the real shapes, in the package that moves
+  `core/check.ts` onto adx.
 - `ORIKO_HOME` moves the data folder of the moved commands only; the old shell does not read it.
   Package 9 ends it.
-- An option before `plan` (`--home X plan`) is refused with `OPTION_BEFORE_COMMAND`, while the
-  old shell takes it before a command that is not moved. Package 9 ends it.
+- An option before a moved command (`--home X plan`, `--home X build --out cv.docx`) is refused
+  with `OPTION_BEFORE_COMMAND`, while the old shell takes it before a command that is not moved.
+  Package 9 ends it.
 
 ## Golden changes
 
@@ -149,3 +264,82 @@ Every record that differs from the golden before the move, by its call number in
 | 79 | `plan` with two CVs | refusal shape; the command of `CV_REQUIRED` is `oriko plan --cv` | adx's own: guide "The answer", "Commands adx names" |
 | 80 | `plan --cv erika --profile acme` | refusal shape; `CV_MISMATCH` gets the command `oriko plan --profile acme --cv` | adx's own: guide "The answer", "Commands adx names" |
 | 126 | `plan --help` | exit 0 with what `plan` takes, in place of `UNKNOWN_OPTION` | adx's own: guide "What every tool gets" |
+| 41, 42, 65 | `plan`, `plan --profile acme`, `plan --cv=jane` | `next` names `preview` and `build` again, the same two steps as before package 2 | passing: ends the passing difference of package 2, since `preview` and `build` run on adx |
+| 45 | `preview --profile acme` | the sheets stand in `result.preview`; the step to `build` is the same | listed: README "One answer shape" |
+| 46, 47 | `preview --profile acme --output text`, `preview --credits --output text` | the same sheets, then an empty line and adx's `Next:` block with the step to `build` | adx's own: guide "Run it" (the text form) |
+| 48 | `build` | refusal shape; `SCHEMA` at `out` with adx's message and hint, in place of `MISSING_OPTION`; the command `oriko schema build` stays | adx's own: guide "The answer", "How adx reads a call" (a missing field) |
+| 49 | `build --out` | refusal shape; adx's `MISSING_VALUE` wording, with the command `oriko schema build` | adx's own: guide "The answer", "How adx reads a call" (a missing value) |
+| 50 | `build --out cv.docx --dry-run` | `{ ok, applied: false, result: { file, bytes, replaces, style, pages }, next }`; the step is the call without `--dry-run`, with the `does` of `build` | listed: README "One answer shape", "A write answers `{ file, bytes, replaces }`"; adx's own: guide "A command that changes something" |
+| 51, 53 | `build --out cv.docx`, `build --out term.docx --style terminal --credits` | the answer shape of call 50 with `applied: true` and the upload step; the files keep their bytes and mode 644 | listed: README "One answer shape", "A write answers `{ file, bytes, replaces }`", "`build` says `replace: 'always'`" (70); section 5 of the plan for the mode |
+| 52 | `build --out cv.docx` again | `unchanged: true`; the record loses the file, which is not touched | listed: decision 81, the same bytes again write nothing (guide "Files") |
+| 54 | `build --out cv.txt` | refusal shape; `WRONG_EXTENSION` keeps its path, message and hint | adx's own: guide "The answer" |
+| 55 | `build --out ../cv.docx` | refusal shape; `PATH_OUTSIDE` in adx's words, "../cv.docx leads out of the root work" | adx's own: guide "The answer", "Files the call names" |
+| 56 | `build --out nodir/cv.docx` | exit 0: the folder is created with mode 700 and the file with 644, in place of `FOLDER_NOT_FOUND` | listed: README "A missing folder of `--out` is created"; adx's own: guide "Files" (the mode of a folder adx creates) |
+| 57 | `build --style` | `{ ok, result: { option, values: [{ value }] } }` | adx's own: guide "Options and their values" |
+| 58 | `build --out x.docx --style nope --credits` | refusal shape; `NOT_IN_LIST` alone, with the command `oriko build --out x.docx --credits --style`, in place of `UNKNOWN_STYLE` and `CREDITS_NEED_TERMINAL` | listed: README "A value outside a list is `NOT_IN_LIST`"; adx's own: guide "Refusing bad input with a hint" (the layers) |
+| 59 | `build --out x.docx --dry-run=yes` | refusal shape; adx's `UNEXPECTED_VALUE` wording, with the command `oriko schema build` | adx's own: guide "The answer", "How adx reads a call" |
+
+## Decisions of the coordinator
+
+Every decision the coordinator of the move took without the person, by the person's rule: the
+work stops only when an approach cannot work at all, and everything else is decided and logged.
+
+- D1, package 2
+  question: what is the command of a `SCHEMA` issue inside a stored CV or profile, before the
+  tool lists its shapes
+  variants: (a) adx's fallback, the schema of the command that ran, until a later package lists
+  the shapes; (b) the tool lists the shapes `master` and `profile` from package 2 on
+  choice: b
+  reason: with (a) the command shows the two options of `plan` and no longer the shape that
+  failed, a function oriko has today; (b) keeps it with what adx offers
+- D2, package 2
+  question: which file an issue of the check or of the page plan lies in, `cv` or `profile`
+  variants: (a) by a list of codes; (b) below `profile` when the profile holds a value at the
+  path; (c) as (b), but an issue the CV alone raises always lies in the CV
+  choice: c
+  reason: a list of codes misplaces every issue that only arises with the profile laid over the
+  CV; (b) alone misplaces an issue of the CV whose path the profile also holds; with (c) a path
+  always leads to a value in the file its first part names
+- D3, package 2
+  question: does the lowest Node version rise from 24 to 24.2, as adx's guide asks
+  variants: (a) raise it in `package.json`, `install.sh`, `docs/compatibility.md` and the README;
+  (b) keep 24
+  choice: b
+  reason: adx's `package.json` asks for `>=24`, and the one use of 24.2 is `import.meta.main` in
+  an example of adx, which `bin/oriko.ts` does not use
+- D4, before package 3
+  question: does oriko's own code that the plan keeps stay, under the rule that no workaround
+  weakens a check of adx
+  variants: (a) it stays as planned, and nothing is added beyond it: the source of `read`, the
+  picture of `photo set`, the files under `assets/`, LibreOffice; (b) it goes, and each loss is
+  logged
+  choice: a
+  reason: the person decided each of them before the rule, and each keeps every check and byte
+  limit it has today; with (b) `read` and `photo set` could take no file the person names
+- D5, before package 3
+  question: how a test gives `build` a LibreOffice that is not the real one
+  variants: (a) a variable names the program; (b) the test replaces, in its own process, the
+  function that finds the program; (c) only the conversion is tested, and `build` never with a
+  PDF
+  choice: b
+  reason: with (a) a variable would decide which program oriko starts; (c) leaves the way
+  through `build` untested; (b) needs no new input of the program (W10)
+- D6, before package 3
+  question: are golden calls added for a photo stored with `--replace` and for `ALREADY_EXISTS`
+  of `profile set`, which no record shows any more after packages 4 and 6
+  variants: (a) add them with those packages; (b) keep the call list as it is until the review
+  at the end, and cover both cases with a test in the process of the test
+  choice: b
+  reason: the call list changes only where a listed change alters the form of a call, so every
+  other difference of the golden stays a comparison of the same calls
+- D7, package 3
+  question: the code that starts LibreOffice reads three things of the environment, as it does
+  today: on Windows the folders `PROGRAMFILES` and `PROGRAMFILES(X86)` to find the program, the
+  temporary folder, and the whole environment it hands to LibreOffice. Does that stay, now that
+  the code runs inside a command on adx
+  variants: (a) it stays as it is (W10); (b) fixed paths on Windows and an environment cut down
+  to a list
+  choice: a
+  reason: nothing was built for the move, it is the kept own code of D4, and no check of adx is
+  weakened, since adx starts no program; (b) would change which installations of LibreOffice
+  oriko finds, with no call that asks for it

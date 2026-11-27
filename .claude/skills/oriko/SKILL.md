@@ -97,8 +97,8 @@ Each such back edge is bounded: at most three returns, and the fourth refusal is
 | 'FACT_CHANGED', 'LEVEL_RAISED', 'JOB_MOVED'           | 3 Draft, 4 Check            | take the named field, level or job back to the master's; a wrong fact in the master: STOP and ask  |
 | 'PROFILE_EXISTS', 'POSTING_EXISTS'                    | 1 Posting, 3 Draft          | add '--replace' when the user asked to revise that profile or it is this run's draft; else STOP and ask |
 | 'CV_EXISTS'                                           | 8 Write                     | STOP and ask: another name, or changes to that master                                              |
-| 'WRONG_EXTENSION', 'PATH_OUTSIDE', 'FOLDER_NOT_FOUND' | 5 Build                     | pass '--out' as a '.docx' or '.pdf' file inside the working directory                              |
-| 'UNKNOWN_STYLE', 'CREDITS_NEED_TERMINAL'              | 5 Build                     | keep '--style' and '--credits' as the user asked; when the two clash, STOP and ask                 |
+| 'WRONG_EXTENSION', 'PATH_OUTSIDE' at 'out'            | 5 Build                     | pass '--out' as a relative '.docx' or '.pdf' path inside the working directory                     |
+| 'NOT_IN_LIST' at 'style', 'CREDITS_NEED_TERMINAL'     | 5 Build                     | keep '--style' and '--credits' as the user asked; when the two clash, STOP and ask                 |
 | 'URL_NOT_ALLOWED', 'PRIVATE_ADDRESS', 'HTTP_STATUS', 'TOO_MANY_REDIRECTS', 'ENCODING_NOT_ALLOWED', 'DOCUMENT_UNREADABLE', 'UNSUPPORTED_KIND', 'NO_TEXT' | 1 Posting, 7 Facts | STOP and ask the user for the text or a saved file; never fetch or save the page yourself |
 | 'CV_REQUIRED', 'UNKNOWN_CV', 'CV_MISMATCH', 'UNKNOWN_PROFILE', 'NOT_IN_LIST' | any state | pass the name the user gave or 1 Posting chose; with none, STOP and ask |
 | any other code                                        | the state that made it      | run the issue's 'command', follow its 'hint'                                                       |
@@ -243,7 +243,7 @@ Run `oriko plan --profile NAME`.
 
 Run `oriko build --profile NAME --out NAME.docx` in the user's working directory.
 
-- `--out` must be a `.docx` or `.pdf` path inside the current folder.
+- `--out` must be a relative `.docx` or `.pdf` path inside the current folder; a missing folder in it is created.
 - Build `NAME.pdf` when the user asks for a PDF; a PDF needs LibreOffice on the user's machine.
   The issue `NOT_INSTALLED` names how to install it: tell the user, never install it yourself.
 - Add `--dry-run` only when the user asked for a dry run.
@@ -258,7 +258,7 @@ Run `oriko build --profile NAME --out NAME.docx` in the user's working directory
 
 Show the preview, then say what changed and why.
 
-- Run `oriko preview --profile NAME --output text` and print the output unchanged in a code block.
+- Run `oriko preview --profile NAME --output text` and print the pages unchanged in a code block; the lines from `Next:` on are for you, not the user.
 - Name the profile file and the file written.
 - List what you hid, reordered, shortened and reworded, each with its reason from the posting.
   For a stored profile this run did not change, say so instead.
@@ -304,7 +304,7 @@ Run `oriko plan --cv NAME`.
 
 Show the preview, then say what you wrote.
 
-- Run `oriko preview --cv NAME --output text` and print the output unchanged in a code block.
+- Run `oriko preview --cv NAME --output text` and print the pages unchanged in a code block; the lines from `Next:` on are for you, not the user.
 - List every level you derived from the user's words, with the word, so the user can correct it.
 - List what a CV usually holds and the text did not give: education, phone, photo (`oriko photo set`).
 - Build a `.docx` only when the user asks for one: `oriko build --cv NAME --out NAME.docx`.

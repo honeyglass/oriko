@@ -31,8 +31,7 @@ export const done = <Data>(data: Data): Result<Data> => ({ data, error: null });
 
 /** The codes of an issue only the person can solve, such as a full disk; they make a refusal `ask`. */
 export const SYSTEM_REFUSED = 'SYSTEM_REFUSED';
-export const NOT_INSTALLED = 'NOT_INSTALLED';
-const PERSON = new Set([SYSTEM_REFUSED, NOT_INSTALLED]);
+const PERSON = new Set([SYSTEM_REFUSED]);
 
 /** The codes of an issue a later call may not meet, such as a failed connection; they make it `retry`. */
 export const NETWORK_FAILED = 'NETWORK_FAILED';

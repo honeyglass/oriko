@@ -12,8 +12,6 @@
  */
 import { Document, ExternalHyperlink, Packer, Paragraph, TextRun } from 'docx';
 import type { ParagraphChild } from 'docx';
-import { done } from '../core/errors.ts';
-import type { Result } from '../core/errors.ts';
 import type { Master } from '../core/cv.schema.ts';
 import type { Plan } from '../core/place.old.ts';
 import { HEIGHT, WIDTH } from '../core/metrics.ts';
@@ -38,14 +36,14 @@ const SPARE_EDGE = 300;
  * @param plan - the plan place() made for this CV
  * @returns the bytes of the .docx, the same for the same input
  */
-export async function renderTerminal(cv: Master, plan: Plan): Promise<Result<Uint8Array>> {
+export async function renderTerminal(cv: Master, plan: Plan) {
   const pages = sheets(cv, plan, PAGE_LINES);
   const spacing = lineSpacing(Math.max(...pages.map(lines => lines.length)));
   const links = repositoryLines();
   const paragraphs = pages.flatMap((lines, page) =>
     lines.map((text, row) => line(linked(text, links), spacing, page > 0 && row === 0)),
   );
-  return done(await stable(await Packer.toBuffer(document(paragraphs))));
+  return stable(await Packer.toBuffer(document(paragraphs)));
 }
 
 // A sheet taller than a page gets a tighter spacing for every page, so no sheet spills over.

@@ -80,9 +80,9 @@ export const OPTIONS = {
     type: 'boolean',
     text: 'for read and profile set: overwrite the posting or the profile that is already stored',
   },
+  // Only build takes --style, and adx lists its looks; the old shell lists no value of it.
   style: {
     type: 'string',
-    listed: true,
     text: 'the look of the file, for build: classic, or terminal like the preview; classic when left out',
   },
   output: {

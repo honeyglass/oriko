@@ -20,7 +20,6 @@ import { showProfile } from '../profile/show.ts';
 import { listProfiles } from '../profile/list.ts';
 import { actionsOf } from './route.ts';
 import { schema } from './describe.ts';
-import { build, previewed } from './build.ts';
 import { payload } from './input.ts';
 import type { Call, Fields } from './types.ts';
 
@@ -38,8 +37,6 @@ export async function dispatched(call: Call): Promise<Result<Fields>> {
       return showCv(call.home, call.values.cv, call.values.profile, call.values.block);
     case 'profiles':
       return listProfiles(call.home, call.values.cv);
-    case 'preview':
-      return previewed(call);
     case 'read':
       return read(call);
     case 'profile set':
@@ -48,9 +45,8 @@ export async function dispatched(call: Call): Promise<Result<Fields>> {
       return showProfile(call.home, call.values.profile);
     case 'photo set':
       return photo(call, call.rest[0]);
-    case 'build':
-      return build(call);
-    // plan runs on adx: cli/interim.ts never sends it here, so only the edits are left.
+    // plan, preview and build run on adx: cli/interim.ts never sends them here, so only the
+    // edits are left.
     default:
       return edit(call, call.command);
   }

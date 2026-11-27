@@ -6,8 +6,7 @@
  * missingOption: an option the command needs and the call leaves out.
  * missingValue, newNameMissing, oneListAtATime: an option given without a value.
  * missingInput: a command without its JSON input.
- * unknownSchema, unknownOutput, unknownStyle, creditsNeedTerminal: a name the cli does not know.
- * folderNotFound, wrongExtension: an --out file the build cannot write.
+ * unknownSchema, unknownOutput: a name the cli does not know.
  *
  * @example if (isOption(token.name) === false) issues.push(issue.unknownOption(token.name));
  */
@@ -15,7 +14,7 @@ import { shown } from '@honeyglass/utils/ts';
 import type { Issue } from '../core/errors.ts';
 import { NEW_NAME, isListed, missingHint } from '../core/options.old.ts';
 import type { OptionName } from '../core/options.old.ts';
-import { COMMANDS, OUTPUTS, STYLES } from './commands.ts';
+import { COMMANDS, OUTPUTS } from './commands.ts';
 import type { Command, CommandName } from './commands.ts';
 
 export const unknownOption = (name: string): Issue => ({
@@ -140,33 +139,4 @@ export const unknownOutput = (output: string): Issue => ({
   message: `No output is called ${shown(output)}`,
   hint: `Run the command and use one of the outputs it lists: ${OUTPUTS.join(', ')}`,
   command: 'oriko --output',
-});
-
-export const unknownStyle = (style: string): Issue => ({
-  code: 'UNKNOWN_STYLE',
-  path: 'style',
-  message: `No look is called ${shown(style)}`,
-  hint: `Run the command and use one of the looks it lists: ${STYLES.join(', ')}`,
-  command: 'oriko build --style',
-});
-
-export const creditsNeedTerminal = (): Issue => ({
-  code: 'CREDITS_NEED_TERMINAL',
-  path: 'credits',
-  message: 'The option --credits works only in the terminal look',
-  hint: 'Add --style terminal, or leave out --credits',
-});
-
-export const folderNotFound = (path: string, option: string): Issue => ({
-  code: 'FOLDER_NOT_FOUND',
-  path: option,
-  message: `There is no folder ${shown(path)}`,
-  hint: 'Create the folder, or write into the working directory',
-});
-
-export const wrongExtension = (out: string): Issue => ({
-  code: 'WRONG_EXTENSION',
-  path: 'out',
-  message: `The output ${shown(out)} is no .docx or .pdf file`,
-  hint: 'Use a file name that ends in .docx, or in .pdf when LibreOffice is installed',
 });
