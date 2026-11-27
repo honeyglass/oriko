@@ -10,8 +10,8 @@
  * @example const issues = commandIssues(commandOf(args.words), args.given);
  */
 import type { Issue } from '../core/errors.ts';
-import * as issue from './issues.ts';
-import type { OptionName } from '../core/options.ts';
+import * as issue from './issues.old.ts';
+import type { OptionName } from '../core/options.old.ts';
 import { COMMANDS, EVERYWHERE, SHAPES } from './commands.ts';
 import type { Command, CommandName } from './commands.ts';
 

@@ -14,7 +14,7 @@ import { shown } from '@honeyglass/utils/ts';
 import { Rejection, done, rejected } from '../core/errors.ts';
 import type { Issue, Result } from '../core/errors.ts';
 import * as issue from './issues.ts';
-import * as coreIssue from '../core/issues.ts';
+import * as coreIssue from '../core/issues.old.ts';
 import { FILE_LIMITS } from '../core/files.limits.ts';
 import { Id } from '../core/cv.schema.ts';
 import { cleanText } from './clean.ts';
@@ -24,8 +24,8 @@ import { download } from './web.ts';
 import type { Web } from './web.ts';
 import { existingText, readBounded, writeAll } from '../core/files.ts';
 import type { NewFile } from '../core/files.ts';
-import { chosenCv } from '../core/home.ts';
-import type { CvFile } from '../core/home.ts';
+import { chosenCv } from '../core/home.old.ts';
+import type { CvFile } from '../core/home.old.ts';
 
 type Request = {
   home: string;

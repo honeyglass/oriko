@@ -27,7 +27,7 @@ oriko build --profile go-e-senior-backend --style terminal --credits --out go-e-
 
 - **Uses:**
   - [core/](../core/README.md): imports `cv.limits.ts`, `cv.schema.ts`, `errors.ts`, `metrics.ts`,
-    `place.ts`, `zip.ts`
+    `place.old.ts`, `zip.ts`
 - **Used by:**
   - [cli/](../cli/README.md): imports `credits.ts`, `docx.ts`, `sheets.ts`
 

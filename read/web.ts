@@ -20,7 +20,7 @@ import { $try, trySync$ } from '@honeyglass/utils/ts';
 import { done, rejected } from '../core/errors.ts';
 import type { Result } from '../core/errors.ts';
 import * as issue from './issues.ts';
-import * as coreIssue from '../core/issues.ts';
+import * as coreIssue from '../core/issues.old.ts';
 import { FILE_LIMITS } from '../core/files.limits.ts';
 import { pipedBytes } from '../core/files.ts';
 import { isPublic } from './address.ts';

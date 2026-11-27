@@ -8,7 +8,7 @@
  */
 import { refusal, shown } from '@honeyglass/utils/ts';
 import type { Rejection, Result } from '../core/errors.ts';
-import type { Step } from './next.ts';
+import type { Step } from './next.old.ts';
 import type { Fields } from './types.ts';
 
 export const json = (result: Result<Fields>) =>

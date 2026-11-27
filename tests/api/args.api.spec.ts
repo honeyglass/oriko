@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { test } from 'node:test';
 import { UNSAFE_CHAR } from '@honeyglass/utils/ts';
 import { readArgs } from '../../cli/args.ts';
-import { optionText } from '../../core/options.ts';
+import { optionText } from '../../core/options.old.ts';
 
 const VALUES = [
   'jane',

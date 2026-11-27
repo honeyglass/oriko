@@ -7,7 +7,7 @@
  */
 import { done, rejected } from '../core/errors.ts';
 import type { Result } from '../core/errors.ts';
-import * as coreIssue from '../core/issues.ts';
+import * as coreIssue from '../core/issues.old.ts';
 import { Id } from '../core/cv.schema.ts';
 
 // The name becomes a file name, so it passes the id pattern before any path is built from it.

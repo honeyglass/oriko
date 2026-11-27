@@ -11,9 +11,9 @@
  */
 import { parseArgs } from 'node:util';
 import type { Issue } from '../core/errors.ts';
-import * as issue from './issues.ts';
-import { OPTIONS, isDashed } from '../core/options.ts';
-import type { Many, One, OptionName, Switch } from '../core/options.ts';
+import * as issue from './issues.old.ts';
+import { OPTIONS, isDashed } from '../core/options.old.ts';
+import type { Many, One, OptionName, Switch } from '../core/options.old.ts';
 
 export type Values = { [Name in One]?: string } & { [Name in Switch]?: boolean } & {
   [Name in Many]?: string[];

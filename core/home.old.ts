@@ -17,7 +17,7 @@ import { $try } from '@honeyglass/utils/ts';
 import { done, rejected } from './errors.ts';
 import type { Issue, Result } from './errors.ts';
 import { isMissing, pathIssue } from './files.ts';
-import * as issue from './issues.ts';
+import * as issue from './issues.old.ts';
 
 const SUFFIX = '.json';
 const NO_FILES: string[] = [];

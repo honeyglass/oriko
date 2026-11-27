@@ -22,7 +22,7 @@ import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { $try, anyError, shown, trySync$ } from '@honeyglass/utils/ts';
 import { done, rejected } from './errors.ts';
 import type { Issue, Result } from './errors.ts';
-import * as issue from './issues.ts';
+import * as issue from './issues.old.ts';
 import { FILE_LIMITS } from './files.limits.ts';
 
 export const isMissing = (error: Error) => 'code' in error && error.code === 'ENOENT';

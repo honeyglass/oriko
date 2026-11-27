@@ -7,9 +7,9 @@
  */
 import { done } from '../core/errors.ts';
 import type { Result } from '../core/errors.ts';
-import { place } from '../core/place.ts';
-import { heldCvs, profileNames } from '../core/home.ts';
-import { checked, cvOf, profileOf } from '../core/load.ts';
+import { place } from '../core/place.old.ts';
+import { heldCvs, profileNames } from '../core/home.old.ts';
+import { checked, cvOf, profileOf } from '../core/load.old.ts';
 
 type Fields = Record<string, unknown>;
 

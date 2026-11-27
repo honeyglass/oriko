@@ -7,13 +7,13 @@
  */
 import { done, rejected } from '../core/errors.ts';
 import type { Result } from '../core/errors.ts';
-import * as issue from './issues.ts';
-import { isListed } from '../core/options.ts';
-import type { ListedOption, OptionName } from '../core/options.ts';
-import { chosenCv, cvNames, profileNames } from '../core/home.ts';
+import * as issue from './issues.old.ts';
+import { isListed } from '../core/options.old.ts';
+import type { ListedOption, OptionName } from '../core/options.old.ts';
+import { chosenCv, cvNames, profileNames } from '../core/home.old.ts';
 import { COMMANDS, OUTPUTS, STYLES } from './commands.ts';
 import type { Command, CommandName } from './commands.ts';
-import { profileCv } from '../core/load.ts';
+import { profileCv } from '../core/load.old.ts';
 import { masterOf, outline } from '../cv/show.ts';
 import { schemaCommand } from './complete.ts';
 import type { Call, Fields } from './types.ts';

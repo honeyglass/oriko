@@ -8,18 +8,18 @@
  */
 import { done, rejected } from '../core/errors.ts';
 import type { Result } from '../core/errors.ts';
-import * as issue from './issues.ts';
+import * as issue from './issues.old.ts';
 import { withCredits } from '../terminal/credits.ts';
 import type { Master } from '../core/cv.schema.ts';
-import { place } from '../core/place.ts';
-import type { Plan } from '../core/place.ts';
+import { place } from '../core/place.old.ts';
+import type { Plan } from '../core/place.old.ts';
 import { render } from '../classic/docx.ts';
 import type { Engine } from '../classic/docx.ts';
 import { renderTerminal } from '../terminal/docx.ts';
 import { toPdf } from '../pdf/convert.ts';
 import { preview } from '../terminal/sheets.ts';
 import { photoBytes, writeAll } from '../core/files.ts';
-import { checked } from '../core/load.ts';
+import { checked } from '../core/load.old.ts';
 import { STYLES } from './commands.ts';
 import { outputPath } from './out.ts';
 import type { Call, Fields } from './types.ts';

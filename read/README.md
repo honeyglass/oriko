@@ -40,7 +40,7 @@ Each call answers the text as JSON; [the command list](../docs/cli.md) says wher
 
 - **Uses:**
   - [core/](../core/README.md): imports `cv.schema.ts`, `errors.ts`, `files.limits.ts`, `files.ts`,
-    `home.ts`, `issues.ts`
+    `home.old.ts`, `issues.old.ts`
 - **Used by:**
   - [bin/](../bin/README.md): imports `web.ts`
   - [cli/](../cli/README.md): imports `documents.ts`, `limits.ts`, `web.ts`

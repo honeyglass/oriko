@@ -13,8 +13,8 @@
  */
 import { shown } from '@honeyglass/utils/ts';
 import type { Issue } from '../core/errors.ts';
-import { NEW_NAME, isListed, missingHint } from '../core/options.ts';
-import type { OptionName } from '../core/options.ts';
+import { NEW_NAME, isListed, missingHint } from '../core/options.old.ts';
+import type { OptionName } from '../core/options.old.ts';
 import { COMMANDS, OUTPUTS, STYLES } from './commands.ts';
 import type { Command, CommandName } from './commands.ts';
 

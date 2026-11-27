@@ -25,12 +25,12 @@ for the PDF.
 - `build.ts`: runs `preview` and `build`, which need the page plan, a style and maybe the PDF.
 - `out.ts`: checks the `--out` file of a build, so it is written inside the working directory.
 - `describe.ts`: answers `oriko schema` with the commands, the options and the input shapes.
-- `next.ts`: picks the next steps that follow a successful answer.
 - `complete.ts`: adds the next steps to an answer, and the `--home` of the call to each command
   in it, so the command runs as it stands.
 - `answer.ts`: writes the answer as JSON for a program or as text for a person.
 - `types.ts`: the types the modules share: a call, its surroundings and the fields of an answer.
-- `issues.ts`: the mistakes the shell itself refuses, such as an unknown option or command.
+- `issues.old.ts`: the mistakes the shell itself refuses, such as an unknown option or command.
+- `next.old.ts`: picks the next steps that follow a successful answer.
 
 ## Example
 
@@ -50,9 +50,10 @@ answer.
 - **Uses:**
   - [classic/](../classic/README.md): imports `docx.ts`, `photo.ts`
   - [core/](../core/README.md): imports `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
-    `files.limits.ts`, `files.ts`, `home.ts`, `issues.ts`, `load.ts`, `options.ts`, `place.ts`
+    `files.limits.ts`, `files.ts`, `home.old.ts`, `issues.old.ts`, `load.old.ts`, `options.old.ts`,
+    `place.old.ts`
   - [cv/](../cv/README.md): imports `init.ts`, `list.ts`, `show.ts`
-  - [edit/](../edit/README.md): imports `edit.schema.ts`, `save.ts`
+  - [edit/](../edit/README.md): imports `edit.schema.old.ts`, `save.ts`
   - [pdf/](../pdf/README.md): imports `convert.ts`, `limits.ts`
   - [profile/](../profile/README.md): imports `list.ts`, `set.ts`, `show.ts`
   - [read/](../read/README.md): imports `documents.ts`, `limits.ts`, `web.ts`

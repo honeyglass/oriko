@@ -12,8 +12,8 @@
 import { resolve } from 'node:path';
 import { $try, causeText } from '@honeyglass/utils/ts';
 import { rejected } from '../core/errors.ts';
-import * as issue from './issues.ts';
-import { homeIssues } from '../core/home.ts';
+import * as issue from './issues.old.ts';
+import { homeIssues } from '../core/home.old.ts';
 import { readArgs } from './args.ts';
 import { isOutput } from './commands.ts';
 import { json, text } from './answer.ts';

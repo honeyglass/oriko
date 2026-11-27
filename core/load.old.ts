@@ -11,7 +11,7 @@ import { done } from './errors.ts';
 import { check } from './check.ts';
 import { Profile } from './cv.schema.ts';
 import { readJson } from './files.ts';
-import { chosenCv, profilePath } from './home.ts';
+import { chosenCv, profilePath } from './home.old.ts';
 
 // The CV the named profile names, so a list follows the CV the command itself would use.
 export async function profileCv(home: string, profileName: string | undefined) {

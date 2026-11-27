@@ -18,7 +18,7 @@ and stores it as the square picture the CV uses.
 - `photo.ts`: runs `oriko photo set`, which stores a picture as the photo of a CV or of one profile.
 - `images.ts`: makes the square photo that `photo set` stores, and the round photo and the plain
   color bar of the file.
-- `issues.ts`: the errors this folder reports, such as a photo that is no PNG or JPEG.
+- `issues.old.ts`: the errors this folder reports, such as a photo that is no PNG or JPEG.
 
 ## Example
 
@@ -33,8 +33,8 @@ The build reads the stored photo and makes it round in the file.
 
 - **Uses:**
   - [core/](../core/README.md): imports `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
-    `files.limits.ts`, `files.ts`, `home.ts`, `issues.ts`, `measure.ts`, `metrics.ts`, `place.ts`,
-    `zip.ts`
+    `files.limits.ts`, `files.ts`, `home.old.ts`, `issues.old.ts`, `measure.ts`, `metrics.ts`,
+    `place.old.ts`, `zip.ts`
 - **Used by:**
   - [cli/](../cli/README.md): imports `docx.ts`, `photo.ts`
 

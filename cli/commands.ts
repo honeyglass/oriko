@@ -14,8 +14,8 @@
 import { z } from 'zod';
 import type { ZodType } from 'zod';
 import { Block, ContactItem, ITEM, Master, NewCv, Profile } from '../core/cv.schema.ts';
-import { INPUT } from '../edit/edit.schema.ts';
-import type { OptionName } from '../core/options.ts';
+import { INPUT } from '../edit/edit.schema.old.ts';
+import type { OptionName } from '../core/options.old.ts';
 
 export const EVERYWHERE: OptionName[] = ['home', 'output'];
 

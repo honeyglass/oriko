@@ -8,7 +8,7 @@
  */
 import { shown } from '@honeyglass/utils/ts';
 import type { Issue } from '../core/errors.ts';
-import { optionText } from '../core/options.ts';
+import { optionText } from '../core/options.old.ts';
 
 export const profileExists = (name: string): Issue => ({
   code: 'PROFILE_EXISTS',

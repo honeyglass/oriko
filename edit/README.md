@@ -16,9 +16,9 @@ still written, so the next step can fix it.
   its pages.
 - `apply.ts`: makes one change to a CV, such as to a block, an item, the person or a contact line,
   and refuses a change that would break the CV.
-- `edit.schema.ts`: describes the input each edit command takes.
 - `issues.ts`: the refusals for an unknown command, a move without a place, a wrong anchor, and an
   index past the end of a list.
+- `edit.schema.old.ts`: describes the input each edit command takes.
 
 ## Example
 
@@ -36,9 +36,9 @@ lists them all.
 
 - **Uses:**
   - [core/](../core/README.md): imports `check.ts`, `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
-    `files.ts`, `home.ts`, `issues.ts`, `place.ts`
+    `files.ts`, `home.old.ts`, `issues.old.ts`, `place.old.ts`
 - **Used by:**
-  - [cli/](../cli/README.md): imports `edit.schema.ts`, `save.ts`
+  - [cli/](../cli/README.md): imports `edit.schema.old.ts`, `save.ts`
 
 ---
 

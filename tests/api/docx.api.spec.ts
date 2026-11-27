@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import JSZip from 'jszip';
-import { place } from '../../core/place.ts';
+import { place } from '../../core/place.old.ts';
 import { render } from '../../classic/docx.ts';
 import { fixture, photo, unwrap } from '../utils/fixture.ts';
 

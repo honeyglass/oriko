@@ -14,12 +14,12 @@ import { trySync$ } from '@honeyglass/utils/ts';
 import { done, rejected } from '../core/errors.ts';
 import type { Result } from '../core/errors.ts';
 import * as issue from './issues.ts';
-import * as coreIssue from '../core/issues.ts';
+import * as coreIssue from '../core/issues.old.ts';
 import { check } from '../core/check.ts';
 import { Profile } from '../core/cv.schema.ts';
-import { place } from '../core/place.ts';
+import { place } from '../core/place.old.ts';
 import { existingText, readJson, writeAll } from '../core/files.ts';
-import { chosenCv } from '../core/home.ts';
+import { chosenCv } from '../core/home.old.ts';
 import { profileName } from './name.ts';
 
 type Fields = Record<string, unknown>;

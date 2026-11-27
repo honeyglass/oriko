@@ -40,12 +40,12 @@ import {
 import type { IParagraphOptions, IRunOptions, ITableCellOptions, ParagraphChild } from 'docx';
 import { done, rejected } from '../core/errors.ts';
 import type { Result } from '../core/errors.ts';
-import * as issue from './issues.ts';
+import * as issue from './issues.old.ts';
 import { CV_LIMITS, ICONS } from '../core/cv.limits.ts';
 import type { Block, Master } from '../core/cv.schema.ts';
 import { spacedRole } from '../core/measure.ts';
 import { HEIGHT, SPACE, WIDTH } from '../core/metrics.ts';
-import type { Column, Heading, Placed, Plan } from '../core/place.ts';
+import type { Column, Heading, Placed, Plan } from '../core/place.old.ts';
 import { circlePhoto, solidPng } from './images.ts';
 import { stable } from '../core/zip.ts';
 

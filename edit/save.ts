@@ -9,9 +9,9 @@ import { done } from '../core/errors.ts';
 import type { Result } from '../core/errors.ts';
 import { check } from '../core/check.ts';
 import type { Master } from '../core/cv.schema.ts';
-import { place } from '../core/place.ts';
+import { place } from '../core/place.old.ts';
 import { readJson, writeAll } from '../core/files.ts';
-import { chosenCv } from '../core/home.ts';
+import { chosenCv } from '../core/home.old.ts';
 import { apply } from './apply.ts';
 
 type Fields = Record<string, unknown>;

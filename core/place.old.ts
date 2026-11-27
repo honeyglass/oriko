@@ -11,7 +11,7 @@
  */
 import { done, rejected } from './errors.ts';
 import type { Issue, Result } from './errors.ts';
-import * as issue from './issues.ts';
+import * as issue from './issues.old.ts';
 import { COLUMN } from './cv.limits.ts';
 import type { Block, Master } from './cv.schema.ts';
 import { blockHeight, contactHeight, roleLines } from './measure.ts';

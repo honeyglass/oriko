@@ -9,13 +9,13 @@
  */
 import { done, rejected } from '../core/errors.ts';
 import type { Result } from '../core/errors.ts';
-import * as coreIssue from '../core/issues.ts';
+import * as coreIssue from '../core/issues.old.ts';
 import { COLUMN } from '../core/cv.limits.ts';
 import { Master } from '../core/cv.schema.ts';
 import type { Block } from '../core/cv.schema.ts';
 import { readJson } from '../core/files.ts';
-import { chosenCv } from '../core/home.ts';
-import { profileCv } from '../core/load.ts';
+import { chosenCv } from '../core/home.old.ts';
+import { profileCv } from '../core/load.old.ts';
 
 type Fields = Record<string, unknown>;
 

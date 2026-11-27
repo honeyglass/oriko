@@ -51,11 +51,11 @@ const codes = (text: string) =>
   spans(text).inline.filter(span => /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$/.test(span));
 
 // Every code an issue can carry: a 'code:' literal, or a constant that holds its own name, in
-// each folder's issues.ts and in core.
+// each folder's issues.ts or issues.old.ts and in core.
 function issueCodes() {
   const folders = readdirSync(ROOT, { withFileTypes: true }).filter(entry => entry.isDirectory());
   const issues = folders
-    .map(folder => join(folder.name, 'issues.ts'))
+    .flatMap(folder => [join(folder.name, 'issues.ts'), join(folder.name, 'issues.old.ts')])
     .filter(path => existsSync(join(ROOT, path)));
   const core = readdirSync(join(ROOT, 'core'))
     .filter(name => name.endsWith('.ts'))

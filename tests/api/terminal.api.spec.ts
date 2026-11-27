@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import JSZip from 'jszip';
 import { withCredits } from '../../terminal/credits.ts';
-import { place } from '../../core/place.ts';
+import { place } from '../../core/place.old.ts';
 import { preview } from '../../terminal/sheets.ts';
 import { renderTerminal } from '../../terminal/docx.ts';
 import { fixture, unwrap } from '../utils/fixture.ts';

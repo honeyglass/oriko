@@ -7,9 +7,9 @@
  */
 import { done } from '../core/errors.ts';
 import type { Result } from '../core/errors.ts';
-import { place } from '../core/place.ts';
-import { cvNames, profileNames } from '../core/home.ts';
-import { checked, profileCv } from '../core/load.ts';
+import { place } from '../core/place.old.ts';
+import { cvNames, profileNames } from '../core/home.old.ts';
+import { checked, profileCv } from '../core/load.old.ts';
 import { createCv } from '../cv/init.ts';
 import { listCvs } from '../cv/list.ts';
 import { showCv } from '../cv/show.ts';

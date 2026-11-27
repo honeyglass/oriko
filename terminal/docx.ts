@@ -15,7 +15,7 @@ import type { ParagraphChild } from 'docx';
 import { done } from '../core/errors.ts';
 import type { Result } from '../core/errors.ts';
 import type { Master } from '../core/cv.schema.ts';
-import type { Plan } from '../core/place.ts';
+import type { Plan } from '../core/place.old.ts';
 import { HEIGHT, WIDTH } from '../core/metrics.ts';
 import { REPOSITORY } from './credits.ts';
 import { repositoryLines, sheets } from './sheets.ts';

@@ -32,7 +32,7 @@ oriko show --cv jane-doe --block awards
 
 - **Uses:**
   - [core/](../core/README.md): imports `check.ts`, `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
-    `files.ts`, `home.ts`, `issues.ts`, `load.ts`, `place.ts`
+    `files.ts`, `home.old.ts`, `issues.old.ts`, `load.old.ts`, `place.old.ts`
 - **Used by:**
   - [cli/](../cli/README.md): imports `init.ts`, `list.ts`, `show.ts`
 

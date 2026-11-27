@@ -12,12 +12,12 @@ import { join } from 'node:path';
 import { done, rejected } from '../core/errors.ts';
 import type { Result } from '../core/errors.ts';
 import * as issue from './issues.ts';
-import * as coreIssue from '../core/issues.ts';
+import * as coreIssue from '../core/issues.old.ts';
 import { check } from '../core/check.ts';
 import { Id, NewCv } from '../core/cv.schema.ts';
 import type { Master } from '../core/cv.schema.ts';
 import { writeAll } from '../core/files.ts';
-import { cvNames } from '../core/home.ts';
+import { cvNames } from '../core/home.old.ts';
 
 const PLACEHOLDER = join(import.meta.dirname, '..', 'assets', 'placeholder.png');
 

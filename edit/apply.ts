@@ -12,11 +12,11 @@
 import { done, rejected } from '../core/errors.ts';
 import type { Issue, Result } from '../core/errors.ts';
 import * as issue from './issues.ts';
-import * as coreIssue from '../core/issues.ts';
+import * as coreIssue from '../core/issues.old.ts';
 import { COLUMN } from '../core/cv.limits.ts';
 import { check, patched } from '../core/check.ts';
 import { Block, ContactItem, ITEM, ITEM_PATCH, Master } from '../core/cv.schema.ts';
-import { INPUT } from './edit.schema.ts';
+import { INPUT } from './edit.schema.old.ts';
 
 type Command = keyof typeof INPUT;
 type Handler = (master: Master, input: unknown) => Result<Master>;

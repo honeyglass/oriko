@@ -10,7 +10,7 @@ import { shown, trySync$ } from '@honeyglass/utils/ts';
 import { done, rejected } from '../core/errors.ts';
 import type { Result } from '../core/errors.ts';
 import * as issue from './issues.ts';
-import * as coreIssue from '../core/issues.ts';
+import * as coreIssue from '../core/issues.old.ts';
 import { Profile } from '../core/cv.schema.ts';
 import { existingText } from '../core/files.ts';
 import { profileName } from './name.ts';

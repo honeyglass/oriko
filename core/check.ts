@@ -7,7 +7,7 @@
  */
 import { done, rejected } from './errors.ts';
 import type { Issue, Result } from './errors.ts';
-import * as issue from './issues.ts';
+import * as issue from './issues.old.ts';
 import { COLUMN } from './cv.limits.ts';
 import { Block, Master, PATCH, Profile } from './cv.schema.ts';
 

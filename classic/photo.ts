@@ -12,13 +12,13 @@ import { join, resolve } from 'node:path';
 import { trySync$ } from '@honeyglass/utils/ts';
 import { done, rejected } from '../core/errors.ts';
 import type { Result } from '../core/errors.ts';
-import * as issue from './issues.ts';
-import * as coreIssue from '../core/issues.ts';
+import * as issue from './issues.old.ts';
+import * as coreIssue from '../core/issues.old.ts';
 import { FILE_LIMITS } from '../core/files.limits.ts';
 import { Master, Profile } from '../core/cv.schema.ts';
 import { squarePhoto } from './images.ts';
 import { readBounded, readJson, writeAll } from '../core/files.ts';
-import { chosenCv, profilePath } from '../core/home.ts';
+import { chosenCv, profilePath } from '../core/home.old.ts';
 
 type Request = {
   home: string;

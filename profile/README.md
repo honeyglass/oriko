@@ -36,7 +36,7 @@ oriko profiles
 
 - **Uses:**
   - [core/](../core/README.md): imports `check.ts`, `cv.schema.ts`, `errors.ts`, `files.ts`,
-    `home.ts`, `issues.ts`, `load.ts`, `options.ts`, `place.ts`
+    `home.old.ts`, `issues.old.ts`, `load.old.ts`, `options.old.ts`, `place.old.ts`
 - **Used by:**
   - [cli/](../cli/README.md): imports `list.ts`, `set.ts`, `show.ts`
 
