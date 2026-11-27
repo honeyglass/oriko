@@ -22,6 +22,7 @@
     "node": ">=24"
   },
   "dependencies": {
+    "@honeyglass/adx": "github:honeyglass/adx#13686037c70e114e3805868da7e126517a6f0832",
     "@honeyglass/utils": "github:honeyglass/utils#a6c8b941393ba0831b2909a54dae0a59d40f50bf",
     "docx": "9.15.3",
     "jpeg-js": "0.4.4",
