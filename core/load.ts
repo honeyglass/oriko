@@ -5,7 +5,8 @@
  * fileOf: the file an issue of the check or of the page plan lies in.
  * noStoredCv, chosenName, cvName: the issue of a data folder without a CV, and the CV a call works
  * on, with a profile or without one.
- * storedShape: a stored CV or profile a command changes, checked against its shape.
+ * storedShape, storedCv: a stored CV or profile checked against its shape, and the CV a call names.
+ * cvOf, storedJson: the CV a profile names in its field cv, and a stored file as it holds it.
  *
  * Both files are read through the root `home`, which keeps them inside the data folder, with the
  * byte limit of the JSON input. adx refuses a file that is too large or holds no JSON.
@@ -96,7 +97,8 @@ function holds(value: unknown, path: string) {
   return true;
 }
 
-const storedJson = (file: File) => file.json(FILE_LIMITS.inputBytes, z.unknown());
+/** A stored CV or profile as its file holds it, read with the byte limit of the JSON input. */
+export const storedJson = (file: File) => file.json(FILE_LIMITS.inputBytes, z.unknown());
 
 /**
  * A stored file that a command changes is checked against its shape first, so a broken file is
@@ -108,6 +110,10 @@ const storedJson = (file: File) => file.json(FILE_LIMITS.inputBytes, z.unknown()
  */
 export async function storedShape(field: 'cv', file: File): Promise<Master | Issues<'cv'>>;
 export async function storedShape(
+  field: 'profile',
+  file: File,
+): Promise<Profile | Issues<'profile'>>;
+export async function storedShape(
   field: Stored,
   file: File,
 ): Promise<Master | Profile | Issues<Stored>>;
@@ -118,11 +124,28 @@ export async function storedShape(field: Stored, file: File) {
   return raised(() => field, rejected('check', schemaIssues(parsed.error, [], field)).error);
 }
 
-// The CV a profile names; check() reports a profile that fails its schema, so this one only reads.
-const cvOf = (profile: unknown) => {
+/** The CV a profile names; check() reports a profile that fails its schema, so this one only reads. */
+export const cvOf = (profile: unknown) => {
   const parsed = Profile.safeParse(profile);
   return parsed.success ? parsed.data.cv : undefined;
 };
+
+/**
+ * The CV a command changes, or checks a profile against, read and past its shape.
+ *
+ * @param cv - the name `--cv` or the profile gives, which adx found among the stored CVs
+ * @returns its name and its value; NO_CV, CV_REQUIRED, or SCHEMA below `cv`
+ */
+export async function storedCv(
+  cv: string | undefined,
+): Promise<{ name: string; master: Master } | Issues<'cv'>> {
+  const names = await cvNames();
+  if (names.length === 0) return [noStoredCv()];
+  const name = cvName(names, cv);
+  if (typeof name !== 'string') return name;
+  const master = await storedShape('cv', cvFile(name));
+  return Array.isArray(master) ? master : { name, master };
+}
 
 /** NO_CV, the one issue of a data folder that holds no CV, for every command alike. */
 export const noStoredCv = () => noCv.issue('The data folder holds no CV');

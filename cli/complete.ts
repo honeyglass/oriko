@@ -7,8 +7,6 @@
  *
  * @example return { result: await withCommands(call, withNext(call, result)), asText };
  */
-import { trySync$ } from '@honeyglass/utils/ts';
-import { z } from 'zod';
 import { Rejection, done } from '../core/errors.ts';
 import type { Issue, Result } from '../core/errors.ts';
 import * as coreIssue from '../core/issues.old.ts';
@@ -88,18 +86,7 @@ const homeArg = (call: Call) =>
 
 async function blockListCommand(call: Call, issues: Issue[]) {
   if (issues.some(issue => issue.code === coreIssue.UNKNOWN_BLOCK) === false) return undefined;
-  const named = (await inputCv(call)) ?? (await profileCv(call.home, call.values.profile));
+  const named = await profileCv(call.home, call.values.profile);
   const cv = await chosenCv(call.home, call.values.cv, named);
   return cv.error === null ? `oriko show${optionText('cv', cv.data.name)} --block` : undefined;
-}
-
-const Named = z.object({ cv: z.string() });
-
-// The CV the JSON input names, such as a profile's; it is the one the command checked.
-async function inputCv(call: Call) {
-  if (takesInput(call.command) === false) return undefined;
-  const raw = call.values.json ?? (await call.io.stdin()) ?? '';
-  const parsed = trySync$((): unknown => JSON.parse(raw));
-  const input = Named.safeParse(parsed.data);
-  return input.success ? input.data.cv : undefined;
 }

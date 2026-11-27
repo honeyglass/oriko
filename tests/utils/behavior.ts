@@ -200,7 +200,7 @@ const SEEDED: Call[] = [
       '{"cv":"jane","blocks":{"nobody":{"hidden":true}}}',
     ],
   },
-  { argv: ['profile', 'set', '--profile', 'initech'], stdin: '{"cv":"jane"}' },
+  { argv: ['profile', 'set', '--profile', 'initech', '--json', '-'], stdin: '{"cv":"jane"}' },
   { argv: ['profile', 'show', '--profile', 'globex'] },
   { argv: ['profile', 'show', '--profile', 'nope'] },
   { argv: ['read', '--posting', 'posting.txt', '--profile', 'globex'] },

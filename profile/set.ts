@@ -1,84 +1,112 @@
 /**
- * The command profile set: checks the profile of one job posting against its CV, then stores it.
+ * The command `oriko profile set` on adx: the profile of one job posting, checked, then stored.
  *
- * setProfile: checks a whole profile against its CV, then stores it, and names what it changed.
+ * set: the command, which the tool lists under the words profile set.
  *
- * A profile is checked by the same check plan runs, before it is written, so a refused profile is
- * never stored. It replaces the stored one whole, and only on request, so the answer names every
- * part it adds, changes or removes.
+ * A profile is checked by the same check plan runs, before it is staged, so a refused profile is
+ * never stored. It replaces the stored one whole, and only with --replace; the same profile again
+ * writes nothing (adx decision 81). The answer names every part it adds, changes or removes, in
+ * the profile's own words. The name and the fields fill one object, so `--profile` and `--json`
+ * go together as before. A call that names no field is refused: piped text that no `--json -`
+ * reads would else store an empty profile.
  *
- * @example const answer = await setProfile({ home, name: 'acme', input, isReplace: false, isDryRun: true });
+ * @example const { exit, out } = await run(oriko, ['profile', 'set', '--profile', 'globex', '--cv', 'jane']);
  */
-import { join } from 'node:path';
+import { effect, fresh, schema } from '@honeyglass/adx';
+import type { File, Issue } from '@honeyglass/adx';
 import { trySync$ } from '@honeyglass/utils/ts';
-import { done, rejected } from '../core/errors.ts';
-import type { Result } from '../core/errors.ts';
-import * as issue from './issues.ts';
-import * as coreIssue from '../core/issues.old.ts';
+import { z } from 'zod';
 import { check } from '../core/check.ts';
-import { Profile } from '../core/cv.schema.ts';
-import { place } from '../core/place.old.ts';
-import { existingText, readJson, writeAll } from '../core/files.ts';
-import { chosenCv } from '../core/home.old.ts';
-import { profileName } from './name.ts';
+import { Block, Id, Master, Profile } from '../core/cv.schema.ts';
+import type { Issue as Found } from '../core/errors.ts';
+import { FILE_LIMITS } from '../core/files.limits.ts';
+import { home, isListed, profileFile, profileNames, targetIssue } from '../core/home.ts';
+import { issueAt, oversized, turnedEach } from '../core/issues.ts';
+import type { Stored } from '../core/issues.ts';
+import { fileOf, storedCv } from '../core/load.ts';
+import { fit } from '../core/place.ts';
+import { cvChoices } from '../core/sources.ts';
+import * as issue from './issues.ts';
 
-type Fields = Record<string, unknown>;
-type Request = {
-  home: string;
-  name: string | undefined;
-  input: unknown;
-  isReplace: boolean;
-  isDryRun: boolean;
-};
+export const set = effect({
+  does: 'stores the profile of one job posting, checked against its CV',
+  input: z.object({ profile: Id.describe('the name of the profile'), ...Profile.shape }),
+  example: { profile: 'globex', cv: 'jane', blocks: { freelance: { hidden: true } } },
+  values: { profile: fresh(profileNames), cv: cvChoices },
+  check: input => [...oversized(input), ...(namesAField(input) ? [] : [nothingToStore()])],
+  plan: async ({ profile: name, ...profile }, { files, refuse }) => {
+    const cv = await storedCv(profile.cv);
+    if (Array.isArray(cv)) return refuse(...cv);
+    const checked = check(cv.master, profile);
+    if (checked.error !== null) {
+      const inFile = fileOf(cv.master, profile);
+      return refuse(...turnedEach(checked.error, found => placed(inFile(found), found)));
+    }
+    const file = profileFile(name);
+    const blocked = await targetIssue('profile', home, file);
+    if (blocked !== undefined) return refuse(blocked);
+    const stored = await storedText(file);
+    const changes = changesOf(parsedOrEmpty(stored), profile);
+    const written = files.write(file, textOf(profile, stored, changes));
+    return { name, ...written, changes, cv: cv.name, ...fit(checked.data) };
+  },
+});
+
+const FIELDS = Object.keys(Profile.shape);
+
+const namesAField = (input: object) => FIELDS.some(field => field in input);
+
+const nothingToStore = () =>
+  issue.nothingToStore
+    .issue('The call names no field of the profile, only its name')
+    .command(schema.step('profile set'));
+
+/** The fields of the input a profile's own issue stands at; `cv` names the CV, whose issues lie below it. */
+const OWN = ['person', 'order', 'blocks'] as const;
 
 /**
- * @param request - the data folder, the profile's name, the whole profile, and whether to write
- * @returns where it is stored, what it adds, changes and removes, and whether it fits its pages
+ * The profile is the input here, so an issue it causes stands at its own field, such as
+ * `blocks.nobody`, and one that lies in the CV below `cv` (adx decision 69).
+ *
+ * @param file - the file the issue lies in, as fileOf() finds it
+ * @param found - the issue of the check
+ * @returns the issue with the same code and message; SCHEMA inside a patch names the shape block
  */
-export async function setProfile(request: Request): Promise<Result<Fields>> {
-  const name = profileName(request.name, 'profile set');
-  if (name.error !== null) return name;
-  const profile = Profile.safeParse(request.input);
-  if (profile.success === false)
-    return rejected('profile set', coreIssue.schemaIssues(profile.error, [], 'profile'));
-  const fits = await checkedFit(request.home, profile.data);
-  if (fits.error !== null) return fits;
-  const stored = `profiles/${name.data}.json`;
-  const path = join(request.home, stored);
-  const existing = await existingText(path);
-  if (existing.error !== null) return existing;
-  if (existing.data !== null && request.isReplace === false)
-    return rejected('profile set', [issue.profileExists(name.data)]);
-  const content = `${JSON.stringify(request.input, null, 2)}\n`;
-  const isWriting = request.isDryRun === false && existing.data !== content;
-  const written = isWriting ? await writeAll([{ path, content }], 'home') : done(undefined);
-  if (written.error !== null) return written;
-  const changes = changesOf(parsedOrEmpty(existing.data), request.input);
-  return done({ name: name.data, stored, written: isWriting, ...changes, ...fits.data });
+function placed(file: Stored, found: Found): Issue<'cv' | (typeof OWN)[number]> {
+  const parts = found.path.split('.');
+  const [first, ...rest] = parts;
+  const own = OWN.find(field => field === first);
+  if (file === 'profile' && own !== undefined) return issueAt([own, ...rest], found, Block);
+  return issueAt(['cv', ...parts], found, Master);
 }
 
-// The checks plan runs on the profile's CV; a CV too long for its pages is answered, not refused.
-async function checkedFit(home: string, profile: Profile) {
-  const cv = await chosenCv(home, undefined, profile.cv);
-  if (cv.error !== null) return cv;
-  const master = await readJson(cv.data.path, 'cv');
-  if (master.error !== null) return master;
-  const checked = check(master.data, profile);
-  if (checked.error !== null) return checked;
-  const placed = place(checked.data);
-  return done({
-    cv: cv.data.name,
-    fits: placed.error === null,
-    layout: placed.error?.issues ?? [],
-  });
+// The text of the stored profile; a link that adx replaces holds none.
+async function storedText(file: File) {
+  return (await isListed(home, file)) ? file.text(FILE_LIMITS.readBytes) : undefined;
 }
 
 // The stored profile as a value; an unreadable one counts as empty, so every part counts as added.
-function parsedOrEmpty(text: string | null) {
-  if (text === null) return {};
+function parsedOrEmpty(text: string | undefined) {
+  if (text === undefined) return {};
   const value = trySync$((): unknown => JSON.parse(text));
   return value.error === null ? value.data : {};
 }
+
+/**
+ * The input comes in the key order of its schema, so a profile stored before in another order
+ * would differ in its bytes alone; the same content keeps the stored text, and adx writes nothing.
+ *
+ * @param profile - the profile of the call
+ * @param stored - the text of the stored profile, if any
+ * @param changes - what the profile adds, changes and removes against it
+ * @returns the text to write
+ */
+function textOf(profile: Profile, stored: string | undefined, changes: Changes) {
+  const isSame = changes.added.length + changes.changed.length + changes.removed.length === 0;
+  return stored !== undefined && isSame ? stored : `${JSON.stringify(profile, null, 2)}\n`;
+}
+
+type Changes = ReturnType<typeof changesOf>;
 
 // The parts of a profile: each top-level field, and each block or person field one level down.
 function partsOf(profile: unknown) {
@@ -99,6 +127,7 @@ function partsOf(profile: unknown) {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && Array.isArray(value) === false;
 
+// Every part, uncapped as before, so `more` counts nothing.
 function changesOf(before: unknown, after: unknown) {
   const old = partsOf(before);
   const fresh = partsOf(after);
@@ -109,5 +138,6 @@ function changesOf(before: unknown, after: unknown) {
       [...fresh.keys()].filter(key => old.has(key) && old.get(key) !== fresh.get(key)),
     ),
     removed: sorted([...old.keys()].filter(key => fresh.has(key) === false)),
+    more: 0,
   };
 }

@@ -39,10 +39,6 @@ export function nextSteps(facts: Facts): Step[] {
       return Array.isArray(data.cvs) ? startSteps(data) : [];
     case 'cvs':
       return cvsSteps(data.cvs);
-    case 'profiles':
-      return count(data.profiles) > 0
-        ? [step('plan', '', ['profile'])]
-        : [step('schema', ' profile')];
     case 'show':
       return data.block === undefined ? [step('show', selector, ['block'])] : [];
     case 'init':
@@ -51,18 +47,11 @@ export function nextSteps(facts: Facts): Step[] {
         step('block add', selector, ['json']),
         step('photo set', selector, ['file']),
       ];
-    case 'schema':
-      return [];
     case 'read':
       return readSteps(data);
-    case 'profile show':
-      return data.profile === null
-        ? [step('profile set', selector, ['json'])]
-        : [step('plan', selector)];
+    // schema names no step, and every other command runs on adx, which names its own.
     default:
-      return data.fits === true
-        ? [step('preview', selector), step('build', selector, ['out'])]
-        : [];
+      return [];
   }
 }
 

@@ -16,7 +16,7 @@ import { z } from 'zod';
 import { render } from '../classic/docx.ts';
 import type { Engine } from '../classic/docx.ts';
 import { FILE_LIMITS } from '../core/files.limits.ts';
-import { home, work } from '../core/home.ts';
+import { home, targetIssue, work } from '../core/home.ts';
 import type { Issues, Stored } from '../core/issues.ts';
 import { checked, fileOf } from '../core/load.ts';
 import type { Checked } from '../core/load.ts';
@@ -89,6 +89,8 @@ export const build = effect({
   plan: async ({ cv, profile, out, style, credits }, { files, refuse }) => {
     const sheet = await planned(cv, profile, credits);
     if (Array.isArray(sheet)) return refuse(...sheet);
+    const blocked = await targetIssue('out', work, out);
+    if (blocked !== undefined) return refuse(blocked);
     const isPdf = out.rel.endsWith('.pdf');
     const docx = await rendered(sheet, style, isPdf ? 'libreoffice' : 'google');
     if (Array.isArray(docx)) return refuse(...docx);

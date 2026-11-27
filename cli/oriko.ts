@@ -14,11 +14,22 @@ import { set as photoSet } from '../classic/photo.ts';
 import { Block, ContactItem, Item, Master, Profile } from '../core/cv.schema.ts';
 import { home, work } from '../core/home.ts';
 import { commands as edit } from '../edit/commands.ts';
+import { profiles } from '../profile/list.ts';
+import { set as profileSet } from '../profile/set.ts';
+import { show as profileShow } from '../profile/show.ts';
 import { build, preview } from './build.ts';
 import { next } from './next.ts';
 import { plan } from './plan.ts';
 
-export const commands = { plan, preview, build, photo: { set: photoSet }, ...edit };
+export const commands = {
+  profiles,
+  plan,
+  preview,
+  build,
+  profile: { set: profileSet, show: profileShow },
+  photo: { set: photoSet },
+  ...edit,
+};
 
 export const oriko = tool({
   name: 'oriko',

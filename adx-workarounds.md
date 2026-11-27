@@ -73,7 +73,12 @@ each move, with their sources.
   now: `NO_CV`; with another CV stored, the linked one is left out of the list and `--cv jane`
   is `NOT_IN_LIST`. A folder or a pipe at `cvs/NAME.json` is left out of the list the same way.
   A regular file `cvs` answers `NO_CV`, whose hint sends the caller to create a CV. A link that
-  leads out of the data folder is passed over: that one is a check adx adds, not a loss
+  leads out of the data folder is passed over: that one is a check adx adds, not a loss.
+  The profiles the same: a folder `profiles/folder.json` and a link `profiles/link.json` to
+  `acme.json` inside the data folder are left out of `oriko profiles`, where the old program listed
+  the folder with `NOT_A_FILE` and the link with `fits: true`; `oriko profile show --profile link`
+  answers `NOT_IN_LIST`, where it answered the profile, and so does a name whose `NAME.posting.md`
+  is a folder
   proposal: `list()` answers a link whose target is a regular file inside the root, and a folder
   of a root that is no folder is refused instead of counted as empty
   kind: loss
@@ -95,7 +100,8 @@ each move, with their sources.
   today: `UNKNOWN_PROFILE` at `profile`, hint "Run the command for the shape of a profile, then
   store one with oriko profile set", command `oriko schema profile set`
   now: `NOT_IN_LIST` at `profile`, whose command `oriko plan --profile` answers an empty list;
-  the pointer to `oriko profile set` is gone
+  the pointer to `oriko profile set` is gone. `profile set` runs on adx too, but the gap stays:
+  the empty list answers no step; `oriko profiles` names `oriko schema profile` in this case
   proposal: a source can name a step for an empty list, which adx then gives the issue as its
   command
   kind: loss
@@ -208,19 +214,22 @@ each move, with their sources.
   proposal: a write answers the real place of its file inside the root beside the path the call gave
   kind: loss
   golden: no difference
-- W18 cli/build.ts:97
+- W18 cli/build.ts:92
   gap: a write follows a link at its target to a file inside the root and writes through it, while
   the guide says a link at the target is replaced and adx never writes through a link (guide "Files
   the call names"; adx `src/files/paths.ts`, `linkedFile`)
   call: `oriko build --style terminal --out link.docx`, where `link.docx` is a link to `real.docx`
   of the working directory, 8 bytes with mode 600
   today: the rename replaces the link with the built file; `real.docx` stays as it was
-  now: exit 0 with `"file":"link.docx"` and `"replaces":true`; `link.docx` is still the link, and
-  `real.docx` holds the built file with mode 644. oriko could keep the old behavior only by reading
-  the working directory itself
+  now: `TARGET_NOT_A_FILE` at `out`, kind fix, "link.docx is a link to another file, which the
+  write would change"; `link.docx` stays the link and `real.docx` keeps its 8 bytes and mode 600.
+  `targetIssue` of `core/home.ts` refuses a target that `exists` and that `work.list()` of its
+  folder does not hold, before anything is staged. A link that leads nowhere or out of the working
+  directory passes, and adx replaces it with the file. The old behavior, the link replaced by the
+  built file, stays lost: oriko could keep it only by reading the working directory itself
   proposal: a link at the target of a write is replaced, as the guide says, or the answer names the
   real file the write changed
-  kind: loss
+  kind: workaround
   golden: no difference
   same gap as: W17
 - W19 classic/images.ts:58
@@ -299,23 +308,24 @@ each move, with their sources.
   `cwd`
   kind: workaround
   golden: no difference
-- W25 classic/photo.ts:51
+- W25 classic/photo.ts:49
   gap: a write follows a link at its target to a file inside the root and writes through it, while
   the guide says a link at the target is replaced (guide "Files the call names"; adx
   `src/files/paths.ts`, `linkedFile`)
   call: `oriko photo set --file me.png --replace`, where `cvs/jane.png` is a link to
   `store/jane.png` of the data folder
   today: the rename replaces the link with the photo; `store/jane.png` stays as it was
-  now: exit 0 with `"file": "cvs/jane.png"`; `cvs/jane.png` is still the link, and `store/jane.png`
-  holds the photo. The link may name any stored file: with `profiles/acme.png` a link to
-  `../cvs/jane.json`, `oriko photo set --file placeholder.png --profile acme` is `ALREADY_EXISTS`,
-  and with `--replace` it answers exit 0 with `"photo":{"file":"profiles/acme.png",
-  "replaces":true}`, and `cvs/jane.json` holds the PNG: a stored CV is replaced by a photo, and no
-  answer names it. A link that leads out of the data folder is replaced, with `--replace`, and its
-  target stays as it was
+  now: `TARGET_NOT_A_FILE` at `cv`, kind fix, "cvs/jane.png is a link to another file, which the
+  write would change"; `cvs/jane.png` stays the link and `store/jane.png` as it was. The same for a
+  link to a stored file that is no photo, such as `profiles/acme.png` to `../cvs/jane.json`, at
+  `profile`, and `cvs/jane.json` stays as it was. `targetIssue` of `core/home.ts` refuses the photo
+  when it `exists` and `home.list()` of its folder does not hold it, before anything is staged; the
+  file that names the photo comes from that list already. A link that leads nowhere or out of the
+  data folder passes and is replaced, with `--replace`, and its target stays as it was. The old
+  behavior, the link replaced by the photo, stays lost
   proposal: a link at the target of a write is replaced, as the guide says, or the answer names the
   real file the write changed
-  kind: loss
+  kind: workaround
   golden: no difference
   same gap as: W17
 - W26 edit/apply.ts:84
@@ -374,19 +384,113 @@ each move, with their sources.
   issue holds, as a tool raises it
   kind: workaround
   golden: no difference
+- W30 profile/set.ts:36
+  gap: a handler cannot tell an empty input from none, since options and `--json` fill one object,
+  and text piped to stdin that no `--json -` reads is ignored without a word (guide "How adx reads
+  a call", "Options")
+  call: `oriko profile set --profile globex --json '{}'`, and `oriko profile set --profile globex`
+  with `{"cv":"jane"}` piped to stdin
+  today: `--json '{}'` stores an empty profile, exit 0; the piped call stores `{"cv":"jane"}`
+  now: both are refused with `NOTHING_TO_STORE`, kind fix, by the `check` of the command, since
+  every field of a profile is optional and the piped call would else store an empty profile, with
+  `--replace` over the stored one (D11). An empty profile can no longer be stored
+  proposal: a handler can ask whether the call gave any input at all, and a call with text on
+  stdin that no option reads is refused, or names the text in its answer
+  kind: loss
+  golden: no difference
+- W31 profile/issues.ts:13
+  gap: a tool cannot raise a code adx owns (proto/oriko README "What does not fit yet"), and a path
+  starts with a field of the input, while `--json` is an option of adx (decision 69)
+  call: `oriko profile set --profile globex`
+  today: `MISSING_INPUT` at `json`, kind fix, hint "Run the command for the input shape, then pass it
+  with --json or through stdin", command `oriko schema profile set`
+  now: `NOTHING_TO_STORE` with no path, kind fix, message "The call names no field of the profile,
+  only its name", hint "Run the command for the input shape, then pass it with --json, or through
+  stdin with --json -", command `oriko schema profile set`
+  proposal: a tool can raise an issue at an option adx gives every command, such as the one that
+  takes the whole input
+  kind: loss
+  golden: no difference
+  same gap as: W2
+- W32 profile/set.ts:50
+  gap: a handler gets the input as its schema answers it, with the keys in the order of the schema,
+  not of the call (guide "FAQ", `plan` gets `z.output` of the schema)
+  call: `oriko profile set --profile globex --json '{"order":["awards"],"cv":"jane"}'`
+  today: the profile is stored as the call gave it: `order`, then `cv`
+  now: `cv`, then `order`, in the order of the shape `Profile`: `cv`, `person`, `order`, `blocks`,
+  and `role` before `photo` in `person`; a patch inside `blocks` keeps the order of the call. The
+  same input in the order of the shape gives the same bytes as today. A profile whose content is
+  that of the stored one, so that `changes` finds nothing, keeps the stored text: a profile the old
+  program stored in another key order is the same profile again, `unchanged: true`, and nothing is
+  written (decision 81)
+  proposal: a handler can read the input object as the call gave it, beside its parsed value
+  kind: loss
+  golden: no difference
+- W33 profile/list.ts:53
+  gap: a stored file read through a root answers adx's refusals, which end the call (guide "Reading
+  a file")
+  call: `oriko profiles` with `profiles/badjson.json` holding `{`, and with `profiles/sealed.json` of
+  mode 000
+  today: the list goes on and shows the profile with `fits: false` and `issues: ["INVALID_JSON"]`,
+  or `["INPUT_TOO_LARGE"]` for a file past 1,000,000 bytes; the sealed one with `["PATH_REFUSED"]`
+  now: the list goes on and shows `issues: ["STORED_INVALID"]` for the first two, and
+  `["SYSTEM_REFUSED"]` for the sealed one: the list takes a refusal of adx (its `Refused`) of the
+  reads of one profile as that profile's codes, with `$try`; any other error is a bug and ends the
+  call. `oriko profile show --profile badjson` answers `STORED_INVALID`, kind ask, no path, as W2
+  says
+  proposal: a read of a stored file can answer its refusal as a value, so a list can name a broken
+  file and go on
+  kind: workaround
+  golden: no difference
+  same gap as: W2
+- W34 profile/set.ts:46
+  gap: a write follows a link at its target to a file inside the root and writes through it, while
+  the guide says a link at the target is replaced (guide "Files the call names"; adx
+  `src/files/paths.ts`, `linkedFile`)
+  call: `oriko profile set --profile evil --json '{"cv":"jane"}' --replace`, where
+  `profiles/evil.json` is a link to `../cvs/jane.json`
+  today: the link is replaced by the profile, and `cvs/jane.json` stays as it was
+  now: `TARGET_NOT_A_FILE` at `profile`, kind fix, "profiles/evil.json is a link to another file,
+  which the write would change"; the link and `cvs/jane.json` stay as they were. The link is not in
+  the list of profiles, and `fresh` refuses nothing, so `targetIssue` of `core/home.ts` refuses the
+  target before anything is staged. A link that leads nowhere or out of the data folder passes and
+  is replaced, with `--replace`. The old behavior, the link replaced by the profile, stays lost
+  proposal: a link at the target of a write is replaced, as the guide says, or the answer names the
+  real file the write changed
+  kind: workaround
+  golden: no difference
+  same gap as: W17
+- W35 core/issues.ts:71
+  gap: adx reads the input itself, `--json -` up to 1,048,576 characters (adx `STDIN_LIMIT`), and
+  hands a handler its value only, so a tool cannot set the limit of its input (guide "What every
+  tool gets", the limits a call meets); and a tool cannot raise a code adx owns
+  call: `oriko profile set --profile globex --json -` with a profile of 1,020,013 bytes on stdin, and
+  `oriko item add --json -` the same
+  today: `INPUT_TOO_LARGE` at `json`, kind fix, for an input past 1,000,000 bytes as the call gave it
+  now: `JSON_TOO_LARGE` with no path, kind fix, hint "Send at most 1000000 bytes; a CV is a few
+  thousand", from the `check` of `profile set` and of the 13 edits, which call `oversized` of
+  `core/issues.ts`. The limit counts the value as compact JSON, so an input whose text is larger
+  only by its spaces passes, where it was refused
+  proposal: a tool sets the limit of its input, counted in bytes of the text the call gave
+  kind: workaround
+  golden: no difference
 
 ## Passing outside the golden
 
 What holds only between two packages, and the package that ends it.
 
 - `NO_CV` has no command, where the old shell names `oriko schema init`, and its hint still says
-  "run the command". Calls: `plan`, `preview`, `build --out cv.docx` and every edit, such as
+  "run the command". Calls: `plan`, `preview`, `build --out cv.docx`, `profiles`,
+  `profile set --profile globex --order awards` and every edit, such as
   `block remove --json '{"id":"awards"}'`, on a data folder without a CV. Package 7 adds the hint
   to `init`.
 - `UNKNOWN_BLOCK` inside the input of an edit has no command, where the old shell names
   `oriko show --cv NAME --block`, and its hint still says "run the command". Calls:
   `block remove --json '{"id":"nobody"}'`, and the same at `before` or `after` of `block add` and
-  `block move` and at `block` of the item edits. Package 7 adds the hint to `show`.
+  `block move` and at `block` of the item edits. The same in the input of `profile set`, where
+  the old shell names `oriko show --cv jane --block`: `profile set --profile globex --json
+  '{"cv":"jane","blocks":{"nobody":{"hidden":true}}}'` (call 102) and the same at `order.1`.
+  Package 7 adds the hint to `show`.
 - `UNKNOWN_BLOCK` and `UNKNOWN_CV` inside a profile carry adx's command `oriko plan … --profile`,
   a list of profiles, while their hints promise block ids and CV names; `preview` and `build`
   name `oriko preview … --profile` and `oriko build … --profile` the same way. Calls:
@@ -409,6 +513,13 @@ What holds only between two packages, and the package that ends it.
 - A CV that today's `init` creates holds `cvs/NAME.png`, so its first `photo set` needs
   `--replace`. Call: `photo set --file me.png --cv erika` after `init --cv erika`. Package 7 ends
   it, when `init` names the shared `placeholder.png`.
+- The old `oriko schema profile set` still describes the old form: the options `profile`, `json`,
+  `replace` and `dry-run` and the input `Profile`, with no `--cv`, `--order` or other field as an
+  option, as section 4 of the plan keeps the old schema byte for byte. Calls: `schema profile set`
+  and `schema`. Package 9 ends it, when `oriko schema` is adx's.
+- The step of the old `read` after a posting, `oriko profile set --profile NAME`, needs `json`,
+  where a step of adx names fields of the input. Call: `read --posting posting.txt --profile
+  globex` (call 106). Package 8 ends it, when `read` names the step on adx.
 
 ## Golden changes
 
@@ -448,6 +559,15 @@ Every record that differs from the golden before the move, by its call number in
 | 81, 82, 85 to 97 | the 15 edits on `erika` that write, from `contact add` to `block remove` | `{ ok, applied: true, result, next }`: `command` is gone, `written` is `applied`, `fits` and `layout` stand in `result` beside `file`, `bytes`, `replaces: true` and `changes`; the steps to `preview` and `build` are the same; `cvs/erika.json` keeps its bytes and its mode 644 | listed: README "One answer shape", "A write answers `{ file, bytes, replaces }`, and `changes` on a replace", "One `after` for the 13 edits" (80); adx's own: guide "Files" (an updated file keeps its mode) |
 | 83 | `item add --cv erika --json '{"block":"skills","value":"Rust"}' --dry-run` | the answer of call 86 with `applied: false`; the step is the call without `--dry-run`, `oriko item add --cv erika --block skills --json '{"value":"Rust"}'`, with the `does` of `item add`, in place of "repeat the call without --dry-run to write" | listed: README "One answer shape"; adx's own: guide "A command that changes something" (the dry run and the real run answer the same fields; the step after a dry run), "How adx reads a call" (options and `--json` fill one object) |
 | 84 | `item add --cv erika --json '{"block":"skills","value":5}'` | refusal shape; `SCHEMA` keeps its path `value`, its message and its command `oriko schema item`, with adx's hint "Pass the input the schema of the command shows" | adx's own: guide "The answer", "Input that has parts" (a part only the handler can check); listed: decision 78 (`check` with `{ as: Item }`) |
+| 35 | `profiles` | `{ ok, result: { items, total }, next }`: the profiles stand in `result.items` with the same fields; the step to `plan` is the same | listed: README "One answer shape" (`cvs` and `profiles` answer `{ items, total }`) |
+| 98 | `profile set --profile globex --json` | refusal shape; adx's `MISSING_VALUE` wording, with the command `oriko schema profile set` | adx's own: guide "The answer", "How adx reads a call" (a missing value) |
+| 99, 103 | `profile set --profile globex --json '{"cv":"jane","blocks":{"freelance":{"hidden":true}}}'`, `profile set --profile initech --json -` | `{ ok, applied, result: { name, file, bytes, replaces, changes, cv, fits, layout }, next }`: `stored` is `file`, `written` is `applied`, `added`, `changed` and `removed` stand in `changes` beside `more: 0`; the steps to `preview` and `build` are the same; the file keeps its bytes and has mode 600 | listed: README "One answer shape", "A write answers `{ file, bytes, replaces }`, and `changes` on a replace" (`profile set` returns its own `changes`); section 5 of the plan and adx's own: guide "Files" (a new file gets 0600) |
+| 100 | `profile set --profile globex --json '{"cv":"jane","blocks":{"freelance":{"hidden":true}}}'` again | exit 0 in place of `PROFILE_EXISTS`: the answer of call 99 with `unchanged: true` and empty `changes`, and the same two steps; nothing is written | listed: decision 81, README "The same profile again writes nothing" |
+| 101 | `profile set --profile globex --replace --json '{"cv":"jane","order":["awards"]}' --dry-run` | the answer shape of call 99 with `applied: false` and `replaces: true`; the step is the call without `--dry-run`, `oriko profile set --profile globex --cv jane --order awards --replace`, with the `does` of `profile set`, in place of "repeat the call without --dry-run to write" | listed: README "One answer shape"; adx's own: guide "A command that changes something" (the step after a dry run), "How adx reads a call" (options and `--json` fill one object) |
+| 102 | `profile set --profile globex --json '{"cv":"jane","blocks":{"nobody":{"hidden":true}}}'` | refusal shape; `UNKNOWN_BLOCK` keeps its path `blocks.nobody`, its message and its hint, and has no command, where the old shell names `oriko show --cv jane --block` | adx's own: guide "The answer"; listed: decision 69 (the path starts with a field of the input); passing: the hint of `UNKNOWN_BLOCK` names `show`, package 7 (log, "Passing outside the golden") |
+| 103 | `profile set --profile initech --json -` | the call names `--json -` for the profile piped to stdin | listed: README "Input through stdin is `--json -`" |
+| 104 | `profile show --profile globex` | `name`, `profile` and `posting` stand in `result`; the step to `plan` is the same | listed: README "One answer shape" |
+| 105 | `profile show --profile nope` | refusal shape; `NOT_IN_LIST` at `profile` with the command `oriko profile show --profile`, in place of `UNKNOWN_PROFILE` with `oriko plan --profile` | listed: README "A value outside a list is `NOT_IN_LIST`" (`--profile` has a source); adx's own: guide "The answer", "Commands adx names" |
 
 ## Decisions of the coordinator
 
@@ -554,3 +674,44 @@ work stops only when an approach cannot work at all, and everything else is deci
   reason: with (a) a caller who pipes a profile the old way loses the stored profile without a
   word; (b) costs one thing, `--json '{}'` no longer stores an empty profile, and a profile that
   changes nothing is still stored with its field `cv` alone
+- D12, package 6
+  question: a write of adx follows a link at its target to a file inside the root and changes
+  that file (W18, W25, W34). With `profile set --replace` a link `profiles/NAME.json` to a stored
+  CV replaced that CV, and no answer named it. What do the commands that write a place the call
+  names do with such a link
+  variants: (a) the loss is taken and logged, as W18 and W25 said; (b) a write whose target
+  exists and is no regular file of the root's list is refused, before anything is staged
+  choice: b, by `targetIssue` of `core/home.ts` for `profile set`, `photo set` and `build`, with
+  oriko's code `TARGET_NOT_A_FILE`, kind fix, at the field that names the target
+  reason: with (a) a stored file is replaced without a word; (b) reads nothing but adx's `exists`
+  and `list` and weakens no check of adx. Measured: `exists` is true for a link to a file inside
+  the root, false for a link that leads nowhere and for a folder, and a link that leads out of
+  the root is adx's `PATH_OUTSIDE`; the list holds regular files only. So the refusal meets
+  exactly the link adx writes through; the other three adx replaces or refuses itself. The old
+  behavior, the link replaced by the new file, stays lost
+- D13, package 6
+  question: `photo set` writes two files, the photo and the file that names it. Does the check
+  of D12 run for both
+  variants: (a) for both; (b) for the photo only
+  choice: b
+  reason: the file that names the photo is a name the list of its folder answered, so it is a
+  regular file already: a link `profiles/NAME.json` is `NOT_IN_LIST` at `profile` (measured), and
+  a CV comes from the list of CVs. A second check would repeat the same question
+- D14, package 6
+  question: adx reads the input itself, up to 1,048,576 characters, and hands a handler its
+  value. Today an input past 1,000,000 bytes is refused. Which limit holds for `profile set`
+  and the edits
+  variants: (a) adx's limit alone; (b) oriko counts the value as compact JSON against its own
+  limit, with its own code `JSON_TOO_LARGE`
+  choice: b
+  reason: (b) keeps the limit a stored file has today as far as adx allows; an input that is
+  larger only by its spaces passes now, at most up to adx's limit (W35)
+- D15, package 6
+  question: a profile whose content equals the stored one, in another key order or spacing,
+  differs in its bytes, so adx answers `ALREADY_EXISTS`. What does `profile set` answer
+  variants: (a) `ALREADY_EXISTS`, as adx compares; (b) the stored text is written back, so adx
+  answers `unchanged: true`
+  choice: b
+  reason: decision 81 says the same profile again writes nothing, and the same content is the
+  same profile; the cost is that `--replace` does not rewrite a stored profile whose spacing
+  alone differs (W32)

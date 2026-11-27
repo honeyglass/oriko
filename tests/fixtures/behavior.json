@@ -2114,20 +2114,23 @@
     "stdout": {
       "json": {
         "ok": true,
-        "profiles": [
-          {
-            "name": "acme",
-            "cv": "jane",
-            "fits": true,
-            "pages": 2
-          },
-          {
-            "name": "broken",
-            "cv": "jane",
-            "fits": false,
-            "issues": ["UNKNOWN_BLOCK"]
-          }
-        ],
+        "result": {
+          "items": [
+            {
+              "name": "acme",
+              "cv": "jane",
+              "fits": true,
+              "pages": 2
+            },
+            {
+              "name": "broken",
+              "cv": "jane",
+              "fits": false,
+              "issues": ["UNKNOWN_BLOCK"]
+            }
+          ],
+          "total": 2
+        },
         "next": [
           {
             "does": "places every block on the pages",
@@ -5540,16 +5543,13 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "oriko",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
             "code": "MISSING_VALUE",
             "path": "json",
-            "message": "The option --json has no value",
-            "hint": "Run the command for the input shape, then pass it as one JSON object",
+            "message": "--json came without a value",
+            "hint": "Give the option a value",
             "command": "oriko schema profile set"
           }
         ]
@@ -5575,15 +5575,22 @@
     "stdout": {
       "json": {
         "ok": true,
-        "name": "globex",
-        "stored": "profiles/globex.json",
-        "written": true,
-        "added": ["blocks.freelance", "cv"],
-        "changed": [],
-        "removed": [],
-        "cv": "jane",
-        "fits": true,
-        "layout": [],
+        "applied": true,
+        "result": {
+          "name": "globex",
+          "file": "profiles/globex.json",
+          "bytes": 84,
+          "replaces": false,
+          "changes": {
+            "added": ["blocks.freelance", "cv"],
+            "changed": [],
+            "removed": [],
+            "more": 0
+          },
+          "cv": "jane",
+          "fits": true,
+          "layout": []
+        },
         "next": [
           {
             "does": "draws the pages in the terminal",
@@ -5613,7 +5620,7 @@
           "}",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -5628,22 +5635,36 @@
       "{\"cv\":\"jane\",\"blocks\":{\"freelance\":{\"hidden\":true}}}"
     ],
     "stdin": null,
-    "exit": 1,
+    "exit": 0,
     "stdout": {
       "json": {
-        "ok": false,
-        "kind": "fix",
-        "step": "profile set",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
-        "issues": [
+        "ok": true,
+        "applied": true,
+        "result": {
+          "name": "globex",
+          "file": "profiles/globex.json",
+          "bytes": 84,
+          "replaces": false,
+          "unchanged": true,
+          "changes": {
+            "added": [],
+            "changed": [],
+            "removed": [],
+            "more": 0
+          },
+          "cv": "jane",
+          "fits": true,
+          "layout": []
+        },
+        "next": [
           {
-            "code": "PROFILE_EXISTS",
-            "path": "profile",
-            "message": "The profile globex is already stored",
-            "hint": "Run the command to see it; add --replace to overwrite it, or pass another --profile",
-            "command": "oriko profile show --profile globex"
+            "does": "draws the pages in the terminal",
+            "command": "oriko preview --profile globex"
+          },
+          {
+            "does": "writes the Word file, or its PDF through LibreOffice",
+            "command": "oriko build --profile globex",
+            "needs": ["out"]
           }
         ]
       }
@@ -5670,19 +5691,26 @@
     "stdout": {
       "json": {
         "ok": true,
-        "name": "globex",
-        "stored": "profiles/globex.json",
-        "written": false,
-        "added": ["order"],
-        "changed": [],
-        "removed": ["blocks.freelance"],
-        "cv": "jane",
-        "fits": true,
-        "layout": [],
+        "applied": false,
+        "result": {
+          "name": "globex",
+          "file": "profiles/globex.json",
+          "bytes": 50,
+          "replaces": true,
+          "changes": {
+            "added": ["order"],
+            "changed": [],
+            "removed": ["blocks.freelance"],
+            "more": 0
+          },
+          "cv": "jane",
+          "fits": true,
+          "layout": []
+        },
         "next": [
           {
-            "does": "repeat the call without --dry-run to write",
-            "command": "oriko profile set --profile globex --replace --json '{\"cv\":\"jane\",\"order\":[\"awards\"]}'"
+            "does": "stores the profile of one job posting, checked against its CV",
+            "command": "oriko profile set --profile globex --cv jane --order awards --replace"
           }
         ]
       }
@@ -5708,17 +5736,13 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "check",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
             "code": "UNKNOWN_BLOCK",
             "path": "blocks.nobody",
             "message": "No block has the id nobody",
-            "hint": "Run the command and use one of the block ids it lists",
-            "command": "oriko show --cv jane --block"
+            "hint": "Run the command and use one of the block ids it lists"
           }
         ]
       }
@@ -5730,21 +5754,28 @@
   },
   {
     "scenario": "seeded",
-    "argv": ["profile", "set", "--profile", "initech"],
+    "argv": ["profile", "set", "--profile", "initech", "--json", "-"],
     "stdin": "{\"cv\":\"jane\"}",
     "exit": 0,
     "stdout": {
       "json": {
         "ok": true,
-        "name": "initech",
-        "stored": "profiles/initech.json",
-        "written": true,
-        "added": ["cv"],
-        "changed": [],
-        "removed": [],
-        "cv": "jane",
-        "fits": true,
-        "layout": [],
+        "applied": true,
+        "result": {
+          "name": "initech",
+          "file": "profiles/initech.json",
+          "bytes": 19,
+          "replaces": false,
+          "changes": {
+            "added": ["cv"],
+            "changed": [],
+            "removed": [],
+            "more": 0
+          },
+          "cv": "jane",
+          "fits": true,
+          "layout": []
+        },
         "next": [
           {
             "does": "draws the pages in the terminal",
@@ -5764,7 +5795,7 @@
     "files": {
       "home/.oriko/profiles/initech.json": {
         "lines": ["{", "  \"cv\": \"jane\"", "}", ""],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -5776,16 +5807,18 @@
     "stdout": {
       "json": {
         "ok": true,
-        "name": "globex",
-        "profile": {
-          "cv": "jane",
-          "blocks": {
-            "freelance": {
-              "hidden": true
+        "result": {
+          "name": "globex",
+          "profile": {
+            "cv": "jane",
+            "blocks": {
+              "freelance": {
+                "hidden": true
+              }
             }
-          }
+          },
+          "posting": null
         },
-        "posting": null,
         "next": [
           {
             "does": "places every block on the pages",
@@ -5808,17 +5841,14 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "profile show",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
-            "code": "UNKNOWN_PROFILE",
+            "code": "NOT_IN_LIST",
             "path": "profile",
-            "message": "The data folder has no profile nope, nor a posting read for it",
-            "hint": "Run the command and use one of the profile names it lists",
-            "command": "oriko plan --profile"
+            "message": "\"nope\" is not in the list of profile",
+            "hint": "Use a value the list answers",
+            "command": "oriko profile show --profile"
           }
         ]
       }

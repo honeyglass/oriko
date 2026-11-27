@@ -95,7 +95,7 @@ Each such back edge is bounded: at most three returns, and the fourth refusal is
 | 'SCHEMA', 'UNKNOWN_BLOCK'                             | 2 Inspect, 3 Draft, 8 Write | fix the named path                                                                                 |
 | 'ITEM_NOT_IN_MASTER'                                  | 3 Draft, 4 Check            | drop the named item from the profile; when the user asked for that item, STOP and ask: the master is theirs |
 | 'FACT_CHANGED', 'LEVEL_RAISED', 'JOB_MOVED'           | 3 Draft, 4 Check            | take the named field, level or job back to the master's; a wrong fact in the master: STOP and ask  |
-| 'PROFILE_EXISTS', 'POSTING_EXISTS'                    | 1 Posting, 3 Draft          | add '--replace' when the user asked to revise that profile or it is this run's draft; else STOP and ask |
+| 'ALREADY_EXISTS', 'POSTING_EXISTS'                    | 1 Posting, 3 Draft          | add '--replace' when the user asked to revise that profile or it is this run's draft; else STOP and ask |
 | 'CV_EXISTS'                                           | 8 Write                     | STOP and ask: another name, or changes to that master                                              |
 | 'WRONG_EXTENSION', 'PATH_OUTSIDE' at 'out'            | 5 Build                     | pass '--out' as a relative '.docx' or '.pdf' path inside the working directory                     |
 | 'NOT_IN_LIST' at 'style', 'CREDITS_NEED_TERMINAL'     | 5 Build                     | keep '--style' and '--credits' as the user asked; when the two clash, STOP and ask                 |
@@ -211,7 +211,8 @@ Run `oriko show --cv NAME` for the outline, then `oriko show --cv NAME --block <
 Store the profile with `oriko profile set --profile NAME --json '<profile>'`: its field `cv` names the master, the rest only what differs.
 
 - The JSON is the whole profile; `oriko profile show --profile NAME` answers the stored one and its posting.
-- Revising, add `--replace`, and check `removed` in the answer: each part named there is gone from this profile.
+- Pass the profile with `--json`; through stdin it needs `--json -`, since piped text alone is ignored and the call is refused with `NOTHING_TO_STORE`.
+- Revising, add `--replace`, and check `changes.removed` in the answer: each part named there is gone from this profile. The same profile again needs no `--replace` and writes nothing.
 - `oriko profile set` refuses a changed fact or a wrong shape; page fit it answers in `fits` and `layout` without refusing, and 4 Check refuses it. Fix a refusal by 'Fixing a refusal'.
 
 - Read `./references/profile.md` for the format before the first draft.

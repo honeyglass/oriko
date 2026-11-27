@@ -46,7 +46,44 @@ test('a success names its next steps, each a command with what it still needs', 
         ['oriko profiles', []],
       ],
     ],
-    [['profiles'], [['oriko plan', ['profile']]]],
+    [['profiles'], [[`oriko plan --home ${space.home}`, ['profile']]]],
+    // Without a profile, the shape of one comes first.
+    [['profiles', '--home', join(space.cwd, 'solo')], [['oriko schema profile', []]]],
+    [
+      ['profile', 'show', '--profile', 'acme'],
+      [[`oriko plan --profile acme --home ${space.home}`, []]],
+    ],
+    [
+      ['profile', 'show', '--profile', 'posted'],
+      [[`oriko profile set --profile posted --home ${space.home}`, ['cv', 'blocks']]],
+    ],
+    [
+      ['profile', 'set', '--profile', 'globex', '--cv', 'jane'],
+      [
+        [`oriko preview --profile globex --home ${space.home}`, []],
+        [`oriko build --profile globex --home ${space.home}`, ['out']],
+      ],
+    ],
+    [
+      [
+        'profile',
+        'set',
+        '--profile',
+        'globex',
+        '--cv',
+        'jane',
+        '--order',
+        'awards',
+        '--replace',
+        '--dry-run',
+      ],
+      [
+        [
+          `oriko profile set --profile globex --cv jane --order awards --home ${space.home} --replace`,
+          [],
+        ],
+      ],
+    ],
     [['show'], [['oriko show', ['block']]]],
     // A command on adx keeps the --home of the call, which the test names for every call.
     [
@@ -147,6 +184,7 @@ test('a success names its next steps, each a command with what it still needs', 
     [['cv', 'update', '--cv', 'jane', '--json', '{"pages":1}'], []],
   ];
   writeFileSync(join(space.cwd, 'job.txt'), 'Senior Go Engineer');
+  writeFileSync(join(space.home, 'profiles', 'posted.posting.md'), 'Senior Go Engineer\n');
   writeFileSync(picture, photo());
   mkdirSync(join(space.cwd, 'empty'));
   cpSync(join(space.home, 'cvs'), join(space.cwd, 'solo', 'cvs'), { recursive: true });
@@ -212,8 +250,8 @@ test('the steps keep the data folder of the call', async () => {
     (await call(space, ['show', '--block', 'nobody', '--home=-data'])).answer.issues ?? [];
   assert.equal(issue?.command, `oriko show ${cv} --block --home=-data`);
   assert.equal(
-    (await steps(space, ['profiles', '--home', '~']))[0]?.command,
-    `oriko plan --home '~'`,
+    (await steps(space, ['cvs', '--home', '~']))[0]?.command,
+    `oriko show --cv jane --home '~'`,
   );
   const input = NEW_CV.replace('Muster', "O'Neil");
   const init = ['init', '--cv', 'erika', '--json', input, '--dry-run', '--home=-data'];

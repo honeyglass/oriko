@@ -19,7 +19,7 @@ export async function listCvs(home: string): Promise<Result<Fields>> {
   if (names.error !== null) return names;
   const listed = [];
   for (const name of names.data) {
-    const cv = await checked(home, name, undefined);
+    const cv = await checked(home, name);
     const placed = cv.error === null ? place(cv.data) : cv;
     if (cv.error !== null || placed.error !== null) {
       listed.push({

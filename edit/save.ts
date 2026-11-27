@@ -12,9 +12,9 @@
 import type { Files, Written } from '@honeyglass/adx';
 import type { Master } from '../core/cv.schema.ts';
 import { FILE_LIMITS } from '../core/files.limits.ts';
-import { cvFile, cvNames } from '../core/home.ts';
+import { cvFile } from '../core/home.ts';
 import type { Issues } from '../core/issues.ts';
-import { cvName, noStoredCv, storedShape } from '../core/load.ts';
+import { storedCv } from '../core/load.ts';
 import { fit } from '../core/place.ts';
 import type { Fit } from '../core/place.ts';
 
@@ -30,16 +30,12 @@ export async function saved<F extends string>(
   files: Files,
   edit: (master: Master) => Master | Issues<F>,
 ): Promise<(Written & Fit) | Issues<F | 'cv'>> {
-  const names = await cvNames();
-  if (names.length === 0) return [noStoredCv()];
-  const name = cvName(names, cv);
-  if (typeof name !== 'string') return name;
-  const master = await storedShape('cv', cvFile(name));
-  if (Array.isArray(master)) return master;
-  const edited = edit(master);
+  const stored = await storedCv(cv);
+  if (Array.isArray(stored)) return stored;
+  const edited = edit(stored.master);
   if (Array.isArray(edited)) return edited;
   const text = `${JSON.stringify(edited, null, 2)}\n`;
-  const written = await files.update(cvFile(name), FILE_LIMITS.inputBytes, () => text);
+  const written = await files.update(cvFile(stored.name), FILE_LIMITS.inputBytes, () => text);
   // An edit may make the CV too long. The edit still stands; the answer says so.
   return { ...written, ...fit(edited) };
 }

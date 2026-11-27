@@ -54,12 +54,35 @@ test('cvs lists every CV with its language and whether it fits', async () => {
   ]);
 });
 
+// A profile that does not build is listed with what keeps it from building, never refused;
+// adx answers a stored file it cannot read with its own code.
 test('profiles lists every profile with its CV and whether it can be built', async () => {
-  const { answer } = await call(workspace(), ['profiles']);
-  assert.deepEqual(answer.profiles, [
-    { name: 'acme', cv: 'jane', fits: true, pages: 2 },
-    { name: 'broken', cv: 'jane', fits: false, issues: ['UNKNOWN_BLOCK'] },
-  ]);
+  const space = workspace();
+  writeFileSync(join(space.home, 'profiles', 'badjson.json'), '{');
+  writeFileSync(join(space.home, 'profiles', 'odd.json'), JSON.stringify({ colour: 'red' }));
+  writeFileSync(join(space.home, 'profiles', 'sealed.json'), '{}', { mode: 0o000 });
+  // adx lists regular files only, so a folder and a link are left out.
+  mkdirSync(join(space.home, 'profiles', 'folder.json'));
+  symlinkSync('acme.json', join(space.home, 'profiles', 'link.json'));
+  const { answer } = await call(space, ['profiles']);
+  assert.deepEqual(answer.result, {
+    items: [
+      { name: 'acme', cv: 'jane', fits: true, pages: 2 },
+      { name: 'badjson', cv: 'jane', fits: false, issues: ['STORED_INVALID'] },
+      { name: 'broken', cv: 'jane', fits: false, issues: ['UNKNOWN_BLOCK'] },
+      { name: 'odd', cv: 'jane', fits: false, issues: ['SCHEMA'] },
+      { name: 'sealed', cv: 'jane', fits: false, issues: ['SYSTEM_REFUSED'] },
+    ],
+    total: 5,
+  });
+  // With a second CV, a profile without its field cv belongs to none of them.
+  await call(space, ['init', '--cv', 'erika', '--json', NEW_CV]);
+  const listed = z.object({ items: z.array(z.looseObject({ name: z.string() })) });
+  const { items } = listed.parse((await call(space, ['profiles'])).answer.result);
+  assert.deepEqual(
+    items.find(item => item.name === 'broken'),
+    { name: 'broken', fits: false, issues: ['CV_REQUIRED'] },
+  );
 });
 
 test('init creates a new CV that builds, and the edit commands fill it', async () => {
@@ -300,19 +323,35 @@ test('build writes the .docx, and with --dry-run it writes nothing', async () =>
   assert.equal(existsSync(join(space.cwd, 'sub', 'x.docx')), true);
 });
 
-// adx writes through a link at --out to a file inside the working directory: the link stays,
-// and its target takes the new bytes and the mode of the build.
-test('build writes through a link at --out to a file of the working directory', async () => {
+// adx would write through a link at --out to a file inside the working directory, so build
+// refuses it and leaves the link and its file as they were; a link adx replaces is written.
+test('build refuses a link at --out to a file of the working directory', async () => {
   const space = workspace();
   writeFileSync(join(space.cwd, 'real.docx'), 'original', { mode: 0o600 });
   symlinkSync('real.docx', join(space.cwd, 'link.docx'));
   const built = await call(space, ['build', '--style', 'terminal', '--out', 'link.docx']);
-  const { file, replaces } = Built.parse(built.answer.result);
-  assert.deepEqual([built.exit, file, replaces], [0, 'link.docx', true]);
+  assert.deepEqual(
+    [built.exit, built.answer.issues?.map(issue => [issue.code, issue.path])],
+    [1, [['TARGET_NOT_A_FILE', 'out']]],
+  );
   assert.equal(lstatSync(join(space.cwd, 'link.docx')).isSymbolicLink(), true);
-  const real = join(space.cwd, 'real.docx');
-  assert.equal(readFileSync(real).subarray(0, 2).toString(), 'PK');
-  assert.equal(statSync(real).mode & 0o777, 0o644);
+  assert.equal(readFileSync(join(space.cwd, 'real.docx'), 'utf8'), 'original');
+  const outside = join(mkdtempSync(join(tmpdir(), 'oriko-out-')), 'outside.docx');
+  writeFileSync(outside, 'outside');
+  symlinkSync(outside, join(space.cwd, 'out.docx'));
+  symlinkSync('nowhere.docx', join(space.cwd, 'dangling.docx'));
+  for (const name of ['out.docx', 'dangling.docx']) {
+    const replaced = await call(space, ['build', '--style', 'terminal', '--out', name]);
+    assert.deepEqual(
+      [replaced.exit, lstatSync(join(space.cwd, name)).isSymbolicLink()],
+      [0, false],
+      name,
+    );
+  }
+  assert.deepEqual(
+    [readFileSync(outside, 'utf8'), existsSync(join(space.cwd, 'nowhere.docx'))],
+    ['outside', false],
+  );
 });
 
 // LibreOffice is found in one place, which the test replaces with a script that answers as it does.
@@ -411,22 +450,27 @@ test('photo set stores the picture as a square PNG for a CV, or for one profile'
   assert.equal(PNG.sync.read(readFileSync(join(space.home, 'profiles', 'acme.png'))).width, 10);
 });
 
-// adx writes through a link at the photo that stays inside the data folder, into whatever file it
-// names; a link that leads out of it is replaced with --replace, and its target stays as it was.
-test('photo set writes through a link inside the data folder and never out of it', async () => {
+// adx would write through a link at the photo to a file inside the data folder, so photo set
+// refuses it; a link that leads out of it is replaced with --replace, and its target stays.
+test('photo set refuses a link inside the data folder and replaces one out of it', async () => {
   const space = workspace();
   const source = tall(space.cwd);
   mkdirSync(join(space.home, 'store'));
   writeFileSync(join(space.home, 'store', 'jane.png'), photo());
+  const stored = readFileSync(join(space.home, 'store', 'jane.png'));
   rmSync(join(space.home, 'cvs', 'jane.png'));
   symlinkSync(join(space.home, 'store', 'jane.png'), join(space.home, 'cvs', 'jane.png'));
-  assert.equal((await call(space, ['photo', 'set', '--file', source, '--replace'])).exit, 0);
+  const linked = await call(space, ['photo', 'set', '--file', source, '--replace']);
+  assert.deepEqual(
+    [linked.exit, linked.answer.issues?.map(issue => [issue.code, issue.path])],
+    [1, [['TARGET_NOT_A_FILE', 'cv']]],
+  );
   assert.deepEqual(
     [
       lstatSync(join(space.home, 'cvs', 'jane.png')).isSymbolicLink(),
-      PNG.sync.read(readFileSync(join(space.home, 'store', 'jane.png'))).width,
+      readFileSync(join(space.home, 'store', 'jane.png')),
     ],
-    [true, 10],
+    [true, stored],
   );
   const victim = join(space.cwd, 'victim.png');
   writeFileSync(victim, 'untouched');
@@ -442,15 +486,22 @@ test('photo set writes through a link inside the data folder and never out of it
     ],
     [false, 'untouched'],
   );
-  // A link to a stored file that is no photo leads the replace into that file.
+  // A link to a stored file that is no photo would lead the write into that file.
   rmSync(join(space.home, 'cvs', 'jane.png'));
   symlinkSync('../profiles/acme.json', join(space.home, 'cvs', 'jane.png'));
+  const acme = readFileSync(join(space.home, 'profiles', 'acme.json'), 'utf8');
   const into = await call(space, ['photo', 'set', '--file', source, '--cv', 'jane', '--replace']);
-  const { photo: written } = z
-    .object({ photo: z.looseObject({ file: z.string(), replaces: z.boolean() }) })
-    .parse(into.answer.result);
-  assert.deepEqual([into.exit, written.file, written.replaces], [0, 'cvs/jane.png', true]);
-  assert.equal(PNG.sync.read(readFileSync(join(space.home, 'profiles', 'acme.json'))).width, 10);
+  assert.deepEqual([into.exit, into.codes], [1, ['TARGET_NOT_A_FILE']]);
+  assert.equal(readFileSync(join(space.home, 'profiles', 'acme.json'), 'utf8'), acme);
+  // A link that leads nowhere is replaced by the photo.
+  rmSync(join(space.home, 'cvs', 'jane.png'));
+  symlinkSync('nowhere.png', join(space.home, 'cvs', 'jane.png'));
+  const dangling = await call(space, ['photo', 'set', '--file', source, '--replace']);
+  assert.deepEqual(
+    [dangling.exit, lstatSync(join(space.home, 'cvs', 'jane.png')).isSymbolicLink()],
+    [0, false],
+  );
+  assert.equal(existsSync(join(space.home, 'cvs', 'nowhere.png')), false);
 });
 
 // A part of the plan that adx refuses leaves the photo and the file that names it as they were.
@@ -955,7 +1006,9 @@ test('schema answers the accepted input of a command', async () => {
 test('every packaged example CV and profile fits and builds', async () => {
   const space = { ...workspace(), home: fileURLToPath(new URL('../../examples', import.meta.url)) };
   const cvs = (await call(space, ['cvs'])).answer.cvs;
-  const profiles = (await call(space, ['profiles'])).answer.profiles;
+  const profiles = z
+    .object({ items: z.unknown() })
+    .parse((await call(space, ['profiles'])).answer.result).items;
   const List = z.array(z.looseObject({ name: z.string(), fits: z.boolean() }));
   const listed = [...List.parse(cvs), ...List.parse(profiles)];
   assert.deepEqual(
@@ -1042,7 +1095,35 @@ test('refuses bad input with exit code 1 and the code of the reason', async () =
     [['cvs', '--output', 'pdf'], 'UNKNOWN_OUTPUT'],
     [['preview', '--output', 'pdf'], 'NOT_IN_LIST'],
     [['plan', '--home', join(space.cwd, 'missing')], 'ROOT_NOT_FOUND'],
-    [['profiles', '--home', 'missing'], 'NO_CV'],
+    [['cvs', '--home', 'missing'], 'NO_CV'],
+    [['profiles', '--home', join(space.cwd, 'empty-home')], 'NO_CV'],
+    [
+      [
+        'profile',
+        'set',
+        '--profile',
+        'globex',
+        '--order',
+        'awards',
+        '--home',
+        join(space.cwd, 'empty-home'),
+      ],
+      'NO_CV',
+    ],
+    [
+      [
+        'profile',
+        'set',
+        '--profile',
+        'globex',
+        '--order',
+        'awards',
+        '--home',
+        join(space.cwd, 'broken-home'),
+      ],
+      'SCHEMA',
+    ],
+    [['profile', 'show', '--profile', 'badjson'], 'STORED_INVALID'],
     [['plan', '--home', join(space.cwd, 'broken-home')], 'SCHEMA'],
     [['plan', '--profile', 'nobody'], 'NOT_IN_LIST'],
     [['preview', '--profile', 'nobody'], 'NOT_IN_LIST'],
@@ -1156,27 +1237,10 @@ test('a refusal names a command that lists the fitting values, and that command 
       'UNKNOWN_BLOCK',
       'oriko show --cv jane --block',
     ],
-    [
-      ['profile', 'set', '--profile', 'globex', '--json', '{"cv":"jane","order":["nobody"]}'],
-      'UNKNOWN_BLOCK',
-      'oriko show --cv jane --block',
-    ],
     [['cvs', '--output', 'pdf'], 'UNKNOWN_OUTPUT', 'oriko --output'],
-    [['profile', 'set', '--profile', 'globex'], 'MISSING_INPUT', 'oriko schema profile set'],
-    [
-      ['profile', 'set', '--profile', 'globex', '--json'],
-      'MISSING_VALUE',
-      'oriko schema profile set',
-    ],
     [['paint'], 'UNKNOWN_COMMAND', 'oriko schema'],
     [['cvs', '--color'], 'UNKNOWN_OPTION', 'oriko schema'],
     [['init', '--json', NEW_CV], 'MISSING_OPTION', 'oriko show --cv'],
-    [
-      ['profile', 'set', '--json', '{"cv":"jane"}'],
-      'MISSING_OPTION',
-      'oriko profile set --profile',
-    ],
-    [['profile', 'show'], 'MISSING_OPTION', 'oriko profile show --profile'],
     [['read', '--posting', 'job.pdf'], 'MISSING_OPTION', 'oriko read --profile'],
   ];
   // The command keeps the --home of the call, or it would list the CVs of another data folder.
@@ -1214,6 +1278,33 @@ test('a refusal names a command that lists the fitting values, and that command 
       'CV_REQUIRED',
       `oriko photo set --file ${picture} --home ${space.home} --cv`,
     ],
+    [
+      ['profile', 'set', '--profile', 'globex', '--order', 'awards'],
+      'CV_REQUIRED',
+      `oriko profile set --profile globex --order awards --home ${space.home} --cv`,
+    ],
+    [
+      ['profile', 'set', '--profile', 'globex', '--cv', 'nobody'],
+      'NOT_IN_LIST',
+      `oriko profile set --profile globex --home ${space.home} --cv`,
+    ],
+    [
+      ['profile', 'set', '--profile', 'acme', '--cv', 'jane'],
+      'ALREADY_EXISTS',
+      `oriko profile set --profile acme --cv jane --home ${space.home} --replace --dry-run`,
+    ],
+    [['profile', 'set', '--profile', 'globex'], 'NOTHING_TO_STORE', 'oriko schema profile set'],
+    [
+      ['profile', 'set', '--profile', 'globex', '--json'],
+      'MISSING_VALUE',
+      'oriko schema profile set',
+    ],
+    [['profile', 'set', '--json', '{"cv":"jane"}'], 'SCHEMA', 'oriko schema profile set'],
+    [
+      ['profile', 'show', '--profile', 'nobody'],
+      'NOT_IN_LIST',
+      `oriko profile show --home ${space.home} --profile`,
+    ],
   ];
   for (const [argv, code, command] of listing) {
     const [issue] = (await call(space, [...argv, '--home', space.home])).answer.issues ?? [];
@@ -1228,30 +1319,6 @@ test('a refusal names a command that lists the fitting values, and that command 
   assert.deepEqual([none?.code, none?.command], ['NOT_IN_LIST', command]);
   const listed = await call(space, command.split(' ').slice(1));
   assert.deepEqual(listed.answer.result, { option: 'profile', values: [] });
-});
-
-// stdin can be read only once, so the CV of a piped input is found from the text read before.
-test('a refusal of a piped input finds the CV the input names', async () => {
-  const space = workspace();
-  await call(space, ['init', '--cv', 'erika', '--json', NEW_CV]);
-  const piped = [JSON.stringify({ cv: 'jane', order: ['nobody'] })];
-  let out = '';
-  await run(['profile', 'set', '--profile', 'globex'], {
-    home: space.home,
-    cwd: space.cwd,
-    web: fakeWeb({}, {}).web,
-    isTTY: false,
-    stdin: async () => piped.shift() ?? null,
-    write: text => (out += text),
-  });
-  const Refused = z.object({
-    issues: z.array(z.looseObject({ code: z.string(), command: z.string() })),
-  });
-  const [issue] = Refused.parse(JSON.parse(out)).issues;
-  assert.deepEqual(
-    [issue?.code, issue?.command],
-    ['UNKNOWN_BLOCK', 'oriko show --cv jane --block'],
-  );
 });
 
 test('schema answers every command and every shape it lists', async () => {
@@ -1320,13 +1387,6 @@ test('checks the call against its command and names every mistake at once', asyn
   const space = workspace();
   const cases: [string[], [string, string][]][] = [
     [['init'], [['MISSING_OPTION', 'cv']]],
-    [
-      ['profile', 'set', '--out', 'x.docx', '--json', '{}'],
-      [
-        ['OPTION_NOT_ALLOWED', 'out'],
-        ['MISSING_OPTION', 'profile'],
-      ],
-    ],
     [
       ['read', '--posting', 'job.pdf', '--out', 'x.docx'],
       [
@@ -1725,47 +1785,250 @@ test('profile set stores a checked profile and names what it adds, changes and r
   const fresh = { cv: 'jane', blocks: { campus: { hidden: true } } };
   const created = await call(space, profileSet('globex', fresh));
   assert.deepEqual(
-    [created.exit, created.answer.added, created.answer.changed, created.answer.removed],
-    [0, ['blocks.campus', 'cv'], [], []],
+    [created.exit, created.answer.applied, created.answer.result],
+    [
+      0,
+      true,
+      {
+        name: 'globex',
+        file: 'profiles/globex.json',
+        bytes: 81,
+        replaces: false,
+        changes: { added: ['blocks.campus', 'cv'], changed: [], removed: [], more: 0 },
+        cv: 'jane',
+        fits: true,
+        layout: [],
+      },
+    ],
   );
   assert.equal(stored(space, 'profiles', 'globex.json'), `${JSON.stringify(fresh, null, 2)}\n`);
+  // The same profile again writes nothing and needs no --replace (adx decision 81).
+  const again = await call(space, profileSet('globex', fresh));
+  assert.deepEqual(
+    [again.exit, z.looseObject({ unchanged: z.boolean() }).parse(again.answer.result).unchanged],
+    [0, true],
+  );
   const [exists] = (await call(space, profileSet('acme', fresh))).answer.issues ?? [];
   assert.deepEqual(
     [exists?.code, exists?.command],
-    ['PROFILE_EXISTS', 'oriko profile show --profile acme'],
+    [
+      'ALREADY_EXISTS',
+      `oriko profile set --profile acme --cv jane --json '{"blocks":{"campus":{"hidden":true}}}' --home ${space.home} --replace --dry-run`,
+    ],
   );
   const preview = await call(space, profileSet('acme', fresh, '--replace', '--dry-run'));
   assert.deepEqual(
-    [preview.answer.written, preview.answer.added, preview.answer.removed],
-    [false, ['blocks.campus'], ['blocks.freelance']],
+    [preview.answer.applied, Changed.parse(preview.answer.result).changes],
+    [false, { added: ['blocks.campus'], changed: [], removed: ['blocks.freelance'], more: 0 }],
   );
   assert.equal(stored(space, 'profiles', 'acme.json'), acme);
   assert.equal((await call(space, profileSet('acme', fresh, '--replace'))).exit, 0);
   assert.equal(stored(space, 'profiles', 'acme.json'), `${JSON.stringify(fresh, null, 2)}\n`);
+  // A profile that changes nothing is stored with its CV alone, and through stdin with --json -.
+  const piped = await call(
+    space,
+    ['profile', 'set', '--profile', 'initech', '--json', '-'],
+    '{"cv":"jane"}',
+  );
+  assert.deepEqual(
+    [piped.exit, stored(space, 'profiles', 'initech.json')],
+    [0, '{\n  "cv": "jane"\n}\n'],
+  );
+  // A stored profile that is no JSON counts as empty, so --replace mends it.
+  writeFileSync(join(space.home, 'profiles', 'torn.json'), '{');
+  const mended = await call(space, [
+    'profile',
+    'set',
+    '--profile',
+    'torn',
+    '--cv',
+    'jane',
+    '--replace',
+  ]);
+  assert.deepEqual(Changed.parse(mended.answer.result).changes, {
+    added: ['cv'],
+    changed: [],
+    removed: [],
+    more: 0,
+  });
+  // A profile that makes the CV too long is stored; the answer says what does not fit.
+  const long = await call(space, profileSet('long', { cv: 'jane', person: { role: LONG_ROLE } }));
+  const fit = z.looseObject({
+    fits: z.boolean(),
+    layout: z.array(z.looseObject({ code: z.string(), path: z.string() })),
+  });
+  const { fits, layout } = fit.parse(long.answer.result);
+  assert.deepEqual(
+    [long.exit, fits, layout.map(found => [found.code, found.path]), long.answer.next],
+    [0, false, [['ROLE_TOO_LONG', 'person.role']], undefined],
+  );
+});
+
+const Changed = z.looseObject({ changes: z.unknown() });
+
+// adx would write through a link at the profile to a file inside the data folder, such as a CV,
+// so profile set refuses it; a link that leads nowhere or out of the folder is replaced.
+test('profile set refuses a link to a stored file, and replaces a link adx replaces', async () => {
+  const space = workspace();
+  const jane = stored(space, 'cvs', 'jane.json');
+  symlinkSync('../cvs/jane.json', join(space.home, 'profiles', 'evil.json'));
+  const evil = await call(space, profileSet('evil', { cv: 'jane' }, '--replace'));
+  assert.deepEqual(
+    [evil.exit, evil.answer.issues?.map(issue => [issue.code, issue.path])],
+    [1, [['TARGET_NOT_A_FILE', 'profile']]],
+  );
+  assert.equal(stored(space, 'cvs', 'jane.json'), jane);
+  const outside = join(space.cwd, 'outside.json');
+  writeFileSync(outside, 'outside');
+  symlinkSync(outside, join(space.home, 'profiles', 'out.json'));
+  symlinkSync('nowhere.json', join(space.home, 'profiles', 'dangling.json'));
+  for (const name of ['out', 'dangling']) {
+    const replaced = await call(space, profileSet(name, { cv: 'jane' }, '--replace'));
+    const file = join(space.home, 'profiles', `${name}.json`);
+    assert.deepEqual(
+      [replaced.exit, lstatSync(file).isSymbolicLink(), stored(space, 'profiles', `${name}.json`)],
+      [0, false, '{\n  "cv": "jane"\n}\n'],
+      name,
+    );
+  }
+  assert.deepEqual(
+    [readFileSync(outside, 'utf8'), stored(space, 'profiles', 'nowhere.json')],
+    ['outside', null],
+  );
+});
+
+// A profile stored before in another key order is the same profile, so nothing is written.
+test('profile set writes nothing for the content of the stored profile in another order', async () => {
+  const space = workspace();
+  const before =
+    '{\n  "blocks": {\n    "freelance": {\n      "hidden": true\n    }\n  },\n  "cv": "jane"\n}\n';
+  writeFileSync(join(space.home, 'profiles', 'acme.json'), before);
+  const again = await call(
+    space,
+    profileSet('acme', { cv: 'jane', blocks: { freelance: { hidden: true } } }),
+  );
+  assert.deepEqual(
+    [again.exit, again.answer.result],
+    [
+      0,
+      {
+        name: 'acme',
+        file: 'profiles/acme.json',
+        bytes: before.length,
+        replaces: false,
+        unchanged: true,
+        changes: { added: [], changed: [], removed: [], more: 0 },
+        cv: 'jane',
+        fits: true,
+        layout: [],
+      },
+    ],
+  );
+  assert.equal(stored(space, 'profiles', 'acme.json'), before);
+});
+
+// adx reads up to 1,048,576 characters from stdin; a profile or an edit is held to the byte limit
+// of a stored file, counted as compact JSON.
+test('profile set and an edit refuse an input past the byte limit of a stored file', async () => {
+  const space = workspace();
+  const long = 'x'.repeat(1_000_100);
+  const cases: [string[], string][] = [
+    [
+      ['profile', 'set', '--profile', 'globex', '--json', '-'],
+      JSON.stringify({ cv: 'jane', blocks: { awards: { title: long } } }),
+    ],
+    [['item', 'add', '--json', '-'], JSON.stringify({ block: 'interests', value: long })],
+  ];
+  for (const [argv, stdin] of cases) {
+    const { exit, answer } = await call(space, argv, stdin);
+    assert.deepEqual(
+      [exit, answer.issues?.map(issue => [issue.code, issue.path])],
+      [1, [['JSON_TOO_LARGE', undefined]]],
+      argv.join(' '),
+    );
+  }
 });
 
 // The same checks plan runs, before anything is written: a refused profile is never stored.
 test('profile set refuses a profile that does not fit its CV, and stores nothing', async () => {
   const space = workspace();
-  const cases: [string[], [string, string][]][] = [
+  const { pages, ...withoutPages } = JSON.parse(readFileSync(FIXTURE_URL, 'utf8'));
+  const twice = {
+    ...withoutPages,
+    pages,
+    blocks: [...withoutPages.blocks, withoutPages.blocks[0]],
+  };
+  writeFileSync(join(space.home, 'cvs', 'twice.json'), JSON.stringify(twice));
+  writeFileSync(join(space.home, 'cvs', 'bare.json'), JSON.stringify(withoutPages));
+  // The profile is the input, so its issues stand at its own fields, and those of the CV below cv.
+  const cases: [string[], string | null, [string, string | undefined, string | undefined][]][] = [
     [
       profileSet('globex', { cv: 'jane', blocks: { nobody: { hidden: true } } }),
-      [['UNKNOWN_BLOCK', 'blocks.nobody']],
+      null,
+      [['UNKNOWN_BLOCK', 'blocks.nobody', undefined]],
+    ],
+    [
+      profileSet('globex', { cv: 'jane', order: ['awards', 'nobody'] }),
+      null,
+      [['UNKNOWN_BLOCK', 'order.1', undefined]],
     ],
     [
       profileSet('globex', { cv: 'jane', blocks: { northwind: { bullets: ['a\nb'] } } }),
-      [['SCHEMA', 'blocks.northwind.bullets.0']],
+      null,
+      [['SCHEMA', 'blocks.northwind.bullets.0', 'oriko schema block']],
     ],
-    [profileSet('globex', { cv: 'jane', colour: 'red' }), [['SCHEMA', '']]],
-    [profileSet('globex', { cv: 'nobody' }), [['UNKNOWN_CV', 'profile.cv']]],
-    [profileSet('../globex', { cv: 'jane' }), [['SCHEMA', 'profile']]],
-    [['profile', 'set', '--json', '{"cv":"jane"}'], [['MISSING_OPTION', 'profile']]],
-    [['profile', 'set', '--profile', 'globex'], [['MISSING_INPUT', 'json']]],
+    [
+      profileSet('globex', { cv: 'jane', blocks: { northwind: { employer: 'Elsewhere' } } }),
+      null,
+      [['FACT_CHANGED', 'blocks.northwind.employer', undefined]],
+    ],
+    [
+      profileSet('globex', { cv: 'jane', order: ['cedar'] }),
+      null,
+      [['JOB_MOVED', 'order', undefined]],
+    ],
+    [
+      profileSet('globex', { cv: 'twice', order: ['awards'] }),
+      null,
+      [
+        [
+          'DUPLICATE_ID',
+          'cv.blocks.northwind',
+          `oriko profile set --profile globex --order awards --home ${space.home} --cv`,
+        ],
+      ],
+    ],
+    [
+      profileSet('globex', { cv: 'bare', order: ['awards'] }),
+      null,
+      [['SCHEMA', 'cv.pages', 'oriko schema master']],
+    ],
+    [
+      profileSet('globex', { cv: 'jane', colour: 'red' }),
+      null,
+      [['SCHEMA', 'colour', 'oriko schema profile set']],
+    ],
+    [
+      profileSet('../globex', { cv: 'jane' }),
+      null,
+      [['SCHEMA', 'profile', 'oriko schema profile set']],
+    ],
+    // A call that names no field stores no empty profile, and piped text needs --json -.
+    [
+      ['profile', 'set', '--profile', 'globex', '--json', '{}'],
+      null,
+      [['NOTHING_TO_STORE', undefined, 'oriko schema profile set']],
+    ],
+    [
+      ['profile', 'set', '--profile', 'globex'],
+      '{"cv":"jane"}',
+      [['NOTHING_TO_STORE', undefined, 'oriko schema profile set']],
+    ],
   ];
-  for (const [argv, expected] of cases) {
-    const { exit, answer } = await call(space, argv);
+  for (const [argv, stdin, expected] of cases) {
+    const { exit, answer } = await call(space, argv, stdin);
     assert.deepEqual(
-      [exit, answer.issues?.map(issue => [issue.code, issue.path])],
+      [exit, answer.issues?.map(issue => [issue.code, issue.path, issue.command])],
       [1, expected],
       argv.join(' '),
     );
@@ -1779,28 +2042,46 @@ test('profile show answers a stored profile and its posting', async () => {
   writeFileSync(join(space.home, 'profiles', 'odd.json'), JSON.stringify({ colour: 'red' }));
   assert.deepEqual((await call(space, ['profile', 'show', '--profile', 'acme'])).answer, {
     ok: true,
-    name: 'acme',
-    profile: { cv: 'jane', blocks: { freelance: { hidden: true } } },
-    posting: null,
+    result: {
+      name: 'acme',
+      profile: { cv: 'jane', blocks: { freelance: { hidden: true } } },
+      posting: null,
+    },
     next: [
       {
         does: 'places every block on the pages',
-        command: 'oriko plan --profile acme',
+        command: `oriko plan --profile acme --home ${space.home}`,
       },
     ],
   });
   await call(space, ['read', '--profile', 'globex', '--posting', 'job.txt']);
   const posting = (await call(space, ['profile', 'show', '--profile', 'globex'])).answer;
-  assert.deepEqual(
-    [posting.profile, posting.posting],
-    [null, '---\nsource: "job.txt"\nkind: text\n---\n\nSenior Go Engineer\n'],
-  );
+  assert.deepEqual(posting.result, {
+    name: 'globex',
+    profile: null,
+    posting: '---\nsource: "job.txt"\nkind: text\n---\n\nSenior Go Engineer\n',
+  });
+  // A posting without a profile counts as a name, and a stored profile must pass its shape; adx
+  // lists regular files only, so a link and a folder count as no name.
+  symlinkSync('acme.json', join(space.home, 'profiles', 'link.json'));
+  mkdirSync(join(space.home, 'profiles', 'folder.posting.md'));
+  assert.deepEqual((await call(space, ['profile', 'show', '--profile'])).answer.result, {
+    option: 'profile',
+    values: [{ value: 'acme' }, { value: 'broken' }, { value: 'globex' }, { value: 'odd' }],
+  });
   const refused = [
     await call(space, ['profile', 'show', '--profile', 'nobody']),
     await call(space, ['profile', 'show', '--profile', 'odd']),
+    await call(space, ['profile', 'show', '--profile', 'link']),
+    await call(space, ['profile', 'show', '--profile', 'folder']),
   ];
   assert.deepEqual(
-    refused.map(({ codes }) => codes),
-    [['UNKNOWN_PROFILE'], ['SCHEMA']],
+    refused.map(({ answer }) => answer.issues?.map(issue => [issue.code, issue.path])),
+    [
+      [['NOT_IN_LIST', 'profile']],
+      [['SCHEMA', 'profile']],
+      [['NOT_IN_LIST', 'profile']],
+      [['NOT_IN_LIST', 'profile']],
+    ],
   );
 });

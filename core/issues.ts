@@ -3,8 +3,10 @@
  *
  * Issues: what a helper answers in place of its value, at least one issue at a field of the call.
  * noCv, cvRequired, unknownCv, cvMismatch: what the data folder does not hold for a call.
+ * targetNotAFile, oversized: a link at the target of a write, and an input past the byte limit.
  * Stored, SHAPE, raised: the field that names a stored file, the shape of each, and an issue of
  * the check of a CV or of the page plan below it.
+ * turnedEach: every issue of such a refusal, turned at a place the caller picks.
  * issueAt, unknownBlock: one such issue at a field an edit picks, and a block id no block has.
  *
  * A code of adx has one hint. Where oriko's hint named the field or the column, the message of
@@ -19,6 +21,7 @@ import type { Code, Issue } from '@honeyglass/adx';
 import { z } from 'zod';
 import { Master, Profile } from './cv.schema.ts';
 import type { Issue as OldIssue, Rejection } from './errors.ts';
+import { FILE_LIMITS } from './files.limits.ts';
 
 export type Issues<F extends string> = [Issue<F>, ...Issue<F>[]];
 
@@ -43,6 +46,32 @@ export const cvMismatch = code(
   'fix',
   'Leave out --cv, or change the field cv of the profile',
 );
+
+// What stands at the target of a write; adx owns NOT_A_FILE, so the name says what it is about.
+export const targetNotAFile = code(
+  'TARGET_NOT_A_FILE',
+  'fix',
+  'Remove the link that stands there, or name another target',
+);
+
+// The input of a command past the byte limit of a stored file; adx owns INPUT_TOO_LARGE.
+const jsonTooLarge = code(
+  'JSON_TOO_LARGE',
+  'fix',
+  `Send at most ${FILE_LIMITS.inputBytes} bytes; a CV is a few thousand`,
+);
+
+/**
+ * adx reads the input and hands over its value, so the limit counts the value as compact JSON:
+ * an input past it is past it in any form the call gave.
+ *
+ * @param input - the input of a command, past its schema
+ * @returns JSON_TOO_LARGE, with no path, when the input is larger than a stored file may be
+ */
+export const oversized = (input: object) =>
+  Buffer.byteLength(JSON.stringify(input)) > FILE_LIMITS.inputBytes
+    ? [jsonTooLarge.issue(`The input holds more than ${FILE_LIMITS.inputBytes} bytes of JSON`)]
+    : [];
 
 // What the check of a CV and of its profile finds.
 const duplicateId = code('DUPLICATE_ID', 'fix', 'Give every block its own id');
@@ -122,7 +151,22 @@ export function raised<F extends Stored>(
   fileOf: (found: OldIssue) => F,
   refused: Rejection,
 ): Issues<F> {
-  const [first, ...rest] = refused.issues.map(found => turned(fileOf(found), found));
+  return turnedEach(refused, found => turned(fileOf(found), found));
+}
+
+/**
+ * Every issue of a refusal of the pure code, turned one by one, as the caller places it.
+ *
+ * @param refused - the refusal of the check or of the page plan
+ * @param turn - the issue of adx for one issue of the refusal
+ * @returns the turned issues, at least one
+ * @throws a bug refusal for a refusal without an issue
+ */
+export function turnedEach<F extends string>(
+  refused: Rejection,
+  turn: (found: OldIssue) => Issue<F>,
+): Issues<F> {
+  const [first, ...rest] = refused.issues.map(turn);
   if (first === undefined) throw notTurned('a refusal of the check holds no issue');
   return [first, ...rest];
 }

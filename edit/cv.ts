@@ -8,6 +8,7 @@
  * @example const { exit, out } = await run(oriko, ['cv', 'update', '--json', '{"pages":1}']);
  */
 import { effect } from '@honeyglass/adx';
+import { oversized } from '../core/issues.ts';
 import { cvChoices } from '../core/sources.ts';
 import { apply } from './apply.ts';
 import { INPUT } from './edit.schema.ts';
@@ -18,6 +19,7 @@ export const update = effect({
   input: INPUT['cv update'],
   example: { language: 'de' },
   values: { cv: cvChoices },
+  check: oversized,
   replace: false,
   plan: async (input, { files, refuse }) => {
     const done = await saved(input.cv, files, master => apply(master, 'cv update', input));

@@ -9,6 +9,7 @@
  * @example const { exit, out } = await run(oriko, ['item', 'add', '--json', '{"block":"libraries","value":"Vitest"}']);
  */
 import { effect } from '@honeyglass/adx';
+import { oversized } from '../core/issues.ts';
 import { cvChoices } from '../core/sources.ts';
 import { apply } from './apply.ts';
 import { INPUT } from './edit.schema.ts';
@@ -19,6 +20,7 @@ export const add = effect({
   input: INPUT['item add'],
   example: { block: 'libraries', value: 'Vitest' },
   values: { cv: cvChoices },
+  check: oversized,
   replace: false,
   plan: async (input, { files, refuse }) => {
     const done = await saved(input.cv, files, master => apply(master, 'item add', input));
@@ -31,6 +33,7 @@ export const update = effect({
   input: INPUT['item update'],
   example: { block: 'libraries', index: 0, value: 'Express' },
   values: { cv: cvChoices },
+  check: oversized,
   replace: false,
   plan: async (input, { files, refuse }) => {
     const done = await saved(input.cv, files, master => apply(master, 'item update', input));
@@ -43,6 +46,7 @@ export const remove = effect({
   input: INPUT['item remove'],
   example: { block: 'libraries', index: 0 },
   values: { cv: cvChoices },
+  check: oversized,
   replace: false,
   plan: async (input, { files, refuse }) => {
     const done = await saved(input.cv, files, master => apply(master, 'item remove', input));
@@ -55,6 +59,7 @@ export const move = effect({
   input: INPUT['item move'],
   example: { block: 'libraries', index: 1, to: 0 },
   values: { cv: cvChoices },
+  check: oversized,
   replace: false,
   plan: async (input, { files, refuse }) => {
     const done = await saved(input.cv, files, master => apply(master, 'item move', input));

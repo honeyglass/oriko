@@ -55,8 +55,11 @@ download goes only to a public address over https on port 443, at every redirect
 document stops at a size limit. Every character that does not show as itself becomes a space.
 
 `profile set` takes the whole version as JSON and runs the checks of `plan` before it writes, so
-a refused version is never stored. An existing version is replaced only with `--replace`, and the
-answer names each part it adds, changes or removes, with `--dry-run` too.
+a refused version is never stored. An existing version is replaced only with `--replace`; the
+same version again writes nothing and says `"unchanged": true`. The answer names the file, each
+part it adds, changes or removes in `changes`, with `--dry-run` too, and whether the CV fits its
+pages with it. A version piped to stdin needs `--json -`; a call that names no field of a version
+is refused with `NOTHING_TO_STORE`.
 
 When another program reads the output instead of a terminal, `preview` answers JSON with the
 sheets in `result.preview`. Add `--output text` to get the plain sheets there too, with the
@@ -65,7 +68,9 @@ sheets in `result.preview`. Add `--output text` to get the plain sheets there to
 `build` answers the file it wrote in `result`: `file` relative to the working directory, `bytes`,
 `replaces`, `style` and `pages`. The file is built again from the CV each time, so `build`
 replaces it without `--replace`, writes nothing when it holds the same bytes (`unchanged: true`),
-and creates a missing folder of `--out`. `--out` is a relative path inside the working directory.
+and creates a missing folder of `--out`. `--out` is a relative path inside the working directory;
+a link there to another file is refused with `TARGET_NOT_A_FILE`, as is one at a stored profile
+or photo, so a write never changes the file a link leads to.
 
 `oriko` alone answers where to start: the data folder, its CVs and its profiles. A group without
 its action lists the actions, such as `oriko block` for `block add`, `block update`, `block remove`
@@ -118,7 +123,7 @@ itself without `--dry-run`, with its data folder and every value quoted for the 
 }
 ```
 
-A command still on the old shell, such as `init` or `profile set`, says `"written": false` after
+A command still on the old shell, such as `init`, says `"written": false` after
 `--dry-run`, and its step is "repeat the call without --dry-run to write". An input that came
 through stdin is not part of the call there, so that step names `json` in `needs`. A command on
 adx reads stdin only with `--json -`.

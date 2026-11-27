@@ -13,7 +13,8 @@ from `core/`, the classic or terminal style (`--style`) from `classic/` or `term
 for the PDF.
 
 oriko moves onto the toolkit `@honeyglass/adx` one command at a time. A command in the table of
-`oriko.ts`, today `plan`, `preview`, `build`, `photo set` and the edits of `edit/`, is read,
+`oriko.ts`, today `plan`, `preview`, `build`, the profile commands of `profile/`, `photo set` and
+the edits of `edit/`, is read,
 checked and answered by adx in the one answer shape adx gives every tool; every other call still
 goes through the shell described here.
 
@@ -42,7 +43,8 @@ goes through the shell described here.
 - `issues.ts`: the errors of `build` on adx: an `--out` file that is no .docx or .pdf, and
   `--credits` without the terminal style.
 - `next.ts`: names the steps on adx that lead from a feature into `cli/`, such as `build` after
-  `photo set`, and `preview` and `build` after an edit that leaves the CV fitting its pages.
+  `photo set`, `plan` after `profiles`, and `preview` and `build` after an edit or a stored
+  profile that leaves the CV fitting its pages.
 
 ## Example
 

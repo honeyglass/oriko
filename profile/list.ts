@@ -1,38 +1,72 @@
 /**
- * The command profiles: every profile of the data folder, and whether each fits its pages.
+ * The command `oriko profiles` on adx: every profile of the data folder, and whether it builds.
  *
- * listProfiles: every profile with its CV, whether it builds, and on how many pages.
+ * profiles: the list, which the tool lists under the word profiles.
  *
- * @example const answer = await listProfiles(home, undefined);
+ * A profile is applied to its CV and placed, and the list answers what keeps it from building
+ * instead of refusing: a refusal of adx for the read of one stored file, such as a file that
+ * holds no JSON or may not be read, becomes the codes of that profile. Any other error is a bug
+ * and ends the call. The key is the name, and the outline holds every field, so no command shows
+ * one.
+ *
+ * @example const { exit, out } = await run(oriko, ['profiles']);
  */
-import { done } from '../core/errors.ts';
-import type { Result } from '../core/errors.ts';
-import { place } from '../core/place.old.ts';
-import { heldCvs, profileNames } from '../core/home.old.ts';
-import { checked, cvOf, profileOf } from '../core/load.old.ts';
+import { Refused, list, paged } from '@honeyglass/adx';
+import { $try } from '@honeyglass/utils/ts';
+import { z } from 'zod';
+import { cvNames, profileFile, profileNames } from '../core/home.ts';
+import { checked, cvOf, noStoredCv, storedJson } from '../core/load.ts';
+import { place } from '../core/place.ts';
 
-type Fields = Record<string, unknown>;
+const Listed = z.object({
+  name: z.string().describe('the name of the profile'),
+  cv: z.string().optional().describe('the CV it belongs to'),
+  fits: z.boolean().describe('whether the CV fits its pages with it'),
+  pages: z.number().optional().describe('the pages it fills, when it fits'),
+  issues: z.array(z.string()).optional().describe('the codes of what keeps it from building'),
+});
 
-// Every profile with what a caller needs to pick one: its CV, whether it builds, and on how many pages.
-export async function listProfiles(
-  home: string,
-  cvName: string | undefined,
-): Promise<Result<Fields>> {
-  const cvs = await heldCvs(home);
-  if (cvs.error !== null) return cvs;
-  const only = cvs.data.length === 1 ? cvs.data[0] : undefined;
-  const listed = [];
-  for (const name of await profileNames(home)) {
-    const profile = await profileOf(home, name);
-    const cv = cvOf(profile.data) ?? only;
-    const built = await checked(home, cvName, name);
-    const placed = built.error === null ? place(built.data) : built;
-    const issues = placed.error?.issues.map(issue => issue.code);
-    listed.push(
-      placed.error === null
-        ? { name, cv, fits: true, pages: placed.data.pages.length }
-        : { name, cv, fits: false, issues },
-    );
+// The step after it, plan, lies in cli/ and stands in cli/next.ts.
+export const profiles = list({
+  does: 'lists the profiles and whether each fits its pages',
+  item: Listed,
+  key: 'name',
+  outline: ['cv', 'fits', 'pages', 'issues'],
+  run: async (_, { page, refuse }) => {
+    const cvs = await cvNames();
+    if (cvs.length === 0) return refuse(noStoredCv());
+    const only = cvs.length === 1 ? cvs[0] : undefined;
+    const listed = [];
+    for (const name of await profileNames()) listed.push(await listedOf(name, only));
+    return paged(listed, page);
+  },
+});
+
+/**
+ * @param name - the name of a stored profile
+ * @param only - the one CV of the data folder, which a profile without a field cv belongs to
+ * @returns the profile with its CV, and the pages it fills or the codes that keep it from building
+ */
+async function listedOf(name: string, only: string | undefined) {
+  const read = storedJson(profileFile(name));
+  const cv = cvOf(await $try(read, { or: undefined, expected: isRefused })) ?? only;
+  const built = await $try(builtOf(name));
+  if (built.error === null)
+    return typeof built.data === 'number'
+      ? { name, cv, fits: true, pages: built.data }
+      : { name, cv, fits: false, issues: built.data };
+  if (built.error instanceof Refused) {
+    const issues = built.error.issues.map(found => found.code);
+    return { name, cv, fits: false, issues };
   }
-  return done({ profiles: listed });
+  throw built.error;
 }
+
+// The pages the profile fills, or the codes of the check and of the page plan.
+async function builtOf(name: string) {
+  const loaded = await checked(undefined, name);
+  const placed = Array.isArray(loaded) ? loaded : place(loaded);
+  return Array.isArray(placed) ? placed.map(found => found.code) : placed.pages.length;
+}
+
+const isRefused = (error: Error) => error instanceof Refused;

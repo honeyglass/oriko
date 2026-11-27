@@ -14,9 +14,6 @@ import { createCv } from '../cv/init.ts';
 import { listCvs } from '../cv/list.ts';
 import { showCv } from '../cv/show.ts';
 import { readDocuments } from '../read/documents.ts';
-import { setProfile } from '../profile/set.ts';
-import { showProfile } from '../profile/show.ts';
-import { listProfiles } from '../profile/list.ts';
 import { actionsOf } from './route.ts';
 import { schema } from './describe.ts';
 import { payload } from './input.ts';
@@ -34,16 +31,10 @@ export async function dispatched(call: Call): Promise<Result<Fields>> {
       return init(call);
     case 'show':
       return showCv(call.home, call.values.cv, call.values.profile, call.values.block);
-    case 'profiles':
-      return listProfiles(call.home, call.values.cv);
     case 'read':
       return read(call);
-    case 'profile set':
-      return profileSet(call);
-    case 'profile show':
-      return showProfile(call.home, call.values.profile);
-    // plan, preview, build, photo set and the edits run on adx: cli/interim.ts never sends them
-    // here, so a call that reaches this line is a bug of the routing.
+    // plan, preview, build, the profile commands, photo set and the edits run on adx:
+    // cli/interim.ts never sends them here, so a call that reaches this line is a bug of the routing.
     default:
       throw new RefusalError({
         kind: 'bug',
@@ -76,18 +67,6 @@ async function init(call: Call): Promise<Result<Fields>> {
   if (input.error !== null) return input;
   const isDryRun = call.values['dry-run'] === true;
   return createCv({ home: call.home, name: call.values.cv, input: input.data, isDryRun });
-}
-
-async function profileSet(call: Call): Promise<Result<Fields>> {
-  const input = await payload(call, 'profile set');
-  if (input.error !== null) return input;
-  return setProfile({
-    home: call.home,
-    name: call.values.profile,
-    input: input.data,
-    isReplace: call.values.replace === true,
-    isDryRun: call.values['dry-run'] === true,
-  });
 }
 
 async function read(call: Call): Promise<Result<Fields>> {

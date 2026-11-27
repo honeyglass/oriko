@@ -41,11 +41,13 @@ from the other folders, so every feature can rely on it.
 - `place.old.ts`: plans the pages: it puts each block whole on a page, or names the blocks that do
   not fit.
 - `home.ts`: names the data folder and the working directory for adx, and the CV and profile
-  files in the data folder.
-- `issues.ts`: declares the codes `core/` raises on adx, and turns an issue of the check or of the
-  page plan into one of adx, below the field that names its file or at a field an edit picks.
+  files in the data folder; it refuses a write whose target is a link to another file.
+- `issues.ts`: declares the codes `core/` raises on adx, holds the input to the byte limit of a
+  stored file, and turns an issue of the check or of the page plan into one of adx, below the
+  field that names its file or at a place the command picks.
 - `load.ts`: reads the CV and the profile a command on adx names, picks the CV, checks both, and
-  decides which of the two files an issue lies in, the issue of the photo included.
+  decides which of the two files an issue lies in, the issue of the photo included; it also reads
+  the CV an edit changes or a new profile belongs to.
 - `options.ts`: describes the fields `--cv` and `--profile`, with the one text each has.
 - `place.ts`: describes the page plan as a schema, plans the pages for a command on adx, and says
   whether a CV an edit changed still fits its pages.
@@ -83,8 +85,8 @@ that still run on the old shell.
   - [edit/](../edit/README.md): imports `check.ts`, `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
     `files.limits.ts`, `home.ts`, `issues.ts`, `load.ts`, `options.ts`, `place.ts`, `sources.ts`
   - [pdf/](../pdf/README.md): imports `issues.ts`
-  - [profile/](../profile/README.md): imports `check.ts`, `cv.schema.ts`, `errors.ts`, `files.ts`,
-    `home.old.ts`, `issues.old.ts`, `load.old.ts`, `options.old.ts`, `place.old.ts`
+  - [profile/](../profile/README.md): imports `check.ts`, `cv.schema.ts`, `errors.ts`,
+    `files.limits.ts`, `home.ts`, `issues.ts`, `load.ts`, `place.ts`, `sources.ts`
   - [read/](../read/README.md): imports `cv.schema.ts`, `errors.ts`, `files.limits.ts`, `files.ts`,
     `home.old.ts`, `issues.old.ts`
   - [terminal/](../terminal/README.md): imports `cv.limits.ts`, `cv.schema.ts`, `metrics.ts`,

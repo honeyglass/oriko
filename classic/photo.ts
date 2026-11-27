@@ -15,7 +15,7 @@ import { effect } from '@honeyglass/adx';
 import type { File } from '@honeyglass/adx';
 import { z } from 'zod';
 import { FILE_LIMITS } from '../core/files.limits.ts';
-import { cvFile, cvNames, home, profileFile } from '../core/home.ts';
+import { cvFile, cvNames, home, profileFile, targetIssue } from '../core/home.ts';
 import type { Issues, Stored } from '../core/issues.ts';
 import { chosenName, noStoredCv, storedShape } from '../core/load.ts';
 import { cv, profile } from '../core/options.ts';
@@ -44,8 +44,12 @@ export const set = effect({
     if (Array.isArray(owner)) return refuse(...owner);
     const picture = await squarePhoto(file);
     if (Array.isArray(picture)) return refuse(...picture);
+    // The file that names the photo comes from the list of its folder, so only the photo is checked.
+    const photo = home.file(owner.photo);
+    const blocked = await targetIssue(profile === undefined ? 'cv' : 'profile', home, photo);
+    if (blocked !== undefined) return refuse(blocked);
     return {
-      photo: files.write(home.file(owner.photo), picture),
+      photo: files.write(photo, picture),
       owner: await files.update(owner.file, FILE_LIMITS.inputBytes, () => owner.text),
     };
   },
