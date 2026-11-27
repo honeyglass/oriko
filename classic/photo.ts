@@ -14,14 +14,10 @@
 import { effect } from '@honeyglass/adx';
 import type { File } from '@honeyglass/adx';
 import { z } from 'zod';
-import { Master, Profile } from '../core/cv.schema.ts';
-import { rejected } from '../core/errors.ts';
 import { FILE_LIMITS } from '../core/files.limits.ts';
 import { cvFile, cvNames, home, profileFile } from '../core/home.ts';
-import { raised } from '../core/issues.ts';
 import type { Issues, Stored } from '../core/issues.ts';
-import { schemaIssues } from '../core/issues.old.ts';
-import { chosenName, noStoredCv } from '../core/load.ts';
+import { chosenName, noStoredCv, storedShape } from '../core/load.ts';
 import { cv, profile } from '../core/options.ts';
 import { cvChoices, profileChoices } from '../core/sources.ts';
 import { squarePhoto } from './images.ts';
@@ -78,12 +74,6 @@ async function ownerOf(
   return withPhoto('cv', cvFile(name), `cvs/${name}.png`);
 }
 
-/** The shape of each stored file, and the name `oriko schema` shows it by. */
-const SHAPES = {
-  cv: { schema: Master, name: 'master' },
-  profile: { schema: Profile, name: 'profile' },
-};
-
 /**
  * The stored file is checked against its shape before it changes, so a broken CV is never written.
  *
@@ -97,11 +87,8 @@ async function withPhoto(
   file: File,
   photo: string,
 ): Promise<Owner | Issues<Stored>> {
-  const stored = await file.json(FILE_LIMITS.inputBytes, z.unknown());
-  const { schema, name } = SHAPES[field];
-  const parsed = schema.safeParse(stored);
-  if (parsed.success === false)
-    return raised(() => field, rejected('photo set', schemaIssues(parsed.error, [], name)).error);
-  const content = { ...parsed.data, person: { ...parsed.data.person, photo } };
+  const stored = await storedShape(field, file);
+  if (Array.isArray(stored)) return stored;
+  const content = { ...stored, person: { ...stored.person, photo } };
   return { file, photo, text: `${JSON.stringify(content, null, 2)}\n` };
 }

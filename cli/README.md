@@ -13,9 +13,9 @@ from `core/`, the classic or terminal style (`--style`) from `classic/` or `term
 for the PDF.
 
 oriko moves onto the toolkit `@honeyglass/adx` one command at a time. A command in the table of
-`oriko.ts`, today `plan`, `preview`, `build` and `photo set`, is read, checked and answered by adx
-in the one answer shape adx gives every tool; every other call still goes through the shell
-described here.
+`oriko.ts`, today `plan`, `preview`, `build`, `photo set` and the edits of `edit/`, is read,
+checked and answered by adx in the one answer shape adx gives every tool; every other call still
+goes through the shell described here.
 
 ## Modules
 
@@ -42,7 +42,7 @@ described here.
 - `issues.ts`: the errors of `build` on adx: an `--out` file that is no .docx or .pdf, and
   `--credits` without the terminal style.
 - `next.ts`: names the steps on adx that lead from a feature into `cli/`, such as `build` after
-  `photo set`.
+  `photo set`, and `preview` and `build` after an edit that leaves the CV fitting its pages.
 
 ## Example
 
@@ -65,7 +65,7 @@ answer.
     `files.limits.ts`, `home.old.ts`, `home.ts`, `issues.old.ts`, `issues.ts`, `load.old.ts`,
     `load.ts`, `options.old.ts`, `options.ts`, `place.ts`, `sources.ts`
   - [cv/](../cv/README.md): imports `init.ts`, `list.ts`, `show.ts`
-  - [edit/](../edit/README.md): imports `edit.schema.old.ts`, `save.ts`
+  - [edit/](../edit/README.md): imports `commands.ts`, `edit.schema.old.ts`
   - [pdf/](../pdf/README.md): imports `convert.ts`, `limits.ts`
   - [profile/](../profile/README.md): imports `list.ts`, `set.ts`, `show.ts`
   - [read/](../read/README.md): imports `documents.ts`, `limits.ts`, `web.ts`

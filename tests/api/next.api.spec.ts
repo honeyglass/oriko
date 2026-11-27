@@ -118,6 +118,33 @@ test('a success names its next steps, each a command with what it still needs', 
       ['photo', 'set', '--profile', 'acme', '--file', picture],
       [[`oriko build --profile acme --home ${space.home}`, ['out']]],
     ],
+    // An edit names preview and build while the CV fits its pages, and after a dry run the same
+    // call, its input through --json as the fields that need it.
+    [
+      ['item', 'add', '--cv', 'jane', '--json', '{"block":"interests","value":"Chess"}'],
+      [
+        [`oriko preview --cv jane --home ${space.home}`, []],
+        [`oriko build --cv jane --home ${space.home}`, ['out']],
+      ],
+    ],
+    [
+      [
+        'contact',
+        'add',
+        '--cv',
+        'jane',
+        '--json',
+        '{"value":{"icon":"mail","lines":["jane@example.org"]}}',
+        '--dry-run',
+      ],
+      [
+        [
+          `oriko contact add --cv jane --json '{"value":{"icon":"mail","lines":["jane@example.org"]}}' --home ${space.home}`,
+          [],
+        ],
+      ],
+    ],
+    [['cv', 'update', '--cv', 'jane', '--json', '{"pages":1}'], []],
   ];
   writeFileSync(join(space.cwd, 'job.txt'), 'Senior Go Engineer');
   writeFileSync(picture, photo());
@@ -142,6 +169,15 @@ test('every next command is a call oriko knows', async () => {
   writeFileSync(join(space.home, 'profiles', 'open.json'), '{}');
   answers.push(['preview', '--profile', 'open', '--cv', 'erika']);
   answers.push(['build', '--cv', 'jane', '--out', 'jane.docx', '--style', 'terminal', '--dry-run']);
+  answers.push([
+    'block',
+    'move',
+    '--cv',
+    'jane',
+    '--json',
+    '{"id":"awards","page":2}',
+    '--dry-run',
+  ]);
   const commands = [];
   for (const argv of answers) commands.push(...(await steps(space, argv)));
   for (const step of commands) {
@@ -190,11 +226,11 @@ test('the steps keep the data folder of the call', async () => {
 // A piped input is not part of the call, so repeating the call needs it again.
 test('the step after a dry run of a piped input still needs the input', async () => {
   const space = workspace();
-  const { next } = (await call(space, ['block', 'remove', '--dry-run'], '{"id":"awards"}')).answer;
+  const { next } = (await call(space, ['init', '--cv', 'erika', '--dry-run'], NEW_CV)).answer;
   assert.deepEqual(next, [
     {
       does: 'repeat the call without --dry-run to write',
-      command: 'oriko block remove',
+      command: 'oriko init --cv erika',
       needs: ['json'],
     },
   ]);

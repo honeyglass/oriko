@@ -1,52 +1,30 @@
 /**
- * The issues the edit commands raise, each made by one function.
+ * The codes the edit commands raise on adx, each declared once with its kind and hint.
  *
- * unknownCommand: a command name the edit commands do not know.
- * nothingToDo, bothAnchors, otherColumn: a block move that names no place or a wrong anchor.
+ * nothingToDo, bothAnchors, otherColumn: a block move that names no place, or a wrong anchor.
  * outOfRange: an index past the end of a list.
  *
- * @example if (index > last) return rejected(step, [issue.outOfRange('index', index, last)]);
+ * A code of adx has one hint, so where the hint named the column or the places of a list, the
+ * message names them now.
+ *
+ * @example return issue.bothAnchors.at('after', 'The input names two anchors');
  */
-import { shown } from '@honeyglass/utils/ts';
-import type { Issue } from '../core/errors.ts';
+import { code } from '@honeyglass/adx';
 
-export const unknownCommand = (command: string, names: string[]): Issue => ({
-  code: 'UNKNOWN_COMMAND',
-  path: '',
-  message: `There is no command ${shown(command)}`,
-  hint: `Use one of: ${names.join(', ')}`,
-});
+export const nothingToDo = code(
+  'NOTHING_TO_DO',
+  'fix',
+  'Send at least one of "before", "after" or "page"',
+);
+export const bothAnchors = code('BOTH_ANCHORS', 'fix', 'Send "before" or "after", not both');
+export const otherColumn = code(
+  'OTHER_COLUMN',
+  'fix',
+  'Use an anchor of the column the block stands in, one the message lists',
+);
 
-export const nothingToDo = (): Issue => ({
-  code: 'NOTHING_TO_DO',
-  path: '',
-  message: 'The input names no new place for the block',
-  hint: 'Send at least one of "before", "after" or "page"',
-});
-
-export const bothAnchors = (): Issue => ({
-  code: 'BOTH_ANCHORS',
-  path: 'after',
-  message: 'The input names two anchors',
-  hint: 'Send "before" or "after", not both',
-});
-
-export const otherColumn = (
-  id: string,
-  anchor: string,
-  column: string,
-  path: string,
-  others: string[],
-): Issue => ({
-  code: 'OTHER_COLUMN',
-  path,
-  message: `The block ${shown(id)} stands in the ${column} column, the anchor ${shown(anchor)} does not`,
-  hint: `Use an anchor of the ${column} column: ${others.join(', ')}`,
-});
-
-export const outOfRange = (path: string, index: number, last: number): Issue => ({
-  code: 'INDEX_OUT_OF_RANGE',
-  path,
-  message: `There is no place ${index} in this list`,
-  hint: last < 0 ? 'The list is empty; add an item first' : `Use an index from 0 to ${last}`,
-});
+export const outOfRange = code(
+  'INDEX_OUT_OF_RANGE',
+  'fix',
+  'Use a place the message names; to an empty list, add an item first',
+);

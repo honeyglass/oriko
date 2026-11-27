@@ -2,6 +2,7 @@
  * The gate for a master file and a profile: nothing else in the package reads unchecked data.
  *
  * check: the CV to build, with the profile applied and the hidden blocks left out.
+ * laidOver: a block with a patch over it, as a profile and an edit change one.
  *
  * @example const cv = check(JSON.parse(masterText), JSON.parse(profileText));
  */
@@ -153,18 +154,31 @@ const jobIds = (blocks: Block[]) =>
  * @param issues - collects what is wrong with the patch
  * @returns the patched block, or the block as it was when the patch is refused
  */
-export function patched(block: Block, patch: unknown, issues: Issue[]) {
+function patched(block: Block, patch: unknown, issues: Issue[]) {
   if (patch === undefined) return block;
   const fields = PATCH[block.kind].safeParse(patch);
   if (fields.success === false) {
     issues.push(...issue.schemaIssues(fields.error, ['blocks', block.id], 'block'));
     return block;
   }
-  const kept = Object.entries({ ...block, ...fields.data }).filter(([, value]) => value !== null);
-  const merged = Block.safeParse(Object.fromEntries(kept));
+  const merged = Block.safeParse(laidOver(block, fields.data));
   if (merged.success) return merged.data;
   issues.push(...issue.schemaIssues(merged.error, ['blocks', block.id], 'block'));
   return block;
+}
+
+/**
+ * The fields of a checked patch over a block, unchecked as a whole; the caller parses it as a
+ * Block again, which also puts its keys back in the order of the schema.
+ *
+ * @param block - the block as it stands
+ * @param fields - the fields to replace; a null removes the field
+ * @returns the block's fields with the patch laid over them
+ */
+export function laidOver(block: Block, fields: object) {
+  return Object.fromEntries(
+    Object.entries({ ...block, ...fields }).filter(([, value]) => value !== null),
+  );
 }
 
 function ordered(blocks: Block[], order: string[]) {

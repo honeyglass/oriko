@@ -40,8 +40,8 @@ stored photo and makes it round in the file.
 
 - **Uses:**
   - [core/](../core/README.md): imports `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
-    `files.limits.ts`, `files.ts`, `home.ts`, `issues.old.ts`, `issues.ts`, `load.ts`, `measure.ts`,
-    `metrics.ts`, `options.ts`, `place.old.ts`, `sources.ts`, `zip.ts`
+    `files.limits.ts`, `files.ts`, `home.ts`, `issues.ts`, `load.ts`, `measure.ts`, `metrics.ts`,
+    `options.ts`, `place.old.ts`, `sources.ts`, `zip.ts`
 - **Used by:**
   - [cli/](../cli/README.md): imports `docx.ts`, `photo.ts`
 

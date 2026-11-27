@@ -5,6 +5,7 @@
  *
  * @example const result = await dispatched(call);
  */
+import { RefusalError } from '@honeyglass/utils/ts';
 import { done } from '../core/errors.ts';
 import type { Result } from '../core/errors.ts';
 import { cvNames, profileNames } from '../core/home.old.ts';
@@ -12,7 +13,6 @@ import { profileCv } from '../core/load.old.ts';
 import { createCv } from '../cv/init.ts';
 import { listCvs } from '../cv/list.ts';
 import { showCv } from '../cv/show.ts';
-import { saveEdit } from '../edit/save.ts';
 import { readDocuments } from '../read/documents.ts';
 import { setProfile } from '../profile/set.ts';
 import { showProfile } from '../profile/show.ts';
@@ -42,10 +42,16 @@ export async function dispatched(call: Call): Promise<Result<Fields>> {
       return profileSet(call);
     case 'profile show':
       return showProfile(call.home, call.values.profile);
-    // plan, preview, build and photo set run on adx: cli/interim.ts never sends them here, so
-    // only the edits are left.
+    // plan, preview, build, photo set and the edits run on adx: cli/interim.ts never sends them
+    // here, so a call that reaches this line is a bug of the routing.
     default:
-      return edit(call, call.command);
+      throw new RefusalError({
+        kind: 'bug',
+        step: 'oriko',
+        reason: `the command ${call.command} runs on adx, and the old shell has no case for it`,
+        next: 'stop and tell the person; the maintainer of oriko fixes cli/interim.ts',
+        state: 'Nothing was written.',
+      });
   }
 }
 
@@ -98,17 +104,5 @@ async function read(call: Call): Promise<Result<Fields>> {
     profileCv: await profileCv(call.home, values.profile),
     isReplace: values.replace === true,
     isDryRun: values['dry-run'] === true,
-  });
-}
-
-async function edit(call: Call, command: string): Promise<Result<Fields>> {
-  const input = await payload(call, command);
-  if (input.error !== null) return input;
-  return saveEdit({
-    home: call.home,
-    cv: call.values.cv,
-    command,
-    input: input.data,
-    isDryRun: call.values['dry-run'] === true,
   });
 }

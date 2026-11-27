@@ -10,9 +10,8 @@
  *
  * @example const { options, input } = COMMANDS['block add'];
  */
-import { z } from 'zod';
 import type { ZodType } from 'zod';
-import { Block, ContactItem, ITEM, Master, NewCv, Profile } from '../core/cv.schema.ts';
+import { Block, ContactItem, Item, Master, NewCv, Profile } from '../core/cv.schema.ts';
 import { INPUT } from '../edit/edit.schema.old.ts';
 import type { OptionName } from '../core/options.old.ts';
 
@@ -103,11 +102,6 @@ export const COMMANDS = {
 } satisfies Record<string, Command>;
 
 export type CommandName = keyof typeof COMMANDS;
-
-// An item's shape depends on the kind of its block, so the one shape lists the kinds' shapes.
-const Item = z
-  .union([ITEM.job, ITEM.rated, ITEM.entries])
-  .describe('job and list blocks take text, rated blocks {name, level}, entries {title, note}');
 
 export const SHAPES = {
   master: Master,

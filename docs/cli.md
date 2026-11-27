@@ -75,21 +75,32 @@ every mistake of the call in one answer.
 A success names what can follow in `next`, when anything can, with what each step still needs. At
 a terminal the steps print as `Next:` lines below the answer. Piped text, with `--output text`,
 leaves them out for a command on the old shell, and prints them for a command on adx, such as
-`plan`, `preview` and `build`. JSON always holds them:
+`plan`, `preview` and `build`.
+
+An edit, such as
+`oriko block update --cv jane-doe --json '{"id":"awards","set":{"title":"Prizes"}}'`, answers the
+CV file it changed, what changed in it, and whether the CV still fits its pages. An edit that
+leaves the CV as it is writes nothing and says `"unchanged": true`. JSON always holds the steps:
 
 ```json
 {
   "ok": true,
-  "command": "block update",
-  "written": true,
-  "fits": true,
+  "applied": true,
+  "result": {
+    "file": "cvs/jane-doe.json",
+    "bytes": 7901,
+    "replaces": true,
+    "changes": { "added": ["blocks.14.title"], "changed": [], "removed": [], "more": 0 },
+    "fits": true,
+    "layout": []
+  },
   "next": [
     {
       "does": "draws the pages in the terminal",
       "command": "oriko preview --cv jane-doe"
     },
     {
-      "does": "writes the Word file",
+      "does": "writes the Word file, or its PDF through LibreOffice",
       "command": "oriko build --cv jane-doe",
       "needs": ["out"]
     }
@@ -97,24 +108,20 @@ leaves them out for a command on the old shell, and prints them for a command on
 }
 ```
 
-After `--dry-run` the one step is the call itself without `--dry-run`, with its data folder and
-every value quoted for the shell; an input that came through stdin is not part of the call, so
-that step names `json` in `needs`:
+After `--dry-run` the answer is the same with `"applied": false`, and the one step is the call
+itself without `--dry-run`, with its data folder and every value quoted for the shell:
 
 ```json
 {
-  "ok": true,
-  "command": "block remove",
-  "written": false,
-  "fits": true,
-  "next": [
-    {
-      "does": "repeat the call without --dry-run to write",
-      "command": "oriko block remove --cv jane-doe --json '{\"id\":\"awards\"}'"
-    }
-  ]
+  "does": "changes fields of a block",
+  "command": "oriko block update --cv jane-doe --id awards --json '{\"set\":{\"title\":\"Prizes\"}}'"
 }
 ```
+
+A command still on the old shell, such as `init` or `profile set`, says `"written": false` after
+`--dry-run`, and its step is "repeat the call without --dry-run to write". An input that came
+through stdin is not part of the call there, so that step names `json` in `needs`. A command on
+adx reads stdin only with `--json -`.
 
 oriko only names a step and never follows one. A step without `command`, such as the upload to
 Google Docs after `build`, is for the person.

@@ -4196,10 +4196,20 @@
     "stdout": {
       "json": {
         "ok": true,
-        "command": "contact add",
-        "written": true,
-        "fits": true,
-        "layout": [],
+        "applied": true,
+        "result": {
+          "file": "cvs/erika.json",
+          "bytes": 345,
+          "replaces": true,
+          "changes": {
+            "added": ["contact.items.0"],
+            "changed": [],
+            "removed": [],
+            "more": 0
+          },
+          "fits": true,
+          "layout": []
+        },
         "next": [
           {
             "does": "draws the pages in the terminal",
@@ -4262,10 +4272,20 @@
     "stdout": {
       "json": {
         "ok": true,
-        "command": "block add",
-        "written": true,
-        "fits": true,
-        "layout": [],
+        "applied": true,
+        "result": {
+          "file": "cvs/erika.json",
+          "bytes": 469,
+          "replaces": true,
+          "changes": {
+            "added": ["blocks.0"],
+            "changed": [],
+            "removed": [],
+            "more": 0
+          },
+          "fits": true,
+          "layout": []
+        },
         "next": [
           {
             "does": "draws the pages in the terminal",
@@ -4338,14 +4358,24 @@
     "stdout": {
       "json": {
         "ok": true,
-        "command": "item add",
-        "written": false,
-        "fits": true,
-        "layout": [],
+        "applied": false,
+        "result": {
+          "file": "cvs/erika.json",
+          "bytes": 485,
+          "replaces": true,
+          "changes": {
+            "added": ["blocks.0.items.1"],
+            "changed": [],
+            "removed": [],
+            "more": 0
+          },
+          "fits": true,
+          "layout": []
+        },
         "next": [
           {
-            "does": "repeat the call without --dry-run to write",
-            "command": "oriko item add --cv erika --json '{\"block\":\"skills\",\"value\":\"Rust\"}'"
+            "does": "adds a bullet, a skill or an entry to a block",
+            "command": "oriko item add --cv erika --block skills --json '{\"value\":\"Rust\"}'"
           }
         ]
       }
@@ -4364,16 +4394,13 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "item add",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
             "code": "SCHEMA",
             "path": "value",
             "message": "Invalid input: expected string, received number",
-            "hint": "Run the command for the accepted shape",
+            "hint": "Pass the input the schema of the command shows",
             "command": "oriko schema item"
           }
         ]
@@ -4392,10 +4419,20 @@
     "stdout": {
       "json": {
         "ok": true,
-        "command": "cv update",
-        "written": true,
-        "fits": true,
-        "layout": [],
+        "applied": true,
+        "result": {
+          "file": "cvs/erika.json",
+          "bytes": 469,
+          "replaces": true,
+          "changes": {
+            "added": [],
+            "changed": ["pages"],
+            "removed": [],
+            "more": 0
+          },
+          "fits": true,
+          "layout": []
+        },
         "next": [
           {
             "does": "draws the pages in the terminal",
@@ -4460,10 +4497,20 @@
     "stdout": {
       "json": {
         "ok": true,
-        "command": "item add",
-        "written": true,
-        "fits": true,
-        "layout": [],
+        "applied": true,
+        "result": {
+          "file": "cvs/erika.json",
+          "bytes": 485,
+          "replaces": true,
+          "changes": {
+            "added": ["blocks.0.items.1"],
+            "changed": [],
+            "removed": [],
+            "more": 0
+          },
+          "fits": true,
+          "layout": []
+        },
         "next": [
           {
             "does": "draws the pages in the terminal",
@@ -4536,10 +4583,20 @@
     "stdout": {
       "json": {
         "ok": true,
-        "command": "item update",
-        "written": true,
-        "fits": true,
-        "layout": [],
+        "applied": true,
+        "result": {
+          "file": "cvs/erika.json",
+          "bytes": 489,
+          "replaces": true,
+          "changes": {
+            "added": [],
+            "changed": ["blocks.0.items.0"],
+            "removed": [],
+            "more": 0
+          },
+          "fits": true,
+          "layout": []
+        },
         "next": [
           {
             "does": "draws the pages in the terminal",
@@ -4612,10 +4669,20 @@
     "stdout": {
       "json": {
         "ok": true,
-        "command": "item move",
-        "written": true,
-        "fits": true,
-        "layout": [],
+        "applied": true,
+        "result": {
+          "file": "cvs/erika.json",
+          "bytes": 489,
+          "replaces": true,
+          "changes": {
+            "added": [],
+            "changed": ["blocks.0.items.0", "blocks.0.items.1"],
+            "removed": [],
+            "more": 0
+          },
+          "fits": true,
+          "layout": []
+        },
         "next": [
           {
             "does": "draws the pages in the terminal",
@@ -4681,10 +4748,20 @@
     "stdout": {
       "json": {
         "ok": true,
-        "command": "item remove",
-        "written": true,
-        "fits": true,
-        "layout": [],
+        "applied": true,
+        "result": {
+          "file": "cvs/erika.json",
+          "bytes": 473,
+          "replaces": true,
+          "changes": {
+            "added": [],
+            "changed": ["blocks.0.items.0"],
+            "removed": ["blocks.0.items.1"],
+            "more": 0
+          },
+          "fits": true,
+          "layout": []
+        },
         "next": [
           {
             "does": "draws the pages in the terminal",
@@ -4756,10 +4833,20 @@
     "stdout": {
       "json": {
         "ok": true,
-        "command": "contact add",
-        "written": true,
-        "fits": true,
-        "layout": [],
+        "applied": true,
+        "result": {
+          "file": "cvs/erika.json",
+          "bytes": 571,
+          "replaces": true,
+          "changes": {
+            "added": ["contact.items.1"],
+            "changed": [],
+            "removed": [],
+            "more": 0
+          },
+          "fits": true,
+          "layout": []
+        },
         "next": [
           {
             "does": "draws the pages in the terminal",
@@ -4837,10 +4924,20 @@
     "stdout": {
       "json": {
         "ok": true,
-        "command": "contact update",
-        "written": true,
-        "fits": true,
-        "layout": [],
+        "applied": true,
+        "result": {
+          "file": "cvs/erika.json",
+          "bytes": 571,
+          "replaces": true,
+          "changes": {
+            "added": [],
+            "changed": ["contact.items.0.lines.0"],
+            "removed": [],
+            "more": 0
+          },
+          "fits": true,
+          "layout": []
+        },
         "next": [
           {
             "does": "draws the pages in the terminal",
@@ -4911,10 +5008,25 @@
     "stdout": {
       "json": {
         "ok": true,
-        "command": "contact move",
-        "written": true,
-        "fits": true,
-        "layout": [],
+        "applied": true,
+        "result": {
+          "file": "cvs/erika.json",
+          "bytes": 571,
+          "replaces": true,
+          "changes": {
+            "added": [],
+            "changed": [
+              "contact.items.0.icon",
+              "contact.items.0.lines.0",
+              "contact.items.1.icon",
+              "contact.items.1.lines.0"
+            ],
+            "removed": [],
+            "more": 0
+          },
+          "fits": true,
+          "layout": []
+        },
         "next": [
           {
             "does": "draws the pages in the terminal",
@@ -4985,10 +5097,20 @@
     "stdout": {
       "json": {
         "ok": true,
-        "command": "contact remove",
-        "written": true,
-        "fits": true,
-        "layout": [],
+        "applied": true,
+        "result": {
+          "file": "cvs/erika.json",
+          "bytes": 473,
+          "replaces": true,
+          "changes": {
+            "added": [],
+            "changed": ["contact.items.0.icon", "contact.items.0.lines.0"],
+            "removed": ["contact.items.1"],
+            "more": 0
+          },
+          "fits": true,
+          "layout": []
+        },
         "next": [
           {
             "does": "draws the pages in the terminal",
@@ -5060,10 +5182,20 @@
     "stdout": {
       "json": {
         "ok": true,
-        "command": "block add",
-        "written": true,
-        "fits": true,
-        "layout": [],
+        "applied": true,
+        "result": {
+          "file": "cvs/erika.json",
+          "bytes": 594,
+          "replaces": true,
+          "changes": {
+            "added": ["blocks.1"],
+            "changed": [],
+            "removed": [],
+            "more": 0
+          },
+          "fits": true,
+          "layout": []
+        },
         "next": [
           {
             "does": "draws the pages in the terminal",
@@ -5143,10 +5275,20 @@
     "stdout": {
       "json": {
         "ok": true,
-        "command": "block update",
-        "written": true,
-        "fits": true,
-        "layout": [],
+        "applied": true,
+        "result": {
+          "file": "cvs/erika.json",
+          "bytes": 598,
+          "replaces": true,
+          "changes": {
+            "added": [],
+            "changed": ["blocks.1.section"],
+            "removed": [],
+            "more": 0
+          },
+          "fits": true,
+          "layout": []
+        },
         "next": [
           {
             "does": "draws the pages in the terminal",
@@ -5226,10 +5368,27 @@
     "stdout": {
       "json": {
         "ok": true,
-        "command": "block move",
-        "written": true,
-        "fits": true,
-        "layout": [],
+        "applied": true,
+        "result": {
+          "file": "cvs/erika.json",
+          "bytes": 598,
+          "replaces": true,
+          "changes": {
+            "added": [],
+            "changed": [
+              "blocks.0.id",
+              "blocks.0.section",
+              "blocks.0.items.0",
+              "blocks.1.id",
+              "blocks.1.section",
+              "blocks.1.items.0"
+            ],
+            "removed": [],
+            "more": 0
+          },
+          "fits": true,
+          "layout": []
+        },
         "next": [
           {
             "does": "draws the pages in the terminal",
@@ -5302,10 +5461,20 @@
     "stdout": {
       "json": {
         "ok": true,
-        "command": "block remove",
-        "written": true,
-        "fits": true,
-        "layout": [],
+        "applied": true,
+        "result": {
+          "file": "cvs/erika.json",
+          "bytes": 473,
+          "replaces": true,
+          "changes": {
+            "added": [],
+            "changed": ["blocks.0.id", "blocks.0.section", "blocks.0.items.0"],
+            "removed": ["blocks.1"],
+            "more": 0
+          },
+          "fits": true,
+          "layout": []
+        },
         "next": [
           {
             "does": "draws the pages in the terminal",

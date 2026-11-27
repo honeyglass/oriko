@@ -16,7 +16,9 @@ Part of state 8 Write in `../SKILL.md`: read this file before the first command 
 
 - `init` writes an empty master with a placeholder photo, two pages and the contact title 'Contact'.
 - Set the contact title in the master's language with `cv update`, such as 'Kontakt' for German.
-- Pass the JSON with `--json '…'` or through stdin; `--json` takes the JSON text, not a file name.
+- Pass the JSON with `--json '…'`; `--json` takes the JSON text, not a file name.
+  Through stdin, `init` reads the JSON alone; the other commands above need `--json -`.
+- An edit that leaves the master as it is writes nothing and answers `"unchanged": true`.
 - Add jobs from the newest to the oldest, each after the one before, so the time order holds.
 - A refused command writes nothing; fix it by 'Fixing a refusal' in `../SKILL.md` and call it again.
 

@@ -318,14 +318,75 @@ each move, with their sources.
   kind: loss
   golden: no difference
   same gap as: W17
+- W26 edit/apply.ts:84
+  gap: adx fills the command of an issue below a field from the source of that field (decision
+  69, "adx fills `command` from the source of the first part")
+  call: `oriko cv update --json '{"pages":3}'` on a CV that holds two blocks with the id `awards`
+  today: `DUPLICATE_ID` at `blocks.awards`, with no command; `UNTITLED_NOT_ALONE` the CV holds
+  before the edit the same
+  now: `DUPLICATE_ID` at `cv.blocks.awards` with the command `oriko cv update --pages 3 --cv`, a
+  list of CV names that does not help with the fix
+  proposal: adx fills the list command only for an issue at the field itself, not below it
+  kind: loss
+  golden: no difference
+  same gap as: W9
+- W27 edit/save.ts:46
+  gap: adx answers a system error of a write as `SYSTEM_REFUSED`, kind ask, at no field, whatever
+  the error (guide "Files the call names", "A full disk")
+  call: `oriko block remove --json '{"id":"awards"}'`, where `cvs` of the data folder is a folder
+  the caller may not write to
+  today: `PATH_REFUSED` at `home`, kind fix, "The system refused …/cvs/jane.json: EACCES"
+  now: `SYSTEM_REFUSED`, kind ask, no path, "open of …/cvs/.<uuid>.adx-tmp failed with EACCES", state
+  "Nothing was changed. The temporary file was removed."
+  proposal: a system error on a path the input names stands at that field, and its kind follows who
+  can solve it: a missing right for the caller, a full disk for the person
+  kind: loss
+  golden: no difference
+  same gap as: W15
+- W28 edit/save.ts:52
+  gap: a stored file read through a root answers adx's refusals, which stand at no field (guide
+  "Reading a file")
+  call: `oriko block remove --json '{"id":"awards"}'` on a data folder whose only CV `cvs/bad.json`
+  holds `{`
+  today: `INVALID_JSON`, kind fix, path `""`, "The file …/cvs/bad.json is not valid JSON"; a CV past
+  1,000,000 bytes `INPUT_TOO_LARGE` at `cv`
+  now: `STORED_INVALID`, kind ask, no path, "cvs/bad.json holds no JSON"; a CV past the limit the same
+  code. The byte limit `FILE_LIMITS.inputBytes` stays
+  proposal: the issue of a stored file stands at the field of the call that names the file
+  kind: loss
+  golden: no difference
+  same gap as: W2
+- W29 edit/issues.ts:26
+  gap: a code has one fixed hint, declared once with `code()`, so a hint cannot name a value of
+  the issue (guide "Refusing bad input with a hint"; proto/oriko README "A code has one hint")
+  call: `oriko item update --json '{"block":"awards","index":2,"value":{"note":"x"}}'`, and
+  `oriko block move --json '{"id":"awards","before":"northwind"}'`
+  today: `INDEX_OUT_OF_RANGE` with the hint "Use an index from 0 to 1", or "The list is empty; add
+  an item first"; `OTHER_COLUMN` with the hint "Use an anchor of the right column:
+  programming-languages, …, interests"
+  now: the values move into the message: "There is no place 2 for this edit; the edit takes the
+  places 0 to 1" (for an add the place past the end, which appends, counts too), or "…; the list is
+  empty", with the hint "Use a place the message names; to an empty list, add an item first"; and
+  "The block awards stands in the right column, the anchor northwind does not; the anchors of the
+  right column: programming-languages, …, interests", with the hint "Use an anchor of the column the
+  block stands in, one the message lists". Every fact stays, in the message
+  proposal: an issue can carry a hint of its own beside the hint its code declares, from values the
+  issue holds, as a tool raises it
+  kind: workaround
+  golden: no difference
 
 ## Passing outside the golden
 
 What holds only between two packages, and the package that ends it.
 
 - `NO_CV` has no command, where the old shell names `oriko schema init`, and its hint still says
-  "run the command". Calls: `plan`, `preview` and `build --out cv.docx` on a data folder without a
-  CV. Package 7 adds the hint to `init`.
+  "run the command". Calls: `plan`, `preview`, `build --out cv.docx` and every edit, such as
+  `block remove --json '{"id":"awards"}'`, on a data folder without a CV. Package 7 adds the hint
+  to `init`.
+- `UNKNOWN_BLOCK` inside the input of an edit has no command, where the old shell names
+  `oriko show --cv NAME --block`, and its hint still says "run the command". Calls:
+  `block remove --json '{"id":"nobody"}'`, and the same at `before` or `after` of `block add` and
+  `block move` and at `block` of the item edits. Package 7 adds the hint to `show`.
 - `UNKNOWN_BLOCK` and `UNKNOWN_CV` inside a profile carry adx's command `oriko plan … --profile`,
   a list of profiles, while their hints promise block ids and CV names; `preview` and `build`
   name `oriko preview … --profile` and `oriko build … --profile` the same way. Calls:
@@ -339,7 +400,7 @@ What holds only between two packages, and the package that ends it.
 - `ORIKO_HOME` moves the data folder of the moved commands only; the old shell does not read it.
   Package 9 ends it.
 - An option before a moved command (`--home X plan`, `--home X build --out cv.docx`,
-  `--home X photo set --file me.png`) is refused with `OPTION_BEFORE_COMMAND`, while the old shell
+  `--home X photo set --file me.png`, `--home X block remove --json '{"id":"awards"}'`) is refused with `OPTION_BEFORE_COMMAND`, while the old shell
   takes it before a command that is not moved. Package 9 ends it.
 - The old `oriko schema photo set` still describes the old form: the picture as the word `file`
   after the command, no `--file` and no `--replace`, as section 4 of the plan keeps the old schema
@@ -384,6 +445,9 @@ Every record that differs from the golden before the move, by its call number in
 | 118, 119 | `photo set --file me.png --cv jane --dry-run`, `photo set --file me.png --cv jane` | exit 1, refusal shape; `ALREADY_EXISTS` for `cvs/jane.png`, which the seed holds, hint "add --replace to overwrite cvs/jane.png", command the same call with `--replace --dry-run`; call 119 writes nothing, where today it wrote `cvs/jane.png` and `cvs/jane.json` | listed: README "A second `photo set` needs `--replace`" (70); adx's own: guide "The answer", "A command that changes something" |
 | 120 | `photo set --file me.png --profile acme` | `{ ok, applied, result: { photo, owner }, next }`: `photo` is `{ file, bytes, replaces }` of `profiles/acme.png`, `owner` the same of `profiles/acme.json` with `changes`; the step to `build` is the same; `profiles/acme.png` has mode 600, `profiles/acme.json` keeps 644 | listed: README "One answer shape", "A write answers `{ file, bytes, replaces }`, and `changes` on a replace"; section 5 of the plan for the mode of a photo; adx's own: guide "Files" (a new file gets 0600, an updated one keeps its mode) |
 | 121 | `photo set` | refusal shape; `SCHEMA` at `file` with adx's message and hint and the command `oriko schema photo set`, in place of `MISSING_INPUT` | listed: README "`photo set` without a file is adx's own refusal for a missing field"; adx's own: guide "The answer", "How adx reads a call" (a missing field) |
+| 81, 82, 85 to 97 | the 15 edits on `erika` that write, from `contact add` to `block remove` | `{ ok, applied: true, result, next }`: `command` is gone, `written` is `applied`, `fits` and `layout` stand in `result` beside `file`, `bytes`, `replaces: true` and `changes`; the steps to `preview` and `build` are the same; `cvs/erika.json` keeps its bytes and its mode 644 | listed: README "One answer shape", "A write answers `{ file, bytes, replaces }`, and `changes` on a replace", "One `after` for the 13 edits" (80); adx's own: guide "Files" (an updated file keeps its mode) |
+| 83 | `item add --cv erika --json '{"block":"skills","value":"Rust"}' --dry-run` | the answer of call 86 with `applied: false`; the step is the call without `--dry-run`, `oriko item add --cv erika --block skills --json '{"value":"Rust"}'`, with the `does` of `item add`, in place of "repeat the call without --dry-run to write" | listed: README "One answer shape"; adx's own: guide "A command that changes something" (the dry run and the real run answer the same fields; the step after a dry run), "How adx reads a call" (options and `--json` fill one object) |
+| 84 | `item add --cv erika --json '{"block":"skills","value":5}'` | refusal shape; `SCHEMA` keeps its path `value`, its message and its command `oriko schema item`, with adx's hint "Pass the input the schema of the command shows" | adx's own: guide "The answer", "Input that has parts" (a part only the handler can check); listed: decision 78 (`check` with `{ as: Item }`) |
 
 ## Decisions of the coordinator
 
@@ -470,3 +534,23 @@ work stops only when an approach cannot work at all, and everything else is deci
   cannot be called validly; (b) would put a path of one machine into `schema` and into the
   golden; (c) passes while the test runs in the root of the repository (W23). The test of the
   whole program in the last package runs elsewhere and is decided there
+- D10, package 5
+  question: an edit that leaves the CV too long for its pages is stored, and its answer lists
+  what does not fit under `layout`. In which form do these issues stand there
+  variants: (a) as today, with paths into the CV and no command; (b) in the form of a refusal of
+  adx, below the field `cv` and with adx's command
+  choice: a
+  reason: `layout` is data of a successful answer and no refusal, so nothing of adx sets its
+  form; (a) keeps what a caller of today reads there
+- D11, before package 6
+  question: what does `profile set` answer to a call that names no field of a profile. Today a
+  call without input is refused, and `--json '{}'` stores an empty profile. On adx every field
+  of a profile is optional, and text piped to stdin is ignored without `--json -`, so a call in
+  the old form, with the profile piped, would store an empty profile, and with `--replace` over
+  the stored one
+  variants: (a) the call stores an empty profile, as adx reads it; (b) a call that names no
+  field of a profile is refused, with a hint that names `--json -`
+  choice: b
+  reason: with (a) a caller who pipes a profile the old way loses the stored profile without a
+  word; (b) costs one thing, `--json '{}'` no longer stores an empty profile, and a profile that
+  changes nothing is still stored with its field `cv` alone

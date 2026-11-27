@@ -8,6 +8,7 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  renameSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -123,6 +124,22 @@ test('the program sends a moved command to adx and every other one to the old sh
   assert.equal('result' in answer('photo', 'set', '--home', home, ...photo), true);
   assert.deepEqual(answer('photo', '--home', home).values, ['photo set']);
   assert.equal(code('--home', home, 'photo', 'set', ...photo), 'OPTION_BEFORE_COMMAND');
+});
+
+// The old shell keeps no case for a command on adx, so a call that reaches it there is a bug.
+test('the old shell answers a command that runs on adx as a bug', async () => {
+  const { home, cwd } = workspace();
+  let out = '';
+  const exit = await run(['block', 'remove', '--json', '{"id":"awards"}'], {
+    home,
+    cwd,
+    web: fakeWeb({}, {}).web,
+    isTTY: false,
+    stdin: async () => null,
+    write: text => (out += text),
+  });
+  const { kind } = z.object({ kind: z.string() }).parse(JSON.parse(out));
+  assert.deepEqual([exit, kind], [2, 'bug']);
 });
 
 // A missing default folder holds no CV; ORIKO_HOME moves the folder as --home does.
@@ -446,20 +463,478 @@ test('photo set writes nothing when one of its two files is refused', async () =
   assert.equal(readFileSync(join(space.home, 'profiles', 'acme.json'), 'utf8'), before);
 });
 
+const Edited = z.object({
+  file: z.string(),
+  replaces: z.boolean(),
+  unchanged: z.literal(true).optional(),
+  changes: z.unknown().optional(),
+  fits: z.boolean(),
+  layout: z.array(z.unknown()),
+});
+
+// A dry run answers what the real run writes; an edit that leaves the CV as it is writes nothing.
 test('an edit command changes the CV file, and with --dry-run it does not', async () => {
   const space = workspace();
   const master = join(space.home, 'cvs', 'jane.json');
   const before = readFileSync(master, 'utf8');
   const input = JSON.stringify({ id: 'awards' });
-  assert.equal((await call(space, ['block', 'remove', '--json', input, '--dry-run'])).exit, 0);
+  const dry = await call(space, ['block', 'remove', '--json', input, '--dry-run']);
+  assert.deepEqual([dry.exit, dry.answer.applied], [0, false]);
   assert.equal(readFileSync(master, 'utf8'), before);
-  assert.equal((await call(space, ['block', 'remove'], input)).exit, 0);
+  const real = await call(space, ['block', 'remove', '--json', '-'], input);
+  assert.deepEqual([real.exit, real.answer.applied], [0, true]);
+  assert.deepEqual(Edited.parse(real.answer.result), Edited.parse(dry.answer.result));
   assert.equal(readFileSync(master, 'utf8').includes('"awards"'), false);
   assert.equal(
     (await call(space, ['cv', 'update', '--json', JSON.stringify({ language: 'de' })])).exit,
     0,
   );
-  assert.equal(readFileSync(master, 'utf8').includes('"language": "de"'), true);
+  const edited = readFileSync(master, 'utf8');
+  assert.equal(edited.includes('"language": "de"'), true);
+  assert.equal(edited, `${JSON.stringify(JSON.parse(edited), null, 2)}\n`);
+  const again = await call(space, ['cv', 'update', '--json', JSON.stringify({ language: 'de' })]);
+  const { file, replaces, unchanged } = Edited.parse(again.answer.result);
+  assert.deepEqual([file, replaces, unchanged], ['cvs/jane.json', false, true]);
+  assert.equal(readFileSync(master, 'utf8'), edited);
+});
+
+// An edit may make the CV too long: it still stands, and the answer says what no longer fits.
+test('an edit that overfills the pages is written, and names no step to build', async () => {
+  const space = workspace();
+  const { exit, answer } = await call(space, ['cv', 'update', '--json', '{"pages":1}']);
+  const { fits, layout } = Edited.parse(answer.result);
+  assert.deepEqual([exit, fits, answer.next], [0, false, undefined]);
+  assert.deepEqual(
+    z.array(z.looseObject({ code: z.string(), path: z.string() })).parse(layout)[0],
+    {
+      code: 'PAGE_OVERFLOW',
+      path: 'pages',
+      message: 'These blocks of the left column land after page 1: campus, freelance, cedar',
+      hint: 'Hide or shorten blocks of the left column, remove a page pin, or raise "pages"',
+    },
+  );
+  assert.equal(
+    readFileSync(join(space.home, 'cvs', 'jane.json'), 'utf8').includes('"pages": 1'),
+    true,
+  );
+});
+
+const Changes = z.object({
+  added: z.array(z.string()),
+  changed: z.array(z.string()),
+  removed: z.array(z.string()),
+  more: z.number(),
+});
+const Master = z.looseObject({
+  language: z.string(),
+  contact: z.object({ items: z.array(z.looseObject({ lines: z.array(z.string()) })) }),
+  blocks: z.array(z.looseObject({ id: z.string() })),
+});
+type Stored = z.output<typeof Master>;
+const blockOf = (cv: Stored, id: string) => cv.blocks.find(block => block.id === id);
+
+// Each edit writes its change into the stored CV and answers the JSON paths it changed.
+test('each edit stores its change, and answers what it changed', async () => {
+  const cases: [string, object, z.output<typeof Changes>, (cv: Stored) => unknown, unknown][] = [
+    [
+      'block add',
+      { block: { id: 'tools', kind: 'list', section: 'Tools', items: ['Vim'] } },
+      { added: ['blocks.15'], changed: [], removed: [], more: 0 },
+      cv => blockOf(cv, 'tools')?.items,
+      ['Vim'],
+    ],
+    [
+      'block update',
+      { id: 'libraries', set: { title: 'Frameworks' } },
+      { added: [], changed: ['blocks.9.title'], removed: [], more: 0 },
+      cv => blockOf(cv, 'libraries')?.title,
+      'Frameworks',
+    ],
+    [
+      'block remove',
+      { id: 'awards' },
+      { added: [], changed: [], removed: ['blocks.14'], more: 0 },
+      cv => blockOf(cv, 'awards'),
+      undefined,
+    ],
+    [
+      'block move',
+      { id: 'awards', page: 2 },
+      { added: ['blocks.14.page'], changed: [], removed: [], more: 0 },
+      cv => blockOf(cv, 'awards')?.page,
+      2,
+    ],
+    [
+      'item add',
+      { block: 'libraries', value: 'Vitest' },
+      { added: ['blocks.9.items.5'], changed: [], removed: [], more: 0 },
+      cv => blockOf(cv, 'libraries')?.items,
+      ['Gin', 'gRPC', 'React', 'Kafka Streams', 'Playwright', 'Vitest'],
+    ],
+    [
+      'item update',
+      { block: 'libraries', index: 0, value: 'Echo' },
+      { added: [], changed: ['blocks.9.items.0'], removed: [], more: 0 },
+      cv => blockOf(cv, 'libraries')?.items,
+      ['Echo', 'gRPC', 'React', 'Kafka Streams', 'Playwright'],
+    ],
+    [
+      'item remove',
+      { block: 'libraries', index: 4 },
+      { added: [], changed: [], removed: ['blocks.9.items.4'], more: 0 },
+      cv => blockOf(cv, 'libraries')?.items,
+      ['Gin', 'gRPC', 'React', 'Kafka Streams'],
+    ],
+    [
+      'item move',
+      { block: 'libraries', index: 1, to: 0 },
+      { added: [], changed: ['blocks.9.items.0', 'blocks.9.items.1'], removed: [], more: 0 },
+      cv => blockOf(cv, 'libraries')?.items,
+      ['gRPC', 'Gin', 'React', 'Kafka Streams', 'Playwright'],
+    ],
+    [
+      'cv update',
+      { language: 'de' },
+      { added: [], changed: ['language'], removed: [], more: 0 },
+      cv => cv.language,
+      'de',
+    ],
+    [
+      'contact add',
+      { value: { icon: 'mail', lines: ['jane@example.org'] } },
+      { added: ['contact.items.5'], changed: [], removed: [], more: 0 },
+      cv => cv.contact.items[5]?.lines,
+      ['jane@example.org'],
+    ],
+    [
+      'contact update',
+      { index: 0, value: { lines: ['Berlin'] } },
+      { added: [], changed: ['contact.items.0.lines.0'], removed: [], more: 0 },
+      cv => cv.contact.items[0]?.lines,
+      ['Berlin'],
+    ],
+    [
+      'contact remove',
+      { index: 4 },
+      { added: [], changed: [], removed: ['contact.items.4'], more: 0 },
+      cv => cv.contact.items.length,
+      4,
+    ],
+    [
+      'contact move',
+      { index: 1, to: 0 },
+      {
+        added: ['contact.items.0.lines.1'],
+        changed: [
+          'contact.items.0.icon',
+          'contact.items.0.lines.0',
+          'contact.items.1.icon',
+          'contact.items.1.lines.0',
+        ],
+        removed: ['contact.items.1.lines.1'],
+        more: 0,
+      },
+      cv => cv.contact.items.map(item => item.lines[0]),
+      [
+        'Example Street 1',
+        'Germany, Berlin',
+        '+49 (0) 30 000 000',
+        'jane.doe@example.com',
+        'Profile »',
+      ],
+    ],
+  ];
+  for (const [command, input, changes, read, expected] of cases) {
+    const space = workspace();
+    const argv = [...command.split(' '), '--json', JSON.stringify(input)];
+    const { exit, answer } = await call(space, argv);
+    const { result } = z.object({ result: z.object({ changes: Changes }) }).parse(answer);
+    const stored = Master.parse(
+      JSON.parse(readFileSync(join(space.home, 'cvs', 'jane.json'), 'utf8')),
+    );
+    assert.deepEqual(
+      [exit, answer.applied, result.changes, read(stored)],
+      [0, true, changes, expected],
+      command,
+    );
+  }
+});
+
+// Every check of an edit keeps its code and message; each issue stands at a field of the call.
+test('an edit refuses what it cannot do, at the field of the call that names it', async () => {
+  const space = workspace();
+  const edit = (command: string, input: object) => [
+    ...command.split(' '),
+    '--json',
+    JSON.stringify(input),
+  ];
+  const job = { id: 'northwind', kind: 'list', section: 'Skills', title: 'X', items: ['a'] };
+  const cases: [string[], [string, string | undefined, string][]][] = [
+    [
+      edit('block add', { block: job }),
+      [['DUPLICATE_ID', 'block.id', 'Two blocks have the id northwind']],
+    ],
+    [
+      edit('block add', { block: { ...job, id: 'more', title: undefined, section: 'Awards' } }),
+      [
+        [
+          'UNTITLED_NOT_ALONE',
+          'block',
+          'The block awards has no title but shares its section with a block next to it',
+        ],
+        [
+          'UNTITLED_NOT_ALONE',
+          'block',
+          'The block more has no title but shares its section with a block next to it',
+        ],
+      ],
+    ],
+    [
+      edit('block add', { block: { ...job, id: 'more' }, before: 'nobody' }),
+      [['UNKNOWN_BLOCK', 'before', 'No block has the id nobody']],
+    ],
+    [
+      edit('block update', { id: 'libraries', set: { title: 5 } }),
+      [['SCHEMA', 'set.title', 'Invalid input: expected string, received number']],
+    ],
+    [
+      edit('block update', { id: 'interests', set: { section: 'Awards' } }),
+      [
+        [
+          'UNTITLED_NOT_ALONE',
+          'set',
+          'The block interests has no title but shares its section with a block next to it',
+        ],
+        [
+          'UNTITLED_NOT_ALONE',
+          'set',
+          'The block awards has no title but shares its section with a block next to it',
+        ],
+      ],
+    ],
+    [
+      edit('block remove', { id: 'nobody' }),
+      [['UNKNOWN_BLOCK', 'id', 'No block has the id nobody']],
+    ],
+    [
+      edit('block move', { id: 'awards' }),
+      [['NOTHING_TO_DO', undefined, 'The input names no new place for the block']],
+    ],
+    [
+      edit('block move', { id: 'awards', before: 'interests', after: 'interests' }),
+      [['BOTH_ANCHORS', 'after', 'The input names two anchors']],
+    ],
+    [
+      edit('block move', { id: 'awards', before: 'northwind' }),
+      [
+        [
+          'OTHER_COLUMN',
+          'before',
+          'The block awards stands in the right column, the anchor northwind does not; the anchors of the right column: programming-languages, expertise, libraries, strengths, additional-skills, languages, interests',
+        ],
+      ],
+    ],
+    [
+      edit('item add', { block: 'nobody', value: 'Rust' }),
+      [['UNKNOWN_BLOCK', 'block', 'No block has the id nobody']],
+    ],
+    [
+      edit('block add', { block: { ...job, id: 'more' }, before: 'awards', after: 'awards' }),
+      [['BOTH_ANCHORS', 'after', 'The input names two anchors']],
+    ],
+    [
+      edit('block add', { block: { ...job, id: 'more' }, after: 'cedar' }),
+      [
+        [
+          'OTHER_COLUMN',
+          'after',
+          'The block more stands in the right column, the anchor cedar does not; the anchors of the right column: programming-languages, expertise, libraries, strengths, additional-skills, languages, interests, awards',
+        ],
+      ],
+    ],
+    [
+      edit('block update', { id: 'nobody', set: { title: 'X' } }),
+      [['UNKNOWN_BLOCK', 'id', 'No block has the id nobody']],
+    ],
+    [
+      edit('block move', { id: 'nobody', page: 2 }),
+      [['UNKNOWN_BLOCK', 'id', 'No block has the id nobody']],
+    ],
+    [
+      edit('item update', { block: 'nobody', index: 0, value: 'Rust' }),
+      [['UNKNOWN_BLOCK', 'block', 'No block has the id nobody']],
+    ],
+    [
+      edit('item remove', { block: 'nobody', index: 0 }),
+      [['UNKNOWN_BLOCK', 'block', 'No block has the id nobody']],
+    ],
+    [
+      edit('item move', { block: 'nobody', index: 0, to: 1 }),
+      [['UNKNOWN_BLOCK', 'block', 'No block has the id nobody']],
+    ],
+    // An add takes the place after the last item too, which appends.
+    [
+      edit('item add', { block: 'libraries', value: 'Rust', index: 9 }),
+      [
+        [
+          'INDEX_OUT_OF_RANGE',
+          'index',
+          'There is no place 9 for this edit; the edit takes the places 0 to 5',
+        ],
+      ],
+    ],
+    [
+      edit('item update', { block: 'awards', index: 2, value: { note: 'x' } }),
+      [
+        [
+          'INDEX_OUT_OF_RANGE',
+          'index',
+          'There is no place 2 for this edit; the edit takes the places 0 to 1',
+        ],
+      ],
+    ],
+    [
+      edit('item update', { block: 'languages', index: 0, value: { level: 9 } }),
+      [['SCHEMA', 'value.level', 'Too big: expected number to be <=5']],
+    ],
+    [
+      edit('item move', { block: 'awards', index: 0, to: 2 }),
+      [
+        [
+          'INDEX_OUT_OF_RANGE',
+          'to',
+          'There is no place 2 for this edit; the edit takes the places 0 to 1',
+        ],
+      ],
+    ],
+    [
+      edit('item remove', { block: 'awards', index: 2 }),
+      [
+        [
+          'INDEX_OUT_OF_RANGE',
+          'index',
+          'There is no place 2 for this edit; the edit takes the places 0 to 1',
+        ],
+      ],
+    ],
+    [
+      edit('cv update', { person: { photo: 'cvs/other.png' } }),
+      [['SCHEMA', 'person.photo', 'the input has no field photo']],
+    ],
+    [
+      edit('cv update', { language: 'english' }),
+      [['SCHEMA', 'language', 'Expected a two-letter language code, such as en or de']],
+    ],
+    [
+      edit('contact add', { value: { icon: 'mail', lines: ['x'] }, index: 9 }),
+      [
+        [
+          'INDEX_OUT_OF_RANGE',
+          'index',
+          'There is no place 9 for this edit; the edit takes the places 0 to 5',
+        ],
+      ],
+    ],
+    [
+      edit('contact update', { index: 0, value: { icon: 'fax' } }),
+      [
+        [
+          'SCHEMA',
+          'value.icon',
+          'Invalid option: expected one of "pin"|"home"|"phone"|"mail"|"globe"',
+        ],
+      ],
+    ],
+    [
+      edit('contact update', { index: 5, value: { lines: ['x'] } }),
+      [
+        [
+          'INDEX_OUT_OF_RANGE',
+          'index',
+          'There is no place 5 for this edit; the edit takes the places 0 to 4',
+        ],
+      ],
+    ],
+    [
+      edit('contact remove', { index: 5 }),
+      [
+        [
+          'INDEX_OUT_OF_RANGE',
+          'index',
+          'There is no place 5 for this edit; the edit takes the places 0 to 4',
+        ],
+      ],
+    ],
+    [
+      edit('contact move', { index: 0, to: 5 }),
+      [
+        [
+          'INDEX_OUT_OF_RANGE',
+          'to',
+          'There is no place 5 for this edit; the edit takes the places 0 to 4',
+        ],
+      ],
+    ],
+  ];
+  for (const [argv, expected] of cases) {
+    const { exit, answer } = await call(space, argv);
+    const issues = z
+      .array(z.looseObject({ code: z.string(), path: z.string().optional(), message: z.string() }))
+      .parse(answer.issues);
+    assert.deepEqual(
+      [exit, issues.map(issue => [issue.code, issue.path, issue.message])],
+      [1, expected],
+      argv.join(' '),
+    );
+  }
+});
+
+// What lies in the CV stands below `cv`: a list the edit fills past its limit, a CV that fails
+// its own shape, and an issue the CV held before the edit, which an edit may also fix.
+test('an edit refuses an issue that lies in the CV below cv', async () => {
+  const space = workspace();
+  const shapeOf = async (argv: string[]) => {
+    const [issue] = (await call(space, argv)).answer.issues ?? [];
+    return [issue?.code, issue?.path, issue?.command];
+  };
+  // A CV holds at most 8 contact lines and 40 items per block.
+  const path = join(space.home, 'cvs', 'jane.json');
+  const master = JSON.parse(readFileSync(path, 'utf8'));
+  const line = { icon: 'mail', lines: ['x'] };
+  const libraries = { ...master.blocks[9], items: Array.from({ length: 40 }, (_, at) => `L${at}`) };
+  const full = {
+    ...master,
+    contact: { ...master.contact, items: Array.from({ length: 8 }, () => line) },
+    blocks: master.blocks.map((block: { id: string }) =>
+      block.id === 'libraries' ? libraries : block,
+    ),
+  };
+  writeFileSync(path, JSON.stringify(full));
+  assert.deepEqual(await shapeOf(['contact', 'add', '--json', JSON.stringify({ value: line })]), [
+    'SCHEMA',
+    'cv.contact.items',
+    'oriko schema master',
+  ]);
+  assert.deepEqual(
+    await shapeOf(['item', 'add', '--json', '{"block":"libraries","value":"One more"}']),
+    ['SCHEMA', 'cv.blocks.libraries.items', 'oriko schema block'],
+  );
+  writeFileSync(path, JSON.stringify({ ...master, pages: 0 }));
+  assert.deepEqual(await shapeOf(['block', 'remove', '--json', '{"id":"awards"}']), [
+    'SCHEMA',
+    'cv.pages',
+    'oriko schema master',
+  ]);
+  const twice = [...master.blocks, { ...master.blocks.at(-1), section: 'Elsewhere' }];
+  writeFileSync(path, JSON.stringify({ ...master, blocks: twice }));
+  // adx fills the command of an issue below `cv` from the source of `cv`, a list of CVs.
+  assert.deepEqual(await shapeOf(['cv', 'update', '--json', '{"pages":3}']), [
+    'DUPLICATE_ID',
+    'cv.blocks.awards',
+    `oriko cv update --pages 3 --home ${space.home} --cv`,
+  ]);
+  // Removing the id removes both blocks, so the edit fixes the CV and passes.
+  assert.equal((await call(space, ['block', 'remove', '--json', '{"id":"awards"}'])).exit, 0);
 });
 
 test('show lists the blocks, and one block in full by its id', async () => {
@@ -541,8 +1016,27 @@ test('refuses bad input with exit code 1 and the code of the reason', async () =
     [['build'], 'SCHEMA'],
     [['build', '--out', 'out.docx', '--style', 'neon'], 'NOT_IN_LIST'],
     [['build', '--out', 'out.docx', '--credits'], 'CREDITS_NEED_TERMINAL'],
+    [['init', '--cv', 'erika', '--json', '{broken'], 'INVALID_JSON'],
+    [['init', '--cv', 'erika'], 'MISSING_INPUT'],
     [['block', 'remove', '--json', '{broken'], 'INVALID_JSON'],
-    [['block', 'remove'], 'MISSING_INPUT'],
+    [['block', 'remove'], 'SCHEMA'],
+    [['block', 'remove', '--cv', 'nobody', '--json', '{"id":"awards"}'], 'NOT_IN_LIST'],
+    [
+      ['block', 'remove', '--json', '{"id":"awards"}', '--home', join(space.cwd, 'empty-home')],
+      'NO_CV',
+    ],
+    [
+      ['block', 'remove', '--json', '{"id":"awards"}', '--home', join(space.cwd, 'broken-home')],
+      'SCHEMA',
+    ],
+    [
+      ['item', 'add', '--json', '{"block":"interests","value":"Chess"}', '--home', 'relative'],
+      'ROOT_NOT_FOUND',
+    ],
+    [
+      ['block', 'remove', '--json', '{"id":"awards"}', '--home', join(space.cwd, 'badjson-home')],
+      'STORED_INVALID',
+    ],
     [['paint'], 'UNKNOWN_COMMAND'],
     [['plan', '--color'], 'UNKNOWN_OPTION'],
     [['cvs', '--output', 'pdf'], 'UNKNOWN_OUTPUT'],
@@ -567,6 +1061,8 @@ test('refuses bad input with exit code 1 and the code of the reason', async () =
   ];
   mkdirSync(join(space.cwd, 'empty-home'));
   writeFileSync(join(space.home, 'profiles', 'badjson.json'), '{');
+  mkdirSync(join(space.cwd, 'badjson-home', 'cvs'), { recursive: true });
+  writeFileSync(join(space.cwd, 'badjson-home', 'cvs', 'bad.json'), '{');
   for (const [argv, code] of cases) {
     const { exit, codes } = await call(space, argv);
     assert.deepEqual([exit, codes.slice(0, 1)], [1, [code]], argv.join(' '));
@@ -603,6 +1099,10 @@ test('an option without a value answers the values it accepts', async () => {
     ok: true,
     result: { option: 'style', values: [{ value: 'classic' }, { value: 'terminal' }] },
   });
+  assert.deepEqual(await values(['item', 'add', '--cv']), {
+    ok: true,
+    result: { option: 'cv', values: [{ value: 'erika' }, { value: 'jane' }] },
+  });
   assert.deepEqual(await values(['cvs', '--output']), {
     ok: true,
     option: 'output',
@@ -623,6 +1123,7 @@ test('an option without a value and without a list is refused by its name', asyn
     [['build', '--out'], 'out'],
     [['plan', '--home'], 'home'],
     [['block', 'add', '--json'], 'json'],
+    [['profile', 'set', '--profile', 'globex', '--json'], 'json'],
   ];
   for (const [argv, path] of cases) {
     const { exit, answer } = await call(space, argv);
@@ -661,8 +1162,12 @@ test('a refusal names a command that lists the fitting values, and that command 
       'oriko show --cv jane --block',
     ],
     [['cvs', '--output', 'pdf'], 'UNKNOWN_OUTPUT', 'oriko --output'],
-    [['block', 'remove', '--cv', 'jane'], 'MISSING_INPUT', 'oriko schema block remove'],
-    [['block', 'add', '--cv', 'jane', '--json'], 'MISSING_VALUE', 'oriko schema block add'],
+    [['profile', 'set', '--profile', 'globex'], 'MISSING_INPUT', 'oriko schema profile set'],
+    [
+      ['profile', 'set', '--profile', 'globex', '--json'],
+      'MISSING_VALUE',
+      'oriko schema profile set',
+    ],
     [['paint'], 'UNKNOWN_COMMAND', 'oriko schema'],
     [['cvs', '--color'], 'UNKNOWN_OPTION', 'oriko schema'],
     [['init', '--json', NEW_CV], 'MISSING_OPTION', 'oriko show --cv'],
@@ -688,6 +1193,11 @@ test('a refusal names a command that lists the fitting values, and that command 
     [['plan', '--cv', 'nobody'], 'NOT_IN_LIST', `oriko plan --home ${space.home} --cv`],
     [['plan', '--profile', 'nobody'], 'NOT_IN_LIST', `oriko plan --home ${space.home} --profile`],
     [['preview'], 'CV_REQUIRED', `oriko preview --home ${space.home} --cv`],
+    [
+      ['block', 'remove', '--json', '{"id":"awards"}', '--dry-run'],
+      'CV_REQUIRED',
+      `oriko block remove --id awards --home ${space.home} --cv`,
+    ],
     [
       ['build', '--cv', 'jane', '--out', 'x.docx', '--style', 'neon'],
       'NOT_IN_LIST',
@@ -788,7 +1298,12 @@ test('schema answers every command and every shape it lists', async () => {
 test('a refusal for a wrong shape names the schema command, and it runs', async () => {
   const space = workspace();
   const cases: [string[], string][] = [
-    [['block', 'add', '--json', '{}'], 'oriko schema block add'],
+    // A missing block lies inside the shape block, so the command shows that shape.
+    [['block', 'add', '--json', '{}'], 'oriko schema block'],
+    // The kind of the stored block picks the shape, and the command shows the one for all kinds.
+    [['block', 'update', '--json', '{"id":"awards","set":{"items":[]}}'], 'oriko schema block'],
+    [['item', 'add', '--json', '{"block":"languages","value":"Dutch"}'], 'oriko schema item'],
+    [['contact', 'update', '--json', '{"index":0,"value":{"icon":"fax"}}'], 'oriko schema contact'],
     [['item', 'add', '--json', '{"block":"awards","value":5}'], 'oriko schema item'],
     [['contact', 'add', '--json', '{"value":5}'], 'oriko schema contact'],
     [['init', '--cv', 'erika', '--json', '{}'], 'oriko schema init'],
@@ -976,9 +1491,14 @@ test('refuses a folder where a file belongs, and a file where a folder belongs',
     [Built.parse(built.result).file, existsSync(join(space.cwd, 'reports', 'cv.docx'))],
     ['latest/cv.docx', true],
   );
+  // adx answers a folder the caller may not write to as the person's to solve, at no field.
   chmodSync(join(space.home, 'cvs'), 0o555);
   const edit = await call(space, ['block', 'remove', '--json', JSON.stringify({ id: 'awards' })]);
-  assert.deepEqual([edit.exit, edit.codes], [1, ['PATH_REFUSED']]);
+  const [refused] = edit.answer.issues ?? [];
+  assert.deepEqual(
+    [edit.exit, edit.answer.kind, refused?.code, refused?.path],
+    [1, 'ask', 'SYSTEM_REFUSED', undefined],
+  );
 });
 
 test('a profile decides the CV for show and for the list of CVs', async () => {
@@ -1016,11 +1536,29 @@ test('writes never follow a link out of the data folder', async () => {
   const victim = join(space.cwd, 'victim.txt');
   writeFileSync(victim, 'untouched');
   symlinkSync(victim, join(space.home, 'cvs', 'erika.png'));
-  symlinkSync(victim, join(space.home, 'cvs', `jane.json.${process.pid}.tmp`));
+  symlinkSync(victim, join(space.home, 'cvs', `erika.json.${process.pid}.tmp`));
   assert.equal((await call(space, ['init', '--cv', 'erika', '--json', NEW_CV])).exit, 0);
+  assert.equal(readFileSync(victim, 'utf8'), 'untouched');
+  // An edit runs on adx, which stages under a name of its own beside the CV and leaves no
+  // file behind; a CV that is a link out of the data folder is no CV adx lists, so the edit
+  // never reaches the link's target.
+  const cvs = join(space.home, 'cvs');
   const input = JSON.stringify({ id: 'awards' });
   assert.equal((await call(space, ['block', 'remove', '--cv', 'jane', '--json', input])).exit, 0);
-  assert.equal(readFileSync(victim, 'utf8'), 'untouched');
+  assert.deepEqual(readdirSync(cvs).sort(), ['erika.json', 'erika.png', 'jane.json', 'jane.png']);
+  const outside = join(space.cwd, 'jane.json');
+  renameSync(join(cvs, 'jane.json'), outside);
+  symlinkSync(outside, join(cvs, 'jane.json'));
+  const before = readFileSync(outside, 'utf8');
+  const linked = await call(space, [
+    'block',
+    'remove',
+    '--cv',
+    'jane',
+    '--json',
+    '{"id":"campus"}',
+  ]);
+  assert.deepEqual([linked.codes, readFileSync(outside, 'utf8')], [['NOT_IN_LIST'], before]);
 });
 
 // A command that writes several files writes all of them or none: here the CV file cannot be

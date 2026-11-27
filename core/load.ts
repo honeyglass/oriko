@@ -3,7 +3,9 @@
  *
  * Checked, checked: the checked CV, with the named profile applied, and the two files as read.
  * fileOf: the file an issue of the check or of the page plan lies in.
- * noStoredCv, chosenName: the issue of a data folder without a CV, and the CV a call works on.
+ * noStoredCv, chosenName, cvName: the issue of a data folder without a CV, and the CV a call works
+ * on, with a profile or without one.
+ * storedShape: a stored CV or profile a command changes, checked against its shape.
  *
  * Both files are read through the root `home`, which keeps them inside the data folder, with the
  * byte limit of the JSON input. adx refuses a file that is too large or holds no JSON.
@@ -16,11 +18,13 @@ import { z } from 'zod';
 import { check } from './check.ts';
 import { Profile } from './cv.schema.ts';
 import type { Master } from './cv.schema.ts';
+import { rejected } from './errors.ts';
 import type { Issue } from './errors.ts';
 import { FILE_LIMITS } from './files.limits.ts';
 import { cvFile, cvNames, profileFile } from './home.ts';
-import { cvMismatch, cvRequired, noCv, raised, unknownCv } from './issues.ts';
+import { SHAPE, cvMismatch, cvRequired, noCv, raised, unknownCv } from './issues.ts';
 import type { Issues, Stored } from './issues.ts';
+import { schemaIssues } from './issues.old.ts';
 import { place } from './place.old.ts';
 
 /** The checked CV, and the CV and the profile as their files hold them. */
@@ -94,6 +98,26 @@ function holds(value: unknown, path: string) {
 
 const storedJson = (file: File) => file.json(FILE_LIMITS.inputBytes, z.unknown());
 
+/**
+ * A stored file that a command changes is checked against its shape first, so a broken file is
+ * never written back.
+ *
+ * @param field - the field of the call that names the file: `cv` or `profile`
+ * @param file - the stored CV or profile
+ * @returns the file's value, past its shape; SCHEMA below the field, with the command of its shape
+ */
+export async function storedShape(field: 'cv', file: File): Promise<Master | Issues<'cv'>>;
+export async function storedShape(
+  field: Stored,
+  file: File,
+): Promise<Master | Profile | Issues<Stored>>;
+export async function storedShape(field: Stored, file: File) {
+  const parsed = SHAPE[field].safeParse(await storedJson(file));
+  if (parsed.success) return parsed.data;
+  // raised() keeps the code, the path and the message; the command comes from the shape.
+  return raised(() => field, rejected('check', schemaIssues(parsed.error, [], field)).error);
+}
+
 // The CV a profile names; check() reports a profile that fails its schema, so this one only reads.
 const cvOf = (profile: unknown) => {
   const parsed = Profile.safeParse(profile);
@@ -122,10 +146,22 @@ export function chosenName(
     const message = `--cv names ${shown(explicit)}, but the profile belongs to ${shown(fromProfile)}`;
     return [cvMismatch.at('cv', message)];
   }
-  const name = explicit ?? fromProfile ?? (names.length === 1 ? names[0] : undefined);
+  if (fromProfile === undefined) return cvName(names, explicit);
+  if (names.includes(fromProfile)) return fromProfile;
+  const message = `The profile names the CV ${shown(fromProfile)}, which the data folder does not hold`;
+  return [unknownCv.at(['profile', 'cv'], message)];
+}
+
+/**
+ * The CV a call without a profile works on.
+ *
+ * @param names - the stored CVs, at least one
+ * @param explicit - the name `--cv` gives, which adx found in the list already
+ * @returns --cv, or the only CV; CV_REQUIRED
+ */
+export function cvName(names: string[], explicit: string | undefined): string | Issues<'cv'> {
+  const name = explicit ?? (names.length === 1 ? names[0] : undefined);
   if (name === undefined)
     return [cvRequired.at('cv', 'The data folder holds several CVs and the call names none')];
-  if (names.includes(name)) return name;
-  const message = `The profile names the CV ${shown(name)}, which the data folder does not hold`;
-  return [unknownCv.at(['profile', 'cv'], message)];
+  return name;
 }

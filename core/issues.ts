@@ -3,8 +3,9 @@
  *
  * Issues: what a helper answers in place of its value, at least one issue at a field of the call.
  * noCv, cvRequired, unknownCv, cvMismatch: what the data folder does not hold for a call.
- * Stored, raised: the field that names a stored file, and an issue of the check of a CV or of the
- * page plan below it.
+ * Stored, SHAPE, raised: the field that names a stored file, the shape of each, and an issue of
+ * the check of a CV or of the page plan below it.
+ * issueAt, unknownBlock: one such issue at a field an edit picks, and a block id no block has.
  *
  * A code of adx has one hint. Where oriko's hint named the field or the column, the message of
  * the issue already names it. The check and the page plan still answer the issues of the old
@@ -45,7 +46,7 @@ export const cvMismatch = code(
 
 // What the check of a CV and of its profile finds.
 const duplicateId = code('DUPLICATE_ID', 'fix', 'Give every block its own id');
-const unknownBlock = code(
+export const unknownBlock = code(
   'UNKNOWN_BLOCK',
   'fix',
   'Run the command and use one of the block ids it lists',
@@ -105,8 +106,8 @@ const RAISED: Record<string, Code | undefined> = {
 /** The field of the call that names a stored file: `cv` for the CV, `profile` for the profile. */
 export type Stored = 'cv' | 'profile';
 
-// The shape of each stored file, the same values the tool lists in its shapes.
-const SHAPE = { cv: Master, profile: Profile };
+/** The shape of each stored file, by the field that names it; the values the tool lists. */
+export const SHAPE = { cv: Master, profile: Profile };
 
 /**
  * The path of a stored file starts with the field of the call that names the file (adx decision
@@ -117,25 +118,48 @@ const SHAPE = { cv: Master, profile: Profile };
  * @returns its issues with the same codes, messages and paths, below the field of their file
  * @throws a bug refusal for a code this file lacks, or a refusal without an issue
  */
-export function raised(fileOf: (found: OldIssue) => Stored, refused: Rejection): Issues<Stored> {
+export function raised<F extends Stored>(
+  fileOf: (found: OldIssue) => F,
+  refused: Rejection,
+): Issues<F> {
   const [first, ...rest] = refused.issues.map(found => turned(fileOf(found), found));
   if (first === undefined) throw notTurned('a refusal of the check holds no issue');
   return [first, ...rest];
 }
 
-function turned(field: Stored, found: OldIssue): Issue<Stored> {
-  const path: [Stored, ...string[]] = [field, ...(found.path === '' ? [] : found.path.split('.'))];
-  if (found.code === 'SCHEMA') return schemaIssue(path, found.message);
+function turned<F extends Stored>(field: F, found: OldIssue): Issue<F> {
+  const path: [F, ...string[]] = [field, ...(found.path === '' ? [] : found.path.split('.'))];
+  return issueAt(path, found, SHAPE[field]);
+}
+
+/**
+ * One issue of the pure code at a place the caller picks, such as a field of an edit.
+ *
+ * @param path - the field of the call, then the place below it
+ * @param found - the issue of the check or of the page plan
+ * @param as - the shape a SCHEMA issue names in its command, one the tool lists
+ * @returns the issue with the same code and message at that path
+ * @throws a bug refusal for a code this file lacks
+ */
+export function issueAt<F extends string>(
+  path: [F, ...string[]],
+  found: OldIssue,
+  as: z.ZodType,
+): Issue<F> {
+  if (found.code === 'SCHEMA') return schemaIssue(path, found.message, as);
   const declared = RAISED[found.code];
   if (declared === undefined) throw notTurned(`the code ${found.code} has no code of adx`);
   return declared.at(path, found.message);
 }
 
 // adx owns SCHEMA, so only its check() raises it: with a part that always fails with the message.
-// `as` names the shape of the file, so the command of the issue shows that shape.
-function schemaIssue(path: [Stored, ...string[]], message: string): Issue<Stored> {
-  const [field] = path;
-  const { issues } = check(z.never(message), undefined, path, { as: SHAPE[field] });
+// `as` names the shape the value lies in, so the command of the issue shows that shape.
+function schemaIssue<F extends string>(
+  path: [F, ...string[]],
+  message: string,
+  as: z.ZodType,
+): Issue<F> {
+  const { issues } = check(z.never(message), undefined, path, { as });
   const [issue] = issues ?? [];
   if (issue === undefined) throw notTurned('the check of adx passed a part that always fails');
   return issue;
