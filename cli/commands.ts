@@ -26,8 +26,6 @@ export type Command = {
   requiredWith?: Partial<Record<OptionName, OptionName[]>>;
   /** The words after the command's name, such as the file of photo set. */
   words?: string[];
-  /** The words after the name are one value, such as the command schema shows. */
-  joinsWords?: true;
   /** The input read from --json or stdin. */
   input?: ZodType;
 };
@@ -41,7 +39,6 @@ export const COMMANDS = {
     does: 'lists every command and option, or the input of one command',
     options: [],
     words: ['name'],
-    joinsWords: true,
   },
   cvs: { does: 'lists the CVs and whether each fits its pages', options: [] },
   init: {

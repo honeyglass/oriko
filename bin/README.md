@@ -28,7 +28,6 @@ The second line runs `bin/oriko.ts` of the copy the installer keeps in `~/.local
 - **Uses:**
   - [cli/](../cli/README.md): imports `interim.ts`, `oriko.ts`, `run.ts`
   - [core/](../core/README.md): imports `files.limits.ts`, `files.ts`
-  - [read/](../read/README.md): imports `web.ts`
 - **Used by:** no folder.
 
 ---

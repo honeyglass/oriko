@@ -3,6 +3,7 @@
  *
  * Issues: what a helper answers in place of its value, at least one issue at a field of the call.
  * noCv, cvRequired, unknownCv, cvMismatch: what the data folder does not hold for a call.
+ * pathRefused: a file the person names that the system refuses to open.
  * targetNotAFile, oversized: a link at the target of a write, and an input past the byte limit.
  * Stored, SHAPE, raised: the field that names a stored file, the shape of each, and an issue of
  * the check of a CV or of the page plan below it.
@@ -46,6 +47,14 @@ export const cvMismatch = code(
   'CV_MISMATCH',
   'fix',
   'Leave out --cv, or change the field cv of the profile',
+);
+
+// A file the person names anywhere on the disk, which the system refuses to open; photo set and
+// read both read one.
+export const pathRefused = code(
+  'PATH_REFUSED',
+  'fix',
+  'Check the path and that you may read and write there',
 );
 
 // What stands at the target of a write; adx owns NOT_A_FILE, so the name says what it is about.

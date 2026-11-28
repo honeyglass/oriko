@@ -4,7 +4,7 @@ Each place where oriko on adx meets a gap of adx: what oriko builds around it wi
 offers, the code of its own it keeps, or the behavior it loses, and the golden differences of
 each move, with their sources.
 
-- W1 core/issues.ts:213
+- W1 core/issues.ts:222
   gap: a tool cannot raise `SCHEMA` itself; adx owns the code, and only `check()` raises it,
   against a schema (decision 78, guide "Input that has parts")
   call: `oriko plan --profile climb`, whose field `cv` fails its schema
@@ -106,7 +106,7 @@ each move, with their sources.
   command
   kind: loss
   golden: no difference
-- W9 core/issues.ts:117
+- W9 core/issues.ts:126
   gap: adx fills the command of an issue below a field from the source of that field (decision
   69, "adx fills `command` from the source of the first part")
   call: `oriko plan --home FOLDER --cv jane` on a CV with `"pages": 1` and more than one page of
@@ -232,7 +232,7 @@ each move, with their sources.
   kind: workaround
   golden: no difference
   same gap as: W17
-- W19 classic/images.ts:58
+- W19 classic/images.ts:59
   gap: adx reads a file only inside a root (guide "Reading a file"; proto/oriko README "`photo set`
   has the same gap", adx TODO #6)
   call: `oriko photo set --file ~/Pictures/me.png --cv jane`
@@ -257,7 +257,7 @@ each move, with their sources.
   kind: loss
   golden: no difference
   same gap as: W2
-- W21 classic/images.ts:78
+- W21 classic/images.ts:79
   gap: a tool cannot raise a code adx owns (proto/oriko README "What does not fit yet")
   call: `oriko photo set --file me.png`, where the read of `me.png` fails with a system error outside
   the list of `core/files.ts` that the caller fixes, such as EIO
@@ -297,7 +297,7 @@ each move, with their sources.
   folder copied in as the working directory of each probe, against which the call resolves the path
   kind: workaround
   golden: no difference
-- W24 classic/images.ts:58
+- W24 classic/images.ts:59
   gap: adx hands a handler no working directory of the call, and `run` of the test kit sets only the
   root made with `cwd` and leaves `process.cwd()` as it is (guide "Testing your tool")
   call: `run(oriko, ['photo', 'set', '--file', 'me.png'], { cwd })` in a test
@@ -460,7 +460,7 @@ each move, with their sources.
   kind: workaround
   golden: no difference
   same gap as: W17
-- W35 core/issues.ts:72
+- W35 core/issues.ts:81
   gap: adx reads the input itself, `--json -` up to 1,048,576 characters (adx `STDIN_LIMIT`), and
   hands a handler its value only, so a tool cannot set the limit of its input (guide "What every
   tool gets", the limits a call meets); and a tool cannot raise a code adx owns
@@ -564,7 +564,7 @@ each move, with their sources.
   kind: loss
   golden: no difference
   same gap as: W5
-- W41 core/issues.ts:151
+- W41 core/issues.ts:160
   gap: a public `Issue` of adx shows its `code`, its `path` and `command()` only; its message and
   hint stay inside adx (adx `dist/core/issue.d.ts`), and an issue takes its path when it is made
   call: `oriko cv update --cv jane --json '{"pages":1}'`, whose answer lists under `layout` what no
@@ -627,6 +627,169 @@ each move, with their sources.
   kind: loss
   golden: no difference
   same gap as: W15
+- W45 read/sources.ts:67
+  gap: adx reads a file only inside a root and talks only to a server the tool declares (guide
+  "Reading a file", "Wrapping a remote API"; proto/oriko README "`read` reads what adx cannot", adx
+  TODO #6)
+  call: `oriko read --posting ~/Downloads/job.pdf --profile acme`, and `oriko read --posting
+  https://jobs.example/1 --profile acme`
+  today: oriko's own code reads the file anywhere on the disk, up to 10,000,000 bytes, a regular
+  file only, and downloads the address over https on port 443 to a public address, with at most 5
+  redirects, 20 seconds and the listed encodings; a relative path starts at the working directory
+  of the call
+  now: the same, by the same code: `readBounded` of `core/files.ts` with `FILE_LIMITS.readBytes`,
+  and `download` of `read/web.ts` through `NODE_WEB`, with every check of today; a relative path
+  starts at the working directory of the process (W24)
+  proposal: an allow-list of the folders the person opens, and a remote for an address the person
+  names, which keeps the checks of the address at every redirect
+  kind: kept own code
+  golden: no difference
+  same gap as: W19
+- W46 read/sources.ts:73
+  gap: a tool cannot raise a code adx owns (proto/oriko README "What does not fit yet")
+  call: `oriko read --resume missing.pdf`, `oriko read --resume <folder>`, `oriko read --resume
+  huge.txt` with 10,000,001 bytes, `oriko read --posting http://example.com/job --profile globex`,
+  `oriko read` alone, and a download whose name does not resolve or whose server answers 503
+  today: `FILE_NOT_FOUND`, `NOT_A_FILE`, `INPUT_TOO_LARGE` and `URL_NOT_ALLOWED` at the option of
+  the source, `MISSING_INPUT` at `posting`, kind fix; `NETWORK_FAILED` and `SERVER_BUSY`, kind retry
+  now: `SOURCE_NOT_FOUND`, `SOURCE_NOT_A_FILE`, `SOURCE_TOO_LARGE`, `ADDRESS_NOT_ALLOWED`,
+  `NOTHING_TO_READ`, `DOWNLOAD_FAILED` and `SITE_BUSY`, with the same paths, messages and kinds (D21);
+  `read/web.ts` and `read/text.ts` keep their issues of today, and `turned` of `read/sources.ts`
+  turns each by its code into the code of `read/issues.ts`. `MISSING_OPTION` for `--posting`
+  without `--profile`, `PATH_REFUSED`, `PRIVATE_ADDRESS` and the other codes adx does not own keep
+  their names (measured: adx starts with `MISSING_OPTION` and `PATH_REFUSED` declared, and refuses
+  the seven others with `DECLARATION`); `PATH_REFUSED`, which `photo set` raises too, moves to
+  `core/issues.ts`
+  proposal: a tool can raise one of adx's codes for a file the tool's own code read, at the field
+  that named the file
+  kind: loss
+  golden: calls 111, 116 and 117 change their code
+  same gap as: W2
+- W47 read/issues.ts:90
+  gap: a code has one fixed hint, declared once with `code()` (guide "Refusing bad input with a
+  hint"; proto/oriko README "A code has one hint")
+  call: `oriko read --posting https://nowhere.example/ --profile acme`, a download that stops
+  midway, `oriko read --resume broken.pdf`, and `oriko read --resume bomb.docx` that unpacks to more
+  than 5,000,000 bytes
+  today: `NETWORK_FAILED` has three hints, one for a name that does not resolve, one for a failed
+  request and one for a body that stops; `DOCUMENT_UNREADABLE` names the kind of the document in
+  its hint, or says "Save the page and pass the file" for a body it cannot unpack;
+  `INPUT_TOO_LARGE` names the limit, 10,000,000 or 5,000,000 bytes, in its hint
+  now: `DOWNLOAD_FAILED` has one hint that joins the three, `DOCUMENT_UNREADABLE` one for both
+  cases, and `SOURCE_TOO_LARGE` a hint without a number; each message still names what differs,
+  such as "The name … could not be resolved" or "The input is larger than 5000000 bytes"
+  proposal: an issue can carry a hint of its own beside the hint its code declares, from values the
+  issue holds, as a tool raises it
+  kind: workaround
+  golden: no difference
+  same gap as: W29
+- W48 read/documents.ts:81
+  gap: adx cannot promise that a dry run sends nothing when the tool's own code sends, and the test
+  kit can stand in only for a declared remote (proto/oriko README "`read` reads what adx cannot",
+  guide "Testing your tool")
+  call: `oriko read --posting https://jobs.example/1 --profile globex --dry-run`
+  today: the dry run downloads the page, as the real run does, and writes nothing
+  now: the same; a test replaces the two calls of `NODE_WEB` in `read/web.ts` with `mock.method` of
+  `node:test` and counts the requests, and `conformance` with the program could not stand in for
+  the network
+  proposal: a remote for an address the person names, whose requests the test kit fakes and counts
+  on a dry run, as it does for a declared server
+  kind: kept own code
+  golden: no difference
+- W49 read/documents.ts:64
+  gap: the test kit can give a probe no file outside every root, and its probe of `--replace`
+  fails an effect whose example stages no `files.write` (guide "Testing your tool", "`--replace`")
+  call: `conformance(t, oriko, { seed })`, which probes `oriko read`
+  today: no conformance; the old shell has no example
+  now: the example names the posting of the package
+  `examples/showcase/go-e-senior-backend/posting.md`, relative to the repository's root, for the
+  profile `acme` of the seed, so a probe stores a posting in its scratch folder. An example with
+  `--resume`, which stores nothing, fails the probe "--replace" (measured: "its plan stages no
+  files.write, so --replace guards nothing"). It passes only while the process of the test runs in
+  the repository's root
+  proposal: the samples of the test kit can name files a probe finds at a plain path, and the probe
+  of `--replace` takes an effect that stages a write for some input of its own
+  kind: workaround
+  golden: no difference
+  same gap as: W23
+- W50 read/documents.ts:93
+  gap: a write follows a link at its target to a file inside the root and writes through it, while
+  the guide says a link at the target is replaced (guide "Files the call names"; adx
+  `src/files/paths.ts`, `linkedFile`)
+  call: `oriko read --posting job.txt --profile linked`, where `profiles/linked.posting.md` is a link
+  to `../cvs/jane.json`, and `oriko read --notes a.md --cv jane`, where `cvs/jane.notes.md` is a link
+  to `jane.json`; the same with `--replace`, with a link that leads nowhere, a link out of the data
+  folder and a folder at the target
+  today: a posting at a link to a stored file or out of the data folder is `POSTING_EXISTS`, and
+  with `--replace` the link is replaced by the posting; a link that leads nowhere is replaced
+  without `--replace`. Notes at any link are written as a new file that holds the text of the
+  link's target and the new notes, the target stays as it was. A folder is `NOT_A_FILE` at `home`
+  (measured on 705000f)
+  now: a link to a stored file is `TARGET_NOT_A_FILE` at `profile` or `cv`, kind fix, with and
+  without `--replace`, from `targetIssue` of `core/home.ts`, before anything is staged, so the
+  posting of the same call is not written either. A link that leads nowhere is adx's
+  `ALREADY_EXISTS` at no field for a posting and for first notes, and `--replace` replaces it; a
+  posting at a link out of the data folder the same, and its target stays as it was; notes at a
+  link out of the data folder are adx's `PATH_OUTSIDE` at no field, a check adx adds; a folder is
+  adx's `NOT_A_FILE` at no field (measured)
+  proposal: a link at the target of a write is replaced, as the guide says, or the answer names the
+  real file the write changed
+  kind: workaround
+  golden: no difference
+  same gap as: W17
+- W51 core/sources.ts:17
+  gap: one source answers both the list of an option given without a value and the check of a
+  value the call gives (guide "Options and their values")
+  call: `oriko read --profile acme --cv` with the CVs `erika` and `jane` stored
+  today: the values `["jane"]`, only the CV the profile names
+  now: every stored CV, `erika` and `jane`; `--cv erika --profile acme --notes a.md` is
+  `CV_MISMATCH` at `cv`, as today
+  proposal: a source can answer the list of an option apart from the check of a value
+  kind: loss
+  golden: no difference
+  same gap as: W5
+- W52 read/documents.ts:146
+  gap: `--replace` is refused with `UNKNOWN_OPTION` on a call whose plan stages no `files.write`,
+  and `files.update` takes none (guide "A command that changes something")
+  call: `oriko read --resume old.docx --replace`, and `oriko read --notes a.md --cv jane --replace`
+  where `cvs/jane.notes.md` holds notes
+  today: both run; `--replace` changes nothing for them
+  now: `UNKNOWN_OPTION` at `replace`, "--replace is no option of a call whose plan writes no file"
+  proposal: a command that stages a write for some input takes `--replace` on every call, and the
+  answer says that nothing was replaced
+  kind: loss
+  golden: no difference
+- W53 read/documents.ts:146
+  gap: a stored file read through a root answers adx's refusals, which stand at no field (guide
+  "Reading a file")
+  call: `oriko read --notes a.md --cv jane`, where `cvs/jane.notes.md` holds 10,000,001 bytes, and
+  the same where it holds bytes that are no UTF-8 text, such as `old \xff\xfe notes`
+  today: `INPUT_TOO_LARGE` at `home`, kind fix, "The input is larger than 10000000 bytes"; the notes
+  that are no UTF-8 text are appended to, the old bytes rewritten with replacement characters
+  (U+FFFD), `written: true` (measured on 705000f)
+  now: `STORED_INVALID`, kind ask, no path, "cvs/jane.notes.md holds more than 10000000 bytes", or
+  "cvs/jane.notes.md holds bytes that are no UTF-8 text", from `files.update`, and the file stays as
+  it was (measured); notes that would grow past the limit with the new sections are
+  `SOURCE_TOO_LARGE` at `notes`, kind fix, as today with its new name. The byte limit
+  `FILE_LIMITS.readBytes` stays
+  proposal: the issue of a stored file stands at the field of the call that names the file
+  kind: loss
+  golden: no difference
+  same gap as: W2
+- W54 read/sources.ts:96
+  gap: a tool cannot raise a code adx owns (proto/oriko README "What does not fit yet")
+  call: `oriko read --resume old.docx`, where the read of `old.docx` fails with a system error
+  outside the list of `core/files.ts` that the caller fixes, such as EIO
+  today: `SYSTEM_REFUSED` at `resume`, kind ask, "old.docx: The system refused …/old.docx: EIO"
+  now: `turned` of `read/sources.ts` throws the system error on with `failed`: `SYSTEM_REFUSED`, kind
+  ask, no path, "open of …/old.docx failed with EIO", adx's hint, and the message no longer names
+  the option. Read in adx `src/core/unmapped.ts` and in `read/sources.ts`, not measured: no test can
+  make a read fail with EIO
+  proposal: a tool can raise one of adx's codes for a file the tool's own code read, at the field
+  that named the file
+  kind: loss
+  golden: no difference
+  same gap as: W2
 
 ## Passing outside the golden
 
@@ -650,9 +813,6 @@ What holds only between two packages, and the package that ends it.
   only with `--json -` and takes the fields `--language`, `--first-name`, `--last-name` and
   `--role` as options, as section 4 of the plan keeps the old schema byte for byte. Calls:
   `schema init` and `schema`. Package 9 ends it, when `oriko schema` is adx's.
-- The step of the old `read` after a posting, `oriko profile set --profile NAME`, needs `json`,
-  where a step of adx names fields of the input. Call: `read --posting posting.txt --profile
-  globex` (call 106). Package 8 ends it, when `read` names the step on adx.
 
 ## Golden changes
 
@@ -725,6 +885,16 @@ Every record that differs from the golden before the move, by its call number in
 | 102 | `profile set --profile globex --json '{"cv":"jane","blocks":{"nobody":{"hidden":true}}}'` | `UNKNOWN_BLOCK` names `oriko show --cv jane --profile globex --block`: globex is stored since call 99, so the step carries it beside `--cv jane` | listed: decision 79; passing: ends the passing difference of package 6 |
 | 81, 82, 85 to 97 | the 15 edits on `erika` that write | `cvs/erika.json` names `placeholder.png`, so the answer counts 2 bytes more, and the file keeps mode 600, the mode `init` gave it | listed: README "`init` writes one shared placeholder photo" (70); adx's own: guide "Files" (an updated file keeps its mode) |
 | 83 | `item add --cv erika --json '{"block":"skills","value":"Rust"}' --dry-run` | the answer counts 2 bytes more, as the CV names `placeholder.png` | listed: README "`init` writes one shared placeholder photo" (70), in a record of another call on the same stored file (section 5 of the plan) |
+| 106, 109 | `read --posting posting.txt --profile globex`, `read --posting other.txt --profile globex --replace` | `{ ok, applied: true, result: { read, profile, posting }, next }`: `written` is `applied`, `read` keeps its entries with `stored`, `posting` is `{ file, bytes, replaces }` of `profiles/globex.posting.md`, with `changes` on the replace of call 109; the step to `schema` says adx's "shows the schema of profile", and the step to `profile set` needs `cv` and `blocks` in place of `json`; the posting has mode 600 | listed: README "One answer shape", "A write answers `{ file, bytes, replaces }`, and `changes` on a replace", "Steps to `schema`" (77); adx's own: guide "Next steps" (`needs` names input fields), "Files" (a new file gets 0600, a replaced one keeps its mode); passing: ends the passing line of call 106 |
+| 107 | `read --posting posting.txt --profile globex` again | the answer of call 106 with `unchanged: true` in `posting` and `applied: true`, in place of `written: false`; nothing is written | listed: decision 81, the same bytes again write nothing; adx's own: guide "Files" (a real run that writes nothing answers `applied: true`) |
+| 108 | `read --posting other.txt --profile globex` | refusal shape; `ALREADY_EXISTS` at no field, "profiles/globex.posting.md exists and holds other bytes", hint "add --replace to overwrite profiles/globex.posting.md", command the same call with `--replace --dry-run`, in place of `POSTING_EXISTS` at `posting` | listed: README "`ALREADY_EXISTS` replaces two codes" (10, 31); adx's own: guide "The answer", "A command that changes something" |
+| 110 | `read --posting posting.txt` | refusal shape; `MISSING_OPTION` keeps its path, message and hint, and its command is `oriko read --posting posting.txt --profile`, which answers the names taken, in place of `oriko read --profile` | adx's own: guide "The answer", "Refusing bad input with a hint" (adx fills `command` at a field that has a source, with the fields of the call). The code keeps its name `MISSING_OPTION`: adx does not own it and starts with it declared (measured, W46), so it needs no name of its own |
+| 111 | `read --posting http://example.com/job --profile globex` | refusal shape; `ADDRESS_NOT_ALLOWED` in place of `URL_NOT_ALLOWED`, with the same path, message and hint | a logged loss: W46, with the name of decision D21; adx's own: guide "The answer" |
+| 112 | `read --posting https://127.0.0.1/job --profile globex` | refusal shape; `PRIVATE_ADDRESS` keeps its path, message and hint | adx's own: guide "The answer" |
+| 113, 114 | `read --notes posting.txt --cv jane`, `read --notes posting.txt --notes other.txt --cv jane` | `{ ok, applied: true, result: { read, cv, notes }, next }`: `notes` is `{ file, bytes, replaces }` of `cvs/jane.notes.md`, with `changes` on the update of call 114; the step to `show` is the same; the notes have mode 600 | listed: README "One answer shape", "A write answers `{ file, bytes, replaces }`, and `changes` on a replace"; section 5 of the plan for the mode; adx's own: guide "Files" (a new file gets 0600, an updated one keeps its mode) |
+| 115 | `read --resume other.txt` | `{ ok, applied: true, result: { read }, next }`, in place of `written: false`; the step to `init` needs `cv`, `language`, `firstName`, `lastName` and `role` in place of `cv` and `json`, and the step to `schema` says adx's "shows the schema of init" | listed: README "One answer shape", "Steps to `schema`" (77); adx's own: guide "Files" (a real run that writes nothing answers `applied: true`), "Next steps" (`needs` names input fields) |
+| 116 | `read --resume missing.pdf` | refusal shape; `SOURCE_NOT_FOUND` in place of `FILE_NOT_FOUND`, with the same path, message and hint | listed: README "Five codes get a name of their own"; log W46; adx's own: guide "The answer" |
+| 117 | `read` | refusal shape; `NOTHING_TO_READ` in place of `MISSING_INPUT`, with the same path, message, hint and command `oriko schema read` | listed: README "Five codes get a name of their own"; log W46; adx's own: guide "The answer" |
 
 ## Decisions of the coordinator
 
@@ -920,3 +1090,39 @@ work stops only when an approach cannot work at all, and everything else is deci
   reason: the answer counts 2 bytes more, since the CV names `placeholder.png` in place of
   `cvs/erika.png`; the plan counted the 15 records that write the file and missed the one dry
   run on it
+- D21, before package 8
+  question: `read` raises codes adx owns, which a tool cannot declare. Which names do they get
+  variants: (a) the names of the sketch where it has them, and for the rest a name after the
+  thing, by the rule of D8; (b) one code for every refusal of a source
+  choice: a. `MISSING_INPUT` is `NOTHING_TO_READ` and `FILE_NOT_FOUND` is `SOURCE_NOT_FOUND`
+  (both of the sketch); `NOT_A_FILE` is `SOURCE_NOT_A_FILE`, `INPUT_TOO_LARGE` is
+  `SOURCE_TOO_LARGE`, `URL_NOT_ALLOWED` is `ADDRESS_NOT_ALLOWED`, `NETWORK_FAILED` is
+  `DOWNLOAD_FAILED` and `SERVER_BUSY` is `SITE_BUSY`, the last two of kind retry. A name changes
+  only where adx refuses the declaration of the old one; a code adx does not own keeps its
+  name. So `MISSING_OPTION` keeps its name: the sketch renames it to `PROFILE_NEEDED`, but adx
+  accepts its declaration (measured in package 8), and the plan lists the new name as a change
+  that may happen, not one that must
+  reason: (b) would take from a caller the difference between a file to fix, an address to
+  change and a download to repeat; (a) keeps one code per cause, as today
+- D22, before package 8
+  question: `conformance` calls the `example` of a command, and the example of `read` needs a
+  source that is there. Which one
+  variants: (a) a file of the package, relative to its root, read with the option that stores
+  nothing; (b) an https address; (c) no example; (d) a posting of the package, relative to its
+  root, stored beside a profile
+  choice: first a, as D9 for `photo set`; changed to d in package 8
+  reason: (b) would make a test load from the network, and (c) leaves the schema without a
+  call an agent can copy. (a) cannot pass: the test kit of adx calls the example of every
+  command that writes with `--replace`, and a call that stages no write refuses that option
+  (adx `src/test/probes.ts`, measured). (d) writes only in the scratch folder of the kit and
+  passes while the test runs in the root of the repository (W49); the test of the whole
+  program is decided in package 9
+- D23, package 8
+  question: `--profile` of `read` names the file of a posting and, for notes, only picks a
+  stored profile. Which names does it accept
+  variants: (a) an id always; (b) an id beside `--posting`, any name a stored profile has for
+  notes alone, as today
+  choice: b
+  reason: (a) refused a notes call that ran before and has no source in the plan. With (b) the
+  check of the command holds the name to an id wherever it becomes a path, and for notes the
+  name is only compared with the list of stored profiles, so no name reaches a path

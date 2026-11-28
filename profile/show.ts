@@ -13,7 +13,7 @@ import { multiline, read } from '@honeyglass/adx';
 import { z } from 'zod';
 import { Id, Profile } from '../core/cv.schema.ts';
 import { FILE_LIMITS } from '../core/files.limits.ts';
-import { home, profileFile } from '../core/home.ts';
+import { home, postingFile, profileFile } from '../core/home.ts';
 import { storedShape } from '../core/load.ts';
 
 // The steps after it, to profile set and to plan, stand in cli/next.ts, beside plan.
@@ -36,8 +36,6 @@ export const show = read({
     return { name, profile, posting: text };
   },
 });
-
-const postingFile = (name: string) => home.file(`profiles/${name}.posting.md`);
 
 // The names with a profile or a posting, each once.
 async function shownChoices() {

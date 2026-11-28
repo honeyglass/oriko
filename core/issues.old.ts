@@ -3,12 +3,9 @@
  *
  * schemaIssues, duplicateId, unknownBlock, untitledNotAlone: what the check of a CV finds.
  * itemsNotInMaster, levelRaised, factChanged, jobMoved: a fact of the master a profile changes.
- * fileNotFound, notAFile, notAFolder, tooLarge, invalidJson: the failures of a file.
+ * fileNotFound, notAFile, notAFolder, tooLarge: the failures of a file.
  * pathRefused, systemRefused: a refusal of the system on a path, by who can solve it.
- * noCv, cvRequired, unknownCv, unknownCvOfProfile, cvMismatch, unknownProfile: what the data
- * folder does not hold.
  * roleTooLong, blockTooTall, pageOverflow: what does not fit the pages.
- * FILE_NOT_FOUND: the code other files compare.
  *
  * @example if (block === undefined) return rejected('show', [issue.unknownBlock(id, 'block')]);
  */
@@ -17,8 +14,6 @@ import type { z } from 'zod';
 import { SYSTEM_REFUSED } from './errors.ts';
 import type { Issue } from './errors.ts';
 import { FILE_LIMITS } from './files.limits.ts';
-
-export const FILE_NOT_FOUND = 'FILE_NOT_FOUND';
 
 /**
  * @param error - the error of a failed safeParse
@@ -87,7 +82,7 @@ export const jobMoved = (): Issue => ({
 });
 
 export const fileNotFound = (path: string, option: string): Issue => ({
-  code: FILE_NOT_FOUND,
+  code: 'FILE_NOT_FOUND',
   path: option,
   message: `There is no file ${shown(path)}`,
   hint: 'Check the path, or pass the full path of the file',
@@ -114,13 +109,6 @@ export const tooLarge = (path: string, limit: number = FILE_LIMITS.inputBytes): 
   hint: `Send at most ${limit} bytes; a CV is a few thousand, a photo a few million`,
 });
 
-export const invalidJson = (what: string): Issue => ({
-  code: 'INVALID_JSON',
-  path: '',
-  message: `${what} is not valid JSON`,
-  hint: 'Send one valid JSON value',
-});
-
 export const pathRefused = (path: string, option: string, code: string): Issue => ({
   code: 'PATH_REFUSED',
   path: option,
@@ -134,68 +122,6 @@ export const systemRefused = (path: string, option: string, code: string): Issue
   message: `The system refused ${shown(path)}: ${code}`,
   hint: 'Tell the person what the system answered, such as a full disk, and call again once solved',
 });
-
-// A missing folder and an empty one are both no CV; the message says which it is.
-export const noCv = (home: string, exists: boolean): Issue => ({
-  code: 'NO_CV',
-  path: 'home',
-  message: `The data folder ${shown(home)} ${exists ? 'holds no CV' : 'does not exist'}`,
-  hint: 'Check --home, or run the command for the input of a new CV',
-  command: 'oriko schema init',
-});
-
-// --cv without a value lists the CVs, so the command answers every name the caller may pass.
-const LIST_CVS = 'oriko show --cv';
-
-export const cvRequired = (): Issue => ({
-  code: 'CV_REQUIRED',
-  path: 'cv',
-  message: 'The data folder holds several CVs and the call names none',
-  hint: 'Run the command, then pass --cv with one of the CV names it lists',
-  command: LIST_CVS,
-});
-
-export const unknownCvOfProfile = (name: string): Issue => ({
-  code: 'UNKNOWN_CV',
-  path: 'profile.cv',
-  message: `The profile names the CV ${shown(name)}, which the data folder does not hold`,
-  hint: 'Run the command and set the field cv of the profile to one of the CV names it lists',
-  command: LIST_CVS,
-});
-
-export const unknownCv = (name: string): Issue => ({
-  code: 'UNKNOWN_CV',
-  path: 'cv',
-  message: `The data folder has no CV ${shown(name)}`,
-  hint: 'Run the command and use one of the CV names it lists',
-  command: LIST_CVS,
-});
-
-export const cvMismatch = (explicit: string, fromProfile: string): Issue => ({
-  code: 'CV_MISMATCH',
-  path: 'cv',
-  message: `--cv names ${shown(explicit)}, but the profile belongs to ${shown(fromProfile)}`,
-  hint: 'Leave out --cv, or change the field cv of the profile',
-});
-
-export function unknownProfile(name: string, names: string[]): Issue {
-  const message = `The data folder has no profile ${shown(name)}`;
-  if (names.length === 0)
-    return {
-      code: 'UNKNOWN_PROFILE',
-      path: 'profile',
-      message,
-      hint: 'Run the command for the shape of a profile, then store one with oriko profile set',
-      command: 'oriko schema profile set',
-    };
-  return {
-    code: 'UNKNOWN_PROFILE',
-    path: 'profile',
-    message,
-    hint: 'Run the command and use one of the profile names it lists',
-    command: 'oriko plan --profile',
-  };
-}
 
 export const roleTooLong = (role: string): Issue => ({
   code: 'ROLE_TOO_LONG',

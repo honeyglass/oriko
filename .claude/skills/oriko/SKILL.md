@@ -98,12 +98,12 @@ Each such back edge is bounded: at most three returns, and the fourth refusal is
 | 'SCHEMA', 'UNKNOWN_BLOCK'                             | 2 Inspect, 3 Draft, 8 Write | fix the named path                                                                                 |
 | 'ITEM_NOT_IN_MASTER'                                  | 3 Draft, 4 Check            | drop the named item from the profile; when the user asked for that item, STOP and ask: the master is theirs |
 | 'FACT_CHANGED', 'LEVEL_RAISED', 'JOB_MOVED'           | 3 Draft, 4 Check            | take the named field, level or job back to the master's; a wrong fact in the master: STOP and ask  |
-| 'ALREADY_EXISTS', 'POSTING_EXISTS'                    | 1 Posting, 3 Draft          | add '--replace' when the user asked to revise that profile or it is this run's draft; else STOP and ask |
+| 'ALREADY_EXISTS'                                      | 1 Posting, 3 Draft          | add '--replace' when the user asked to revise that profile or it is this run's draft; else STOP and ask |
 | 'CV_EXISTS'                                           | 8 Write                     | STOP and ask: another name, or changes to that master                                              |
 | 'WRONG_EXTENSION', 'PATH_OUTSIDE' at 'out'            | 5 Build                     | pass '--out' as a relative '.docx' or '.pdf' path inside the working directory                     |
 | 'NOT_IN_LIST' at 'style', 'CREDITS_NEED_TERMINAL'     | 5 Build                     | keep '--style' and '--credits' as the user asked; when the two clash, STOP and ask                 |
-| 'URL_NOT_ALLOWED', 'PRIVATE_ADDRESS', 'HTTP_STATUS', 'TOO_MANY_REDIRECTS', 'ENCODING_NOT_ALLOWED', 'DOCUMENT_UNREADABLE', 'UNSUPPORTED_KIND', 'NO_TEXT' | 1 Posting, 7 Facts | STOP and ask the user for the text or a saved file; never fetch or save the page yourself |
-| 'CV_REQUIRED', 'UNKNOWN_CV', 'CV_MISMATCH', 'UNKNOWN_PROFILE', 'NOT_IN_LIST' | any state | pass the name the user gave or 1 Posting chose; with none, STOP and ask |
+| 'ADDRESS_NOT_ALLOWED', 'PRIVATE_ADDRESS', 'HTTP_STATUS', 'TOO_MANY_REDIRECTS', 'ENCODING_NOT_ALLOWED', 'DOCUMENT_UNREADABLE', 'UNSUPPORTED_KIND', 'NO_TEXT' | 1 Posting, 7 Facts | STOP and ask the user for the text or a saved file; never fetch or save the page yourself |
+| 'CV_REQUIRED', 'UNKNOWN_CV', 'CV_MISMATCH', 'NOT_IN_LIST' | any state | pass the name the user gave or 1 Posting chose; with none, STOP and ask |
 | any other code                                        | the state that made it      | run the issue's 'command', follow its 'hint'                                                       |
 
 Raising `pages` in a master, or cutting a fact from it, is the user's decision: STOP and ask.

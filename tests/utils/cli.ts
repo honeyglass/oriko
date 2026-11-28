@@ -9,8 +9,8 @@
  *
  * A call goes where bin/oriko.ts sends it: a command on adx through run() of adx's test kit, with
  * the --home of the test's data folder unless the call names its own, every other one through
- * the old shell. The network of a Space reaches only the old shell; a test stands in for
- * LibreOffice by replacing libreOffice.program of pdf/convert.ts.
+ * the old shell. A test stands in for LibreOffice by replacing libreOffice.program of
+ * pdf/convert.ts, and for the network by replacing the calls of NODE_WEB in read/web.ts.
  *
  * @example const { exit, answer } = await call(workspace(), ['plan']);
  */
@@ -22,9 +22,7 @@ import { z } from 'zod';
 import { onAdx } from '../../cli/interim.ts';
 import { oriko } from '../../cli/oriko.ts';
 import { run } from '../../cli/run.ts';
-import type { Web } from '../../read/web.ts';
 import { FIXTURE_URL, photo } from './fixture.ts';
-import { fakeWeb } from './web.ts';
 
 const Answer = z.looseObject({
   ok: z.boolean(),
@@ -53,8 +51,8 @@ const Answer = z.looseObject({
     .optional(),
 });
 
-/** The data folder, the working directory, and the network, which by default reaches nothing. */
-export type Space = { home: string; cwd: string; web?: Web };
+/** The data folder and the working directory of a test. */
+export type Space = { home: string; cwd: string };
 
 export const workspace = (): Space => {
   const home = mkdtempSync(join(tmpdir(), 'oriko-home-'));
@@ -95,12 +93,11 @@ export const piped = async (space: Space, argv: string[]) =>
 async function ran(space: Space, argv: string[], stdin: string | null, isTTY: boolean) {
   if (onAdx(argv))
     return runOnAdx(oriko, withHome(argv, space.home), { cwd: space.cwd, stdin, tty: isTTY });
-  const { home, cwd, web = fakeWeb({}, {}).web } = space;
+  const { home, cwd } = space;
   let out = '';
   const exit = await run(argv, {
     home,
     cwd,
-    web,
     isTTY,
     stdin: async () => stdin,
     write: text => (out += text),

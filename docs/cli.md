@@ -48,11 +48,19 @@ what the option may hold.
 | `profile set`, `profile show` | stores the version for one posting, checked against its CV, and shows it with its posting |
 
 `read` takes a file or an `https://` address and answers its text. By design the file may sit at
-any path oriko can read, inside the working directory or not. The posting is stored as
-`profiles/<profile>.posting.md`, notes are added to `cvs/<cv>.notes.md`, and an old CV is stored
-nowhere. The kind comes from the content: PDF, Word, HTML or UTF-8 text; any other is refused. A
-download goes only to a public address over https on port 443, at every redirect, and each
-document stops at a size limit. Every character that does not show as itself becomes a space.
+any path oriko can read, inside the working directory or not; a relative path starts at the
+working directory. The posting is stored as `profiles/<profile>.posting.md`, notes are added to
+`cvs/<cv>.notes.md` of the CV the profile or `--cv` names, and an old CV is stored nowhere. The
+answer names the file of each in `posting` and `notes`. A stored posting is replaced only with
+`--replace`; the same posting again writes nothing and says `"unchanged": true`. The kind comes
+from the content: PDF, Word, HTML or UTF-8 text; any other is refused. A download goes only to a
+public address over https on port 443, at every redirect, and each document stops at a size
+limit. Every character that does not show as itself becomes a space. A source that cannot be read
+is refused at the option that names it, with a code of its own such as `SOURCE_NOT_FOUND` or
+`ADDRESS_NOT_ALLOWED`; a failed download is `DOWNLOAD_FAILED` or `SITE_BUSY`, of kind `retry`.
+
+> [!WARNING]
+> `read --dry-run` reads and downloads its sources as the real run does; it only writes nothing.
 
 `profile set` takes the whole version as JSON and runs the checks of `plan` before it writes, so
 a refused version is never stored. An existing version is replaced only with `--replace`; the
@@ -69,8 +77,8 @@ sheets in `result.preview`. Add `--output text` to get the plain sheets there to
 `replaces`, `style` and `pages`. The file is built again from the CV each time, so `build`
 replaces it without `--replace`, writes nothing when it holds the same bytes (`unchanged: true`),
 and creates a missing folder of `--out`. `--out` is a relative path inside the working directory;
-a link there to another file is refused with `TARGET_NOT_A_FILE`, as is one at a stored profile
-or photo, so a write never changes the file a link leads to.
+a link there to another file is refused with `TARGET_NOT_A_FILE`, as is one at a stored profile,
+photo, posting or notes, so a write never changes the file a link leads to.
 
 `init` writes the new CV as `cvs/<cv>.json` and never replaces one: a name that is taken is
 refused with `CV_EXISTS`. Every new CV names the one placeholder photo `placeholder.png` of the
@@ -132,9 +140,7 @@ itself without `--dry-run`, with its data folder and every value quoted for the 
 }
 ```
 
-A command still on the old shell, `read`, says `"written": false` after `--dry-run`, and its step
-is "repeat the call without --dry-run to write". A command on adx reads stdin only with
-`--json -`.
+A command reads stdin only with `--json -`.
 
 oriko only names a step and never follows one. A step without `command`, such as the upload to
 Google Docs after `build`, is for the person.

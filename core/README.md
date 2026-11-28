@@ -20,8 +20,8 @@ from the other folders, so every feature can rely on it.
   the largest sizes a CV may have.
 - `check.ts`: checks a CV and its profile, applies the profile, and gives back the CV to build or
   the list of problems.
-- `files.ts`: reads files and pipes up to a size limit, and writes all files of one command or
-  none.
+- `files.ts`: reads files and pipes up to a size limit, such as a picture or a source of `read`
+  the person names anywhere on the disk.
 - `files.limits.ts`: sets how large the JSON input, a photo, and a posting, notes or an old CV may
   be.
 - `metrics.ts`: holds every distance of the page, so the estimate and the finished file use the
@@ -32,17 +32,16 @@ from the other folders, so every feature can rely on it.
 - `errors.ts`: holds the one error shape, a refusal that lists every issue, and the `Result` that
   holds either `data` or an `error`. [docs/cli.md](../docs/cli.md#a-refusal) shows how a refusal
   reads.
-- `home.old.ts`: finds the CVs in `cvs/` and the profiles in `profiles/` of the data folder, and
-  picks the CV a command works on.
+- `home.old.ts`: finds the CVs in `cvs/` and the profiles in `profiles/` of the data folder for
+  the old shell, and checks that the data folder can be read.
 - `issues.old.ts`: makes each issue that `core/` or several folders raise, one function per issue.
-- `load.old.ts`: reads the CV a profile names, for the lists of the old shell.
 - `options.old.ts`: lists every option of every command, and writes the options of a call with
   their values quoted for a shell.
-- `home.ts`: names the data folder and the working directory for adx, and the CV and profile
-  files in the data folder; it refuses a write whose target is a link to another file.
-- `issues.ts`: declares the codes `core/` raises on adx, holds the input to the byte limit of a
-  stored file, and turns an issue of the check or of the page plan into one of adx, below the
-  field that names its file or at a place the command picks.
+- `home.ts`: names the data folder and the working directory for adx, and the CV, profile and
+  posting files in the data folder; it refuses a write whose target is a link to another file.
+- `issues.ts`: declares the codes `core/` and several folders raise on adx, holds the input to
+  the byte limit of a stored file, and turns an issue of the check or of the page plan into one
+  of adx, below the field that names its file or at a place the command picks.
 - `load.ts`: reads the CV and the profile a command on adx names, picks the CV and checks both;
   it also reads the CV an edit changes, a new profile belongs to, or `show` outlines.
 - `options.ts`: describes the fields `--cv` and `--profile`, with the one text each has.
@@ -66,8 +65,8 @@ return Array.isArray(placed) ? refuse(...placed) : placed;
 
 A command on adx checks the CV first and plans the pages from it; each step gives back its value
 or the issues, which the command refuses with. The files that end in `.old.ts` serve what still
-runs on the old shell, such as `read`, and `issues.old.ts` also makes the issues of `check.ts` and
-`place.ts`, which only the commands on adx call.
+runs on the old shell, such as `oriko schema`, and `issues.old.ts` also makes the issues of
+`check.ts`, `place.ts` and `files.ts`, which only the commands on adx call.
 
 ## Connections
 
@@ -78,8 +77,8 @@ runs on the old shell, such as `read`, and `issues.old.ts` also makes the issues
     `files.limits.ts`, `files.ts`, `home.ts`, `issues.ts`, `load.ts`, `measure.ts`, `metrics.ts`,
     `options.ts`, `place.ts`, `sources.ts`, `zip.ts`
   - [cli/](../cli/README.md): imports `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
-    `files.limits.ts`, `home.old.ts`, `home.ts`, `issues.ts`, `load.old.ts`, `load.ts`,
-    `options.old.ts`, `options.ts`, `place.ts`, `sources.ts`
+    `files.limits.ts`, `home.old.ts`, `home.ts`, `issues.ts`, `load.ts`, `options.old.ts`,
+    `options.ts`, `place.ts`, `sources.ts`
   - [cv/](../cv/README.md): imports `check.ts`, `cv.limits.ts`, `cv.schema.ts`, `home.ts`,
     `issues.ts`, `load.ts`, `options.ts`, `place.ts`, `sources.ts`
   - [edit/](../edit/README.md): imports `check.ts`, `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
@@ -88,7 +87,7 @@ runs on the old shell, such as `read`, and `issues.old.ts` also makes the issues
   - [profile/](../profile/README.md): imports `check.ts`, `cv.schema.ts`, `errors.ts`,
     `files.limits.ts`, `home.ts`, `issues.ts`, `load.ts`, `place.ts`, `sources.ts`
   - [read/](../read/README.md): imports `cv.schema.ts`, `errors.ts`, `files.limits.ts`, `files.ts`,
-    `home.old.ts`, `issues.old.ts`
+    `home.ts`, `issues.old.ts`, `issues.ts`, `load.ts`, `options.ts`, `sources.ts`
   - [terminal/](../terminal/README.md): imports `cv.limits.ts`, `cv.schema.ts`, `metrics.ts`,
     `place.ts`, `zip.ts`
 

@@ -12,10 +12,12 @@ import { after, schema } from '@honeyglass/adx';
 import { set as photoSet } from '../classic/photo.ts';
 import { init } from '../cv/init.ts';
 import { cvs } from '../cv/list.ts';
+import { show } from '../cv/show.ts';
 import { commands as edit } from '../edit/commands.ts';
 import { profiles } from '../profile/list.ts';
 import { set as profileSet } from '../profile/set.ts';
 import { show as profileShow } from '../profile/show.ts';
+import { read } from '../read/documents.ts';
 import { build, preview } from './build.ts';
 import { plan } from './plan.ts';
 
@@ -63,4 +65,20 @@ export const next = [
       ? [profileSet.step({ profile: out.name }).needs('cv', 'blocks')]
       : [plan.step({ profile: out.name })],
   ),
+  after(read, readSteps),
 ];
+
+// A posting leads to storing its profile, notes to the CV they belong to, an old CV to a new one.
+function readSteps(out: {
+  profile?: string | undefined;
+  cv?: string | undefined;
+  posting?: object | undefined;
+}) {
+  const posting =
+    out.posting === undefined || out.profile === undefined
+      ? []
+      : [schema.step('profile'), profileSet.step({ profile: out.profile }).needs('cv', 'blocks')];
+  const notes = out.cv === undefined ? [] : [show.step({ cv: out.cv })];
+  const steps = [...posting, ...notes];
+  return steps.length > 0 ? steps : [init.step(), schema.step('init')];
+}

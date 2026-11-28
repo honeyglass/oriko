@@ -17,7 +17,7 @@ import { homeIssues } from '../core/home.old.ts';
 import { readArgs } from './args.ts';
 import { isOutput } from './commands.ts';
 import { json, text } from './answer.ts';
-import { commandIssues, commandOf, requiredIssues } from './route.ts';
+import { commandIssues, commandOf } from './route.ts';
 import { withCommands, withNext } from './complete.ts';
 import { dispatched } from './dispatch.ts';
 import { emptied } from './values.ts';
@@ -65,17 +65,14 @@ async function answered(argv: string[], io: Io) {
   const call = { io: readsStdinOnce(io), home, values, rest: found.rest, command: found.name };
   // An empty --home is refused below; until then no folder, not even the default one, is opened.
   const isHomeEmpty = args.empty.includes('home');
-  // An option given without a value lists its values and runs no command, so nothing is required.
-  const isRunning = args.empty.length === 0;
   const issues = [
     ...commandIssues(found, args.given),
-    ...(isRunning ? requiredIssues(found, args.given) : []),
     ...args.issues,
     ...(isHomeEmpty ? [] : await homeIssues(home)),
     ...(isKnownOutput ? [] : [issue.unknownOutput(values.output ?? '')]),
   ];
   if (issues.length > 0) return { result: withCommands(call, rejected('oriko', issues)), asText };
-  const result = args.empty.length === 0 ? await dispatched(call) : await emptied(call, args.empty);
+  const result = args.empty.length === 0 ? await dispatched(call) : emptied(call, args.empty);
   return { result: withCommands(call, withNext(call, result)), asText };
 }
 

@@ -6,81 +6,39 @@
  *
  * The cli only names a step and never follows one. A step without a command is for the person.
  *
- * @example const next = nextSteps({ command: 'read', data, isDryRun, repeated: ' --notes a.md' });
+ * @example const next = nextSteps({ command: undefined, data });
  */
-import { optionText } from '../core/options.old.ts';
 import { COMMANDS } from './commands.ts';
 import type { CommandName } from './commands.ts';
 
 export type Step = { does: string; command?: string; needs?: string[] };
 
-type Facts = {
-  command: CommandName | undefined;
-  data: Record<string, unknown>;
-  isDryRun: boolean;
-  /** The options and words of the call without --dry-run, so the step after a dry run repeats it. */
-  repeated: string;
-};
+type Facts = { command: CommandName | undefined; data: Record<string, unknown> };
 
 /**
- * @param facts - the command of the call, its answer, and --dry-run
- * @returns 0 to 3 steps, the main path first; none when nothing follows
+ * @param facts - the command of the call and its answer
+ * @returns 0 to 2 steps, the main path first; none when nothing follows
  */
 export function nextSteps(facts: Facts): Step[] {
   const { data } = facts;
   if ('option' in data) return [];
-  if (facts.isDryRun) return data.written === false ? again(facts) : [];
-  switch (facts.command) {
-    case undefined:
-      return Array.isArray(data.cvs) ? startSteps(data) : [];
-    case 'read':
-      return readSteps(data);
-    // schema names no step, and every other command runs on adx, which names its own.
-    default:
-      return [];
-  }
+  // schema names no step, and every other command runs on adx, which names its own.
+  if (facts.command !== undefined) return [];
+  return Array.isArray(data.cvs) ? startSteps(data) : [];
 }
 
-// The call itself without --dry-run.
-function again({ command, repeated }: Facts): Step[] {
-  // Only a named command takes --dry-run; a call without one is refused before it runs.
-  if (command === undefined) return [];
-  return [
-    { does: 'repeat the call without --dry-run to write', command: `oriko ${command}${repeated}` },
-  ];
-}
-
-const step = (name: CommandName, args = '', needs?: string[]): Step => {
+const step = (name: CommandName, needs?: string[]): Step => {
   const command: { does: string } = COMMANDS[name];
-  const base = { does: command.does, command: `oriko ${name}${args}` };
+  const base = { does: command.does, command: `oriko ${name}` };
   return needs === undefined ? base : { ...base, needs };
 };
 
 // Where to start depends on what the data folder holds: no CV, CVs only, or CVs and profiles.
 function startSteps(data: Record<string, unknown>): Step[] {
-  if (count(data.cvs) === 0)
-    return [step('read', '', ['resume']), step('init', '', ['cv', 'json'])];
-  const posting = step('read', '', ['posting', 'profile']);
+  if (count(data.cvs) === 0) return [step('read', ['resume']), step('init', ['cv', 'json'])];
+  const posting = step('read', ['posting', 'profile']);
   if (count(data.profiles) === 0) return [step('cvs'), posting];
   return [step('profiles'), posting];
 }
-
-// A posting leads to storing its profile, notes to the CV they belong to, an old CV to a new one.
-function readSteps(data: Record<string, unknown>): Step[] {
-  const roles = Array.isArray(data.read) ? data.read.map(roleOf) : [];
-  const steps: Step[] = [];
-  if (roles.includes('posting') && typeof data.profile === 'string')
-    steps.push(
-      step('schema', ' profile'),
-      step('profile set', optionText('profile', data.profile), ['json']),
-    );
-  if (roles.includes('notes') && typeof data.cv === 'string')
-    steps.push(step('show', optionText('cv', data.cv)));
-  if (steps.length > 0) return steps;
-  return [step('init', '', ['cv', 'json']), step('schema', ' init')];
-}
-
-const roleOf = (entry: unknown) =>
-  typeof entry === 'object' && entry !== null && 'role' in entry ? entry.role : undefined;
 
 const count = (list: unknown) => (Array.isArray(list) ? list.length : 0);

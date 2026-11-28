@@ -17,6 +17,7 @@ const shapes = (next: Step[]) => next.map(step => [step.command ?? null, step.ne
 test('a success names its next steps, each a command with what it still needs', async () => {
   const space = workspace();
   const picture = join(space.cwd, 'me.png');
+  const job = join(space.cwd, 'job.txt');
   const cases: [string[], [string | null, string[]][]][] = [
     [
       [],
@@ -121,24 +122,25 @@ test('a success names its next steps, each a command with what it still needs', 
         [`oriko profiles --home ${space.home}`, []],
       ],
     ],
+    // A posting names the shape of a profile, then the step that stores one.
     [
-      ['read', '--profile', 'acme', '--posting', 'job.txt'],
+      ['read', '--profile', 'acme', '--posting', job],
       [
         ['oriko schema profile', []],
-        ['oriko profile set --profile acme', ['json']],
+        [`oriko profile set --profile acme --home ${space.home}`, ['cv', 'blocks']],
       ],
     ],
-    [['read', '--cv', 'jane', '--notes', 'job.txt'], [['oriko show --cv jane', []]]],
+    [['read', '--cv', 'jane', '--notes', job], [[`oriko show --cv jane --home ${space.home}`, []]]],
     [
-      ['read', '--resume', 'job.txt'],
+      ['read', '--resume', job],
       [
-        ['oriko init', ['cv', 'json']],
+        [`oriko init --home ${space.home}`, ['cv', 'language', 'firstName', 'lastName', 'role']],
         ['oriko schema init', []],
       ],
     ],
     [
-      ['read', '--cv', 'jane', '--notes', 'job.txt', '--notes', 'job.txt', '--dry-run'],
-      [['oriko read --cv jane --notes job.txt --notes job.txt', []]],
+      ['read', '--cv', 'jane', '--notes', job, '--notes', job, '--dry-run'],
+      [[`oriko read --notes ${job} --notes ${job} --cv jane --home ${space.home}`, []]],
     ],
     [
       ['photo', 'set', '--cv', 'jane', '--file', picture, '--replace', '--dry-run'],
@@ -187,7 +189,7 @@ test('a success names its next steps, each a command with what it still needs', 
     ],
     [['cv', 'update', '--cv', 'jane', '--json', '{"pages":1}'], []],
   ];
-  writeFileSync(join(space.cwd, 'job.txt'), 'Senior Go Engineer');
+  writeFileSync(job, 'Senior Go Engineer');
   writeFileSync(join(space.home, 'profiles', 'posted.posting.md'), 'Senior Go Engineer\n');
   writeFileSync(picture, photo());
   mkdirSync(join(space.cwd, 'empty'));

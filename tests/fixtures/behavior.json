@@ -5834,28 +5834,35 @@
     "stdout": {
       "json": {
         "ok": true,
-        "read": [
-          {
-            "role": "posting",
-            "source": "posting.txt",
-            "kind": "text",
-            "chars": 48,
-            "replaced": 0,
-            "stored": "profiles/globex.posting.md",
-            "text": "Senior Go Engineer\n\nWe build logistics software."
+        "applied": true,
+        "result": {
+          "read": [
+            {
+              "role": "posting",
+              "source": "posting.txt",
+              "kind": "text",
+              "chars": 48,
+              "replaced": 0,
+              "stored": "profiles/globex.posting.md",
+              "text": "Senior Go Engineer\n\nWe build logistics software."
+            }
+          ],
+          "profile": "globex",
+          "posting": {
+            "file": "profiles/globex.posting.md",
+            "bytes": 91,
+            "replaces": false
           }
-        ],
-        "profile": "globex",
-        "written": true,
+        },
         "next": [
           {
-            "does": "lists every command and option, or the input of one command",
+            "does": "shows the schema of profile",
             "command": "oriko schema profile"
           },
           {
             "does": "stores the profile of one job posting, checked against its CV",
             "command": "oriko profile set --profile globex",
-            "needs": ["json"]
+            "needs": ["cv", "blocks"]
           }
         ]
       }
@@ -5876,7 +5883,7 @@
           "We build logistics software.",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -5888,28 +5895,36 @@
     "stdout": {
       "json": {
         "ok": true,
-        "read": [
-          {
-            "role": "posting",
-            "source": "posting.txt",
-            "kind": "text",
-            "chars": 48,
-            "replaced": 0,
-            "stored": "profiles/globex.posting.md",
-            "text": "Senior Go Engineer\n\nWe build logistics software."
+        "applied": true,
+        "result": {
+          "read": [
+            {
+              "role": "posting",
+              "source": "posting.txt",
+              "kind": "text",
+              "chars": 48,
+              "replaced": 0,
+              "stored": "profiles/globex.posting.md",
+              "text": "Senior Go Engineer\n\nWe build logistics software."
+            }
+          ],
+          "profile": "globex",
+          "posting": {
+            "file": "profiles/globex.posting.md",
+            "bytes": 91,
+            "replaces": false,
+            "unchanged": true
           }
-        ],
-        "profile": "globex",
-        "written": false,
+        },
         "next": [
           {
-            "does": "lists every command and option, or the input of one command",
+            "does": "shows the schema of profile",
             "command": "oriko schema profile"
           },
           {
             "does": "stores the profile of one job posting, checked against its CV",
             "command": "oriko profile set --profile globex",
-            "needs": ["json"]
+            "needs": ["cv", "blocks"]
           }
         ]
       }
@@ -5928,16 +5943,13 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "read",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
-            "code": "POSTING_EXISTS",
-            "path": "posting",
-            "message": "<ROOT>/home/.oriko/profiles/globex.posting.md already holds another posting",
-            "hint": "Add --replace to overwrite it, or pass another --profile"
+            "code": "ALREADY_EXISTS",
+            "message": "profiles/globex.posting.md exists and holds other bytes",
+            "hint": "add --replace to overwrite profiles/globex.posting.md",
+            "command": "oriko read --posting other.txt --profile globex --replace --dry-run"
           }
         ]
       }
@@ -5955,28 +5967,45 @@
     "stdout": {
       "json": {
         "ok": true,
-        "read": [
-          {
-            "role": "posting",
-            "source": "other.txt",
-            "kind": "text",
-            "chars": 45,
-            "replaced": 0,
-            "stored": "profiles/globex.posting.md",
-            "text": "Staff Go Engineer\n\nWe build routing software."
+        "applied": true,
+        "result": {
+          "read": [
+            {
+              "role": "posting",
+              "source": "other.txt",
+              "kind": "text",
+              "chars": 45,
+              "replaced": 0,
+              "stored": "profiles/globex.posting.md",
+              "text": "Staff Go Engineer\n\nWe build routing software."
+            }
+          ],
+          "profile": "globex",
+          "posting": {
+            "file": "profiles/globex.posting.md",
+            "bytes": 86,
+            "replaces": true,
+            "changes": {
+              "added": ["source: \"other.txt\"", "Staff Go Engineer", "We build routing software."],
+              "changed": [],
+              "removed": [
+                "source: \"posting.txt\"",
+                "Senior Go Engineer",
+                "We build logistics software."
+              ],
+              "more": 0
+            }
           }
-        ],
-        "profile": "globex",
-        "written": true,
+        },
         "next": [
           {
-            "does": "lists every command and option, or the input of one command",
+            "does": "shows the schema of profile",
             "command": "oriko schema profile"
           },
           {
             "does": "stores the profile of one job posting, checked against its CV",
             "command": "oriko profile set --profile globex",
-            "needs": ["json"]
+            "needs": ["cv", "blocks"]
           }
         ]
       }
@@ -5997,7 +6026,7 @@
           "We build routing software.",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -6010,17 +6039,14 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "oriko",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
             "code": "MISSING_OPTION",
             "path": "profile",
             "message": "The command read needs --profile beside --posting",
             "hint": "Run the command for the existing profiles, or pass a new name in lower-case words joined by hyphens",
-            "command": "oriko read --profile"
+            "command": "oriko read --posting posting.txt --profile"
           }
         ]
       }
@@ -6039,13 +6065,10 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "read",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
-            "code": "URL_NOT_ALLOWED",
+            "code": "ADDRESS_NOT_ALLOWED",
             "path": "posting",
             "message": "\"http://example.com/job\": The address \"http://example.com/job\" uses no https",
             "hint": "Pass an https:// address without a port, a user or a password, or save the page and pass the file"
@@ -6067,10 +6090,7 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "read",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
             "code": "PRIVATE_ADDRESS",
@@ -6094,19 +6114,26 @@
     "stdout": {
       "json": {
         "ok": true,
-        "read": [
-          {
-            "role": "notes",
-            "source": "posting.txt",
-            "kind": "text",
-            "chars": 48,
-            "replaced": 0,
-            "stored": "cvs/jane.notes.md",
-            "text": "Senior Go Engineer\n\nWe build logistics software."
+        "applied": true,
+        "result": {
+          "read": [
+            {
+              "role": "notes",
+              "source": "posting.txt",
+              "kind": "text",
+              "chars": 48,
+              "replaced": 0,
+              "stored": "cvs/jane.notes.md",
+              "text": "Senior Go Engineer\n\nWe build logistics software."
+            }
+          ],
+          "cv": "jane",
+          "notes": {
+            "file": "cvs/jane.notes.md",
+            "bytes": 65,
+            "replaces": false
           }
-        ],
-        "cv": "jane",
-        "written": true,
+        },
         "next": [
           {
             "does": "outlines a CV, or shows one block in full",
@@ -6128,7 +6155,7 @@
           "We build logistics software.",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -6140,28 +6167,54 @@
     "stdout": {
       "json": {
         "ok": true,
-        "read": [
-          {
-            "role": "notes",
-            "source": "posting.txt",
-            "kind": "text",
-            "chars": 48,
-            "replaced": 0,
-            "stored": "cvs/jane.notes.md",
-            "text": "Senior Go Engineer\n\nWe build logistics software."
-          },
-          {
-            "role": "notes",
-            "source": "other.txt",
-            "kind": "text",
-            "chars": 45,
-            "replaced": 0,
-            "stored": "cvs/jane.notes.md",
-            "text": "Staff Go Engineer\n\nWe build routing software."
+        "applied": true,
+        "result": {
+          "read": [
+            {
+              "role": "notes",
+              "source": "posting.txt",
+              "kind": "text",
+              "chars": 48,
+              "replaced": 0,
+              "stored": "cvs/jane.notes.md",
+              "text": "Senior Go Engineer\n\nWe build logistics software."
+            },
+            {
+              "role": "notes",
+              "source": "other.txt",
+              "kind": "text",
+              "chars": 45,
+              "replaced": 0,
+              "stored": "cvs/jane.notes.md",
+              "text": "Staff Go Engineer\n\nWe build routing software."
+            }
+          ],
+          "cv": "jane",
+          "notes": {
+            "file": "cvs/jane.notes.md",
+            "bytes": 192,
+            "replaces": true,
+            "changes": {
+              "added": [
+                "## posting.txt",
+                "",
+                "Senior Go Engineer",
+                "",
+                "We build logistics software.",
+                "",
+                "## other.txt",
+                "",
+                "Staff Go Engineer",
+                "",
+                "We build routing software.",
+                ""
+              ],
+              "changed": [],
+              "removed": [],
+              "more": 0
+            }
           }
-        ],
-        "cv": "jane",
-        "written": true,
+        },
         "next": [
           {
             "does": "outlines a CV, or shows one block in full",
@@ -6195,7 +6248,7 @@
           "We build routing software.",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -6207,25 +6260,27 @@
     "stdout": {
       "json": {
         "ok": true,
-        "read": [
-          {
-            "role": "resume",
-            "source": "other.txt",
-            "kind": "text",
-            "chars": 45,
-            "replaced": 0,
-            "text": "Staff Go Engineer\n\nWe build routing software."
-          }
-        ],
-        "written": false,
+        "applied": true,
+        "result": {
+          "read": [
+            {
+              "role": "resume",
+              "source": "other.txt",
+              "kind": "text",
+              "chars": 45,
+              "replaced": 0,
+              "text": "Staff Go Engineer\n\nWe build routing software."
+            }
+          ]
+        },
         "next": [
           {
             "does": "creates a CV",
             "command": "oriko init",
-            "needs": ["cv", "json"]
+            "needs": ["cv", "language", "firstName", "lastName", "role"]
           },
           {
-            "does": "lists every command and option, or the input of one command",
+            "does": "shows the schema of init",
             "command": "oriko schema init"
           }
         ]
@@ -6245,13 +6300,10 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "read",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
-            "code": "FILE_NOT_FOUND",
+            "code": "SOURCE_NOT_FOUND",
             "path": "resume",
             "message": "missing.pdf: There is no file <ROOT>/work/missing.pdf",
             "hint": "Check the path, or pass the full path of the file"
@@ -6273,13 +6325,10 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "read",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
-            "code": "MISSING_INPUT",
+            "code": "NOTHING_TO_READ",
             "path": "posting",
             "message": "The command names nothing to read",
             "hint": "Run the command and pass --posting, --notes or --resume with a file or an https:// address",

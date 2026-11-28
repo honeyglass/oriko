@@ -22,6 +22,7 @@ import { PNG } from 'pngjs';
 import type { Rejection } from '../core/errors.ts';
 import { readBounded } from '../core/files.ts';
 import { FILE_LIMITS } from '../core/files.limits.ts';
+import { pathRefused } from '../core/issues.ts';
 import type { Issues } from '../core/issues.ts';
 import * as issue from './issues.ts';
 
@@ -67,7 +68,7 @@ const UNREAD: Record<string, Code | undefined> = {
   FILE_NOT_FOUND: issue.noPicture,
   NOT_A_FILE: issue.pictureNotAFile,
   INPUT_TOO_LARGE: issue.pictureTooLarge,
-  PATH_REFUSED: issue.pathRefused,
+  PATH_REFUSED: pathRefused,
 };
 
 // SYSTEM_REFUSED is adx's own code, so its system error goes to adx whole, which sorts it.

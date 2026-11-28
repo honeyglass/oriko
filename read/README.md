@@ -25,6 +25,10 @@ limit, because a document from outside can be anything.
 - `issues.ts`: the problems `oriko read` reports, each with a hint on what to do next.
 - `limits.ts`: the limits on a Word file's unpacked text, and on the redirects and time of a
   download.
+- `issues.old.ts`: the problems the download and the reading of a document find, in the form
+  `sources.ts` turns into the codes of `issues.ts`.
+- `sources.ts`: reads every source of one call, a file anywhere on the disk or a link, and turns
+  it into text, or names every problem of every source at once.
 
 ## Example
 
@@ -40,10 +44,9 @@ Each call answers the text as JSON; [the command list](../docs/cli.md) says wher
 
 - **Uses:**
   - [core/](../core/README.md): imports `cv.schema.ts`, `errors.ts`, `files.limits.ts`, `files.ts`,
-    `home.old.ts`, `issues.old.ts`
+    `home.ts`, `issues.old.ts`, `issues.ts`, `load.ts`, `options.ts`, `sources.ts`
 - **Used by:**
-  - [bin/](../bin/README.md): imports `web.ts`
-  - [cli/](../cli/README.md): imports `documents.ts`, `limits.ts`, `web.ts`
+  - [cli/](../cli/README.md): imports `documents.ts`, `limits.ts`
 
 ---
 

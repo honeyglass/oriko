@@ -1,27 +1,23 @@
 /**
- * The data folder: every CV in cvs/, and one profile per job posting in profiles/.
+ * The data folder of the old shell: every CV in cvs/, and one profile per job posting in profiles/.
  *
  * cvNames, profileNames: the CVs and the profiles of a data folder, by name.
- * chosenCv: the CV a command works on, from --cv, the profile, or the only CV there is.
- * profilePath: the file of one profile.
+ * homeIssues: what keeps a data folder from being read.
  *
  * A CV or a profile is found by its name among the files that exist, never by a path built from
  * the name alone, so a name cannot lead out of the folder.
  *
- * @example const cv = await chosenCv(home, values.cv, profile.cv);
+ * @example const names = await cvNames(home);
  */
 import { readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { $try } from '@honeyglass/utils/ts';
-import { done, rejected } from './errors.ts';
-import type { Issue, Result } from './errors.ts';
+import type { Issue } from './errors.ts';
 import { isMissing, pathIssue } from './files.ts';
 import * as issue from './issues.old.ts';
 
 const SUFFIX = '.json';
 const NO_FILES: string[] = [];
-
-export type CvFile = { name: string; path: string };
 
 /**
  * @param home - the data folder
@@ -38,60 +34,6 @@ async function namesIn(home: string, folder: 'cvs' | 'profiles') {
 
 export const cvNames = (home: string) => namesIn(home, 'cvs');
 export const profileNames = (home: string) => namesIn(home, 'profiles');
-
-/**
- * @param home - the data folder
- * @param explicit - the name the caller passed with --cv, if any
- * @param fromProfile - the name the profile names in its field cv, if any
- * @returns the name and the path of the CV
- */
-export async function chosenCv(
-  home: string,
-  explicit?: string,
-  fromProfile?: string,
-): Promise<Result<CvFile>> {
-  const isMismatch =
-    explicit !== undefined && fromProfile !== undefined && explicit !== fromProfile;
-  if (isMismatch) return rejected('home', [issue.cvMismatch(explicit, fromProfile)]);
-  const cvs = await heldCvs(home);
-  if (cvs.error !== null) return cvs;
-  const names = cvs.data;
-  const name = explicit ?? fromProfile ?? (names.length === 1 ? names[0] : undefined);
-  if (name === undefined) return rejected('home', [issue.cvRequired()]);
-  if (names.includes(name)) return done({ name, path: join(home, 'cvs', `${name}${SUFFIX}`) });
-  return rejected('home', [
-    explicit === undefined ? issue.unknownCvOfProfile(name) : issue.unknownCv(name),
-  ]);
-}
-
-/**
- * @param home - the data folder
- * @param name - the name of a profile, as profileNames() lists it
- * @returns the path of its file
- */
-export async function profilePath(home: string, name: string): Promise<Result<string>> {
-  const cvs = await heldCvs(home);
-  if (cvs.error !== null) return cvs;
-  const names = await profileNames(home);
-  if (names.includes(name) === false) return rejected('home', [issue.unknownProfile(name, names)]);
-  return done(join(home, 'profiles', `${name}${SUFFIX}`));
-}
-
-/**
- * The one place that decides a data folder holds no CV, so every command answers it alike.
- *
- * @param home - the data folder
- * @returns the names of its CVs; NO_CV when it holds none
- */
-async function heldCvs(home: string): Promise<Result<string[]>> {
-  const names = await cvNames(home);
-  return names.length === 0 ? rejected('home', [await noCv(home)]) : done(names);
-}
-
-async function noCv(home: string) {
-  const exists = (await $try(stat(home), { or: null, expected: isMissing })) !== null;
-  return issue.noCv(home, exists);
-}
 
 /**
  * The data folder is checked once where a call enters, so every later list of it reads folders

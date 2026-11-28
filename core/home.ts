@@ -2,7 +2,7 @@
  * The two folders oriko may use on adx, and the files a command finds in them.
  *
  * home, work: the data folder `~/.oriko`, and the working directory of the call.
- * cvFile, profileFile: the file of one CV and of one profile in the data folder.
+ * cvFile, profileFile, postingFile: the file of one CV, of one profile and of its posting.
  * cvNames, profileNames: the CVs and the profiles of the data folder, by name.
  * isListed, targetIssue: whether a regular file stands at a place, and the refusal of a write
  * whose target is a link to a file inside its root.
@@ -23,6 +23,7 @@ export const work = root('work', cwd);
 
 export const cvFile = (name: string) => home.file(`cvs/${name}.json`);
 export const profileFile = (name: string) => home.file(`profiles/${name}.json`);
+export const postingFile = (name: string) => home.file(`profiles/${name}.posting.md`);
 
 export const cvNames = async () => (await home.list('cvs', '.json')).map(file => file.stem);
 export const profileNames = async () =>

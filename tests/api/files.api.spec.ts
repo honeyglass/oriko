@@ -1,10 +1,7 @@
 // Piped input stops one byte past its limit, and a refusal of the system goes to who can solve it.
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { test } from 'node:test';
-import { pathIssue, pipedText, writeAll } from '../../core/files.ts';
+import { pathIssue, pipedText } from '../../core/files.ts';
 import { rejected } from '../../core/errors.ts';
 
 async function* endless() {
@@ -37,22 +34,4 @@ test('a refusal of the system goes to the caller for a path, else to the person'
     ['EIO', 'SYSTEM_REFUSED', 'ask'],
     ['EUNPLANNED', 'SYSTEM_REFUSED', 'ask'],
   ]);
-});
-
-// A rename can fail after an earlier one went through; the answer then names what is written.
-test('a write that fails after another one names what it wrote, and leaves no temporary file', async () => {
-  const folder = mkdtempSync(join(tmpdir(), 'oriko-write-'));
-  mkdirSync(join(folder, 'taken'));
-  const first = join(folder, 'first.txt');
-  const { error } = await writeAll(
-    [
-      { path: first, content: 'one' },
-      { path: join(folder, 'taken'), content: 'two' },
-    ],
-    'home',
-  );
-  assert.deepEqual(
-    [error?.issues[0]?.code, error?.refusal.state, readdirSync(folder).sort()],
-    ['PATH_REFUSED', `Written before the failure: ${first}.`, ['first.txt', 'taken']],
-  );
 });

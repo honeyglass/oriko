@@ -20,6 +20,7 @@ import { commands as edit } from '../edit/commands.ts';
 import { profiles } from '../profile/list.ts';
 import { set as profileSet } from '../profile/set.ts';
 import { show as profileShow } from '../profile/show.ts';
+import { read } from '../read/documents.ts';
 import { build, preview } from './build.ts';
 import { hints } from './hints.ts';
 import { next } from './next.ts';
@@ -33,6 +34,7 @@ export const commands = {
   plan,
   preview,
   build,
+  read,
   profile: { set: profileSet, show: profileShow },
   photo: { set: photoSet },
   ...edit,

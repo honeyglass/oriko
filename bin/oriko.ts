@@ -11,7 +11,6 @@ import { pipedText } from '../core/files.ts';
 import { onAdx } from '../cli/interim.ts';
 import { oriko } from '../cli/oriko.ts';
 import { run } from '../cli/run.ts';
-import { NODE_WEB } from '../read/web.ts';
 
 const argv = process.argv.slice(2);
 
@@ -20,7 +19,6 @@ else
   process.exitCode = await run(argv, {
     home: join(homedir(), '.oriko'),
     cwd: process.cwd(),
-    web: NODE_WEB,
     isTTY: process.stdout.isTTY === true,
     stdin: async () =>
       process.stdin.isTTY === true ? null : pipedText(process.stdin, FILE_LIMITS.inputBytes),

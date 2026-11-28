@@ -17,18 +17,21 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import type { TestContext } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
 import { run as runOnAdx } from '@honeyglass/adx/test';
 import { z } from 'zod';
 import { oriko } from '../../cli/oriko.ts';
 import { run } from '../../cli/run.ts';
+import { NODE_WEB } from '../../read/web.ts';
 import { NEW_CV, call, terminal, workspace } from '../utils/cli.ts';
 import type { Space } from '../utils/cli.ts';
 import { docx, pdf } from '../utils/documents.ts';
 import { libreOffice, sofficePaths } from '../../pdf/convert.ts';
 import { fakeSoffice } from '../utils/soffice.ts';
 import { fakeWeb } from '../utils/web.ts';
+import type { Page } from '../utils/web.ts';
 import { FIXTURE_URL, photo } from '../utils/fixture.ts';
 
 const tall = (cwd: string) => {
@@ -217,7 +220,6 @@ test('the old shell answers a command that runs on adx as a bug', async () => {
   const exit = await run(['block', 'remove', '--json', '{"id":"awards"}'], {
     home,
     cwd,
-    web: fakeWeb({}, {}).web,
     isTTY: false,
     stdin: async () => null,
     write: text => (out += text),
@@ -1240,8 +1242,7 @@ test('an option without a value answers the values it accepts', async () => {
   });
   assert.deepEqual(await values(['read', '--profile']), {
     ok: true,
-    option: 'profile',
-    values: ['acme', 'broken'],
+    result: { option: 'profile', taken: ['acme', 'broken'] },
   });
   assert.deepEqual(await values(['init', '--cv']), {
     ok: true,
@@ -1263,7 +1264,8 @@ test('an option without a value answers the values it accepts', async () => {
     ok: true,
     result: { option: 'cv', values: [{ value: 'erika' }, { value: 'jane' }] },
   });
-  assert.deepEqual(await values(['read', '--output']), {
+  // The old shell still answers oriko alone, and lists the forms of --output there.
+  assert.deepEqual(await values(['--output']), {
     ok: true,
     option: 'output',
     values: ['json', 'text'],
@@ -1295,6 +1297,8 @@ test('an option without a value and without a list is refused by its name', asyn
     [['plan', '--home'], 'home'],
     [['block', 'add', '--json'], 'json'],
     [['profile', 'set', '--profile', 'globex', '--json'], 'json'],
+    // schema runs on the old shell, which refuses the option by its name as well.
+    [['schema', '--home'], 'home'],
   ];
   for (const [argv, path] of cases) {
     const { exit, answer } = await call(space, argv);
@@ -1320,10 +1324,9 @@ test('a refusal names a command that lists the fitting values, and that command 
   await call(space, ['init', '--cv', 'erika', '--json', NEW_CV]);
   const picture = tall(space.cwd);
   const cases: [string[], string, string][] = [
-    [['read', '--output', 'pdf'], 'UNKNOWN_OUTPUT', 'oriko --output'],
+    [['schema', '--output', 'pdf'], 'UNKNOWN_OUTPUT', 'oriko --output'],
     [['paint'], 'UNKNOWN_COMMAND', 'oriko schema'],
-    [['read', '--color'], 'UNKNOWN_OPTION', 'oriko schema'],
-    [['read', '--posting', 'job.pdf'], 'MISSING_OPTION', 'oriko read --profile'],
+    [['schema', '--color'], 'UNKNOWN_OPTION', 'oriko schema'],
   ];
   // The command keeps the --home of the call, or it would list the CVs of another data folder.
   for (const [argv, code, command] of cases) {
@@ -1337,6 +1340,11 @@ test('a refusal names a command that lists the fitting values, and that command 
   const listing: [string[], string, string][] = [
     [['show'], 'CV_REQUIRED', `oriko show --home ${space.home} --cv`],
     [['show', '--cv', 'nobody'], 'NOT_IN_LIST', `oriko show --home ${space.home} --cv`],
+    [
+      ['read', '--posting', 'job.pdf'],
+      'MISSING_OPTION',
+      `oriko read --posting job.pdf --home ${space.home} --profile`,
+    ],
     [
       ['show', '--cv', 'jane', '--block', 'nobody'],
       'NOT_IN_LIST',
@@ -1613,16 +1621,11 @@ test('checks the call against its command and names every mistake at once', asyn
         ['SCHEMA', 'role'],
       ],
     ],
-    [
-      ['read', '--posting', 'job.pdf', '--out', 'x.docx'],
-      [
-        ['OPTION_NOT_ALLOWED', 'out'],
-        ['MISSING_OPTION', 'profile'],
-      ],
-    ],
+    // An unknown option stops the call before its checks name the missing profile.
+    [['read', '--posting', 'job.pdf', '--out', 'x.docx'], [['UNKNOWN_OPTION', 'out']]],
     [['cvs', 'extra'], [['UNEXPECTED_ARGUMENT', 'extra']]],
     [['photo', 'set', '--file', 'a.png', 'b.png'], [['UNEXPECTED_ARGUMENT', 'b.png']]],
-    [['read', '--out', 'x.docx'], [['OPTION_NOT_ALLOWED', 'out']]],
+    [['schema', '--out', 'x.docx'], [['OPTION_NOT_ALLOWED', 'out']]],
     [['cvs', '--out', 'x.docx'], [['UNKNOWN_OPTION', 'out']]],
     [['plan', '--out', 'x.docx'], [['UNKNOWN_OPTION', 'out']]],
     [['show', '--cv', 'jane', '--cv', 'jane'], [['REPEATED_OPTION', 'cv']]],
@@ -1645,13 +1648,8 @@ test('checks the call against its command and names every mistake at once', asyn
         ['UNKNOWN_OPTION', 'size'],
       ],
     ],
-    [
-      ['read', '--cv', '--profile'],
-      [
-        ['MISSING_VALUE', 'cv'],
-        ['MISSING_VALUE', 'profile'],
-      ],
-    ],
+    // --cv lists its values, so the second option without a value is the one refused.
+    [['read', '--cv', '--profile'], [['MISSING_VALUE', 'profile']]],
     [
       ['init', '--cv', 'erika', '--json', NEW_CV, '--home', '--dry-run'],
       [['MISSING_VALUE', 'home']],
@@ -1672,8 +1670,14 @@ test('checks the call against its command and names every mistake at once', asyn
       argv.join(' '),
     );
   }
-  const notAllowed = (await call(space, ['read', '--out', 'x.docx'])).answer.issues?.[0];
-  assert.equal(notAllowed?.command, 'oriko schema read');
+  const notAllowed = (await call(space, ['schema', '--out', 'x.docx'])).answer.issues?.[0];
+  assert.equal(notAllowed?.command, 'oriko schema schema');
+  // The old shell shows a refusal at a terminal as one line per issue.
+  const shown = await terminal(space, ['schema', 'nope']);
+  assert.match(
+    shown,
+    /\n- UNKNOWN_COMMAND at name: "No command or shape is called nope"\. .* Command: oriko schema\n$/,
+  );
 });
 
 test('oriko alone answers where to start: the CVs and the profiles of the data folder', async () => {
@@ -1729,6 +1733,9 @@ test('refuses a folder where a file belongs, and a file where a folder belongs',
   const piped = { cv: 'jane', person: { photo: 'cvs/pipe.png' } };
   writeFileSync(join(space.home, 'profiles', 'piped.json'), JSON.stringify(piped));
   const cases: [string[], string, string | undefined][] = [
+    // The old shell, which answers oriko alone, checks the data folder itself.
+    [['--home', join(space.cwd, 'notes.txt')], 'NOT_A_FOLDER', 'home'],
+    [['--home', join(space.cwd, 'flat')], 'PATH_REFUSED', 'home'],
     [['show', '--home', join(space.cwd, 'notes.txt')], 'ROOT_NOT_FOUND', undefined],
     [['show', '--home', join(space.cwd, 'notes.txt', 'x')], 'ROOT_NOT_FOUND', undefined],
     // adx lists regular files only, so a file cvs, a folder or a pipe at a CV holds no CV.
@@ -1945,13 +1952,15 @@ test('init refuses a link or a folder at the CV, and writes no placeholder throu
 
 const PAGE = '<!doctype html><html><body><h1>Senior Go Engineer</h1><p>Berlin</p></body></html>';
 
-const reading = () => {
-  const space = workspace();
-  const { web } = fakeWeb(
-    { 'jobs.example': ['93.184.216.34'] },
-    { 'https://jobs.example/1': { status: 200, body: PAGE } },
+// read on adx reaches the network through NODE_WEB, so a test replaces its two calls with a fake.
+const reading = (t: TestContext, pages: Record<string, Page> = {}) => {
+  const { web, requests } = fakeWeb(
+    { 'jobs.example': ['93.184.216.34'], 'intranet.example': ['10.0.0.5'] },
+    { 'https://jobs.example/1': { status: 200, body: PAGE }, ...pages },
   );
-  return { ...space, web };
+  t.mock.method(NODE_WEB, 'lookup', web.lookup);
+  t.mock.method(NODE_WEB, 'get', web.get);
+  return { ...workspace(), requests };
 };
 
 const stored = (space: Space, ...path: string[]) => {
@@ -1959,161 +1968,340 @@ const stored = (space: Space, ...path: string[]) => {
   return existsSync(file) ? readFileSync(file, 'utf8') : null;
 };
 
-test('read stores a posting from a file or an https address beside its profile', async () => {
-  const space = reading();
-  writeFileSync(join(space.cwd, 'job.pdf'), pdf('Senior Go Engineer'));
-  const fromFile = await call(space, ['read', '--profile', 'acme', '--posting', 'job.pdf']);
+const Read = z.object({
+  read: z.array(z.looseObject({ role: z.string(), source: z.string() })),
+  posting: z.unknown().optional(),
+  notes: z.unknown().optional(),
+});
+
+// A source is named by its absolute path: adx's test kit leaves the working directory as it is.
+test('read stores a posting from a file or an https address beside its profile', async t => {
+  const space = reading(t);
+  const job = join(space.cwd, 'job.pdf');
+  writeFileSync(job, pdf('Senior Go Engineer'));
+  const fromFile = await call(space, ['read', '--profile', 'acme', '--posting', job]);
   assert.deepEqual(
-    [fromFile.exit, fromFile.answer.read],
+    [fromFile.exit, fromFile.answer.applied, fromFile.answer.result],
     [
       0,
-      [
-        {
-          role: 'posting',
-          source: 'job.pdf',
-          kind: 'pdf',
-          chars: 18,
-          replaced: 0,
-          stored: 'profiles/acme.posting.md',
-          text: 'Senior Go Engineer',
-        },
-      ],
+      true,
+      {
+        read: [
+          {
+            role: 'posting',
+            source: job,
+            kind: 'pdf',
+            chars: 18,
+            replaced: 0,
+            stored: 'profiles/acme.posting.md',
+            text: 'Senior Go Engineer',
+          },
+        ],
+        profile: 'acme',
+        posting: { file: 'profiles/acme.posting.md', bytes: 49 + job.length, replaces: false },
+      },
     ],
   );
   assert.equal(
     stored(space, 'profiles', 'acme.posting.md'),
-    '---\nsource: "job.pdf"\nkind: pdf\n---\n\nSenior Go Engineer\n',
+    `---\nsource: "${job}"\nkind: pdf\n---\n\nSenior Go Engineer\n`,
   );
+  assert.equal(statSync(join(space.home, 'profiles', 'acme.posting.md')).mode & 0o777, 0o600);
+  // A dry run of a download sends its request as the real run does, and stores nothing.
   const link = 'https://jobs.example/1';
+  const dry = await call(space, ['read', '--profile', 'globex', '--posting', link, '--dry-run']);
+  assert.deepEqual(
+    [dry.exit, stored(space, 'profiles', 'globex.posting.md'), space.requests.length],
+    [0, null, 1],
+  );
   const fromWeb = await call(space, ['read', '--profile', 'globex', '--posting', link]);
   assert.deepEqual(
-    [fromWeb.exit, stored(space, 'profiles', 'globex.posting.md')],
-    [0, `---\nsource: "${link}"\nkind: html\n---\n\n# Senior Go Engineer\n\nBerlin\n`],
+    [fromWeb.exit, stored(space, 'profiles', 'globex.posting.md'), space.requests],
+    [
+      0,
+      `---\nsource: "${link}"\nkind: html\n---\n\n# Senior Go Engineer\n\nBerlin\n`,
+      [
+        { address: '93.184.216.34', url: link },
+        { address: '93.184.216.34', url: link },
+      ],
+    ],
   );
 });
 
-test('read appends notes beside the CV, and answers an old CV without storing it', async () => {
-  const space = reading();
-  writeFileSync(join(space.cwd, 'a.md'), 'Led the move to Go');
-  writeFileSync(join(space.cwd, 'b.txt'), 'Mentored four engineers');
-  writeFileSync(join(space.cwd, 'old.docx'), await docx(['Jane Doe', 'Engineer']));
-  assert.equal((await call(space, ['read', '--notes', 'a.md', '--notes', 'b.txt'])).exit, 0);
-  assert.equal((await call(space, ['read', '--notes', 'a.md'])).exit, 0);
+test('read appends notes beside the CV, and answers an old CV without storing it', async t => {
+  const space = reading(t);
+  const [a, b, old] = ['a.md', 'b.txt', 'old.docx'].map(name => join(space.cwd, name));
+  writeFileSync(a, 'Led the move to Go');
+  writeFileSync(b, 'Mentored four engineers');
+  writeFileSync(old, await docx(['Jane Doe', 'Engineer']));
+  const notes = join(space.home, 'cvs', 'jane.notes.md');
+  const first = await call(space, ['read', '--notes', a, '--notes', b]);
+  assert.deepEqual(Read.parse(first.answer.result).notes, {
+    file: 'cvs/jane.notes.md',
+    bytes: statSync(notes).size,
+    replaces: false,
+  });
+  const again = await call(space, ['read', '--notes', a]);
+  assert.deepEqual(Read.parse(again.answer.result).notes, {
+    file: 'cvs/jane.notes.md',
+    bytes: statSync(notes).size,
+    replaces: true,
+    changes: {
+      added: [`## ${a}`, '', 'Led the move to Go', ''],
+      changed: [],
+      removed: [],
+      more: 0,
+    },
+  });
   assert.equal(
     stored(space, 'cvs', 'jane.notes.md'),
-    '## a.md\n\nLed the move to Go\n\n## b.txt\n\nMentored four engineers\n\n## a.md\n\nLed the move to Go\n',
+    `## ${a}\n\nLed the move to Go\n\n## ${b}\n\nMentored four engineers\n\n## ${a}\n\nLed the move to Go\n`,
   );
   const before = [readdirSync(join(space.home, 'cvs')), readdirSync(join(space.home, 'profiles'))];
-  const resume = await call(space, ['read', '--resume', 'old.docx']);
-  assert.deepEqual(resume.answer.read, [
-    {
-      role: 'resume',
-      source: 'old.docx',
-      kind: 'docx',
-      chars: 17,
-      replaced: 0,
-      text: 'Jane Doe\nEngineer',
-    },
-  ]);
+  const resume = await call(space, ['read', '--resume', old]);
+  assert.deepEqual(resume.answer.result, {
+    read: [
+      {
+        role: 'resume',
+        source: old,
+        kind: 'docx',
+        chars: 17,
+        replaced: 0,
+        text: 'Jane Doe\nEngineer',
+      },
+    ],
+  });
   assert.deepEqual(
     [readdirSync(join(space.home, 'cvs')), readdirSync(join(space.home, 'profiles'))],
     before,
   );
 });
 
-// read still runs on the old shell, which picks the CV of the notes and checks the data folder.
-test('read picks the CV its notes belong to, and refuses a data folder it cannot use', async () => {
-  const space = reading();
-  writeFileSync(join(space.cwd, 'a.md'), 'Led the move to Go');
+// Notes go to the CV the profile names, as for every command that takes both.
+test('read picks the CV its notes belong to, and refuses a call that names no CV of them', async t => {
+  const space = reading(t);
+  const a = join(space.cwd, 'a.md');
+  writeFileSync(a, 'Led the move to Go');
   writeFileSync(join(space.home, 'profiles', 'ghost.json'), JSON.stringify({ cv: 'ghost' }));
   // A profile that cannot be read names no CV, so the notes go to the only one.
   writeFileSync(join(space.home, 'profiles', 'badjson.json'), '{');
   writeFileSync(join(space.home, 'profiles', 'big.json'), ' '.repeat(1_000_001));
   for (const profile of ['badjson', 'big'])
-    assert.equal((await call(space, ['read', '--notes', 'a.md', '--profile', profile])).exit, 0);
-  mkdirSync(join(space.cwd, 'flat'));
-  writeFileSync(join(space.cwd, 'flat', 'cvs'), 'a file where the folder of CVs belongs');
+    assert.equal((await call(space, ['read', '--notes', a, '--profile', profile])).exit, 0);
   await call(space, ['init', '--cv', 'erika', '--json', NEW_CV]);
+  const toErika = await call(space, ['read', '--notes', a, '--cv', 'erika']);
+  assert.equal(Read.parse(toErika.answer.result).notes !== undefined, true);
+  const empty = join(space.cwd, 'empty-home');
+  mkdirSync(empty);
   const cases: [string[], string, string | undefined][] = [
-    [['read', '--notes', 'a.md'], 'CV_REQUIRED', 'cv'],
-    [['read', '--notes', 'a.md', '--cv', 'nobody'], 'UNKNOWN_CV', 'cv'],
-    [['read', '--notes', 'a.md', '--profile', 'ghost'], 'UNKNOWN_CV', 'profile.cv'],
-    [['read', '--notes', 'a.md', '--cv', 'erika', '--profile', 'acme'], 'CV_MISMATCH', 'cv'],
+    [['read', '--notes', a], 'CV_REQUIRED', 'cv'],
+    [['read', '--notes', a, '--cv', 'nobody'], 'NOT_IN_LIST', 'cv'],
+    [['read', '--notes', a, '--profile', 'ghost'], 'UNKNOWN_CV', 'profile.cv'],
+    [['read', '--notes', a, '--cv', 'erika', '--profile', 'acme'], 'CV_MISMATCH', 'cv'],
+    [['read', '--notes', a, '--home', empty], 'NO_CV', undefined],
     [['read', '--posting'], 'MISSING_VALUE', 'posting'],
     [['read', 'extra'], 'UNEXPECTED_ARGUMENT', 'extra'],
-    [['read', '--home', 'a.md'], 'NOT_A_FOLDER', 'home'],
-    [['read', '--home', 'flat'], 'PATH_REFUSED', 'home'],
+    [['read', '--home', 'a.md'], 'ROOT_NOT_FOUND', undefined],
   ];
   for (const [argv, code, path] of cases) {
     const [issue] = (await call(space, argv)).answer.issues ?? [];
     assert.deepEqual([issue?.code, issue?.path], [code, path], argv.join(' '));
   }
-  // With a profile, the list of --cv holds only the CV the profile names.
-  assert.deepEqual((await call(space, ['read', '--profile', 'acme', '--cv'])).answer.values, [
-    'jane',
+  // For notes a profile is picked by its name among the stored ones, an id or not; any other name
+  // is read nowhere, inside the data folder or out of it.
+  const erika = JSON.stringify({ cv: 'erika' });
+  writeFileSync(join(space.home, 'profiles', 'Big_Job.json'), erika);
+  writeFileSync(join(space.home, 'x.json'), erika);
+  mkdirSync(join(space.home, 'profiles', 'a'));
+  writeFileSync(join(space.home, 'profiles', 'a', 'b.json'), erika);
+  writeFileSync(join(space.cwd, 'abs.json'), erika);
+  const picked = await call(space, ['read', '--notes', a, '--profile', 'Big_Job', '--dry-run']);
+  assert.equal(z.object({ cv: z.string() }).loose().parse(picked.answer.result).cv, 'erika');
+  for (const name of ['../x', 'a/b', join(space.cwd, 'abs'), ''])
+    assert.deepEqual(
+      (await call(space, ['read', '--notes', a, '--json', JSON.stringify({ profile: name })]))
+        .codes,
+      ['CV_REQUIRED'],
+      name,
+    );
+  // Beside --posting the name becomes the file of the posting, so it must be an id.
+  for (const name of ['Big_Job', '../x', 'a/b', ''])
+    assert.deepEqual(
+      (
+        await call(space, ['read', '--posting', a, '--json', JSON.stringify({ profile: name })])
+      ).answer.issues?.map(issue => [issue.code, issue.path]),
+      [['SCHEMA', 'profile']],
+      name,
+    );
+  assert.deepEqual(readdirSync(join(space.home, 'profiles')).sort(), [
+    'Big_Job.json',
+    'a',
+    'acme.json',
+    'badjson.json',
+    'big.json',
+    'broken.json',
+    'ghost.json',
   ]);
-  const shown = await terminal(space, ['read', '--notes', 'a.md', '--cv', 'nobody']);
-  assert.match(
-    shown,
-    /\n- UNKNOWN_CV at cv: "The data folder has no CV nobody"\. .* Command: oriko show --cv\n$/,
-  );
+  // One source answers both the list of --cv and the check of its value, so it lists every CV.
+  assert.deepEqual((await call(space, ['read', '--profile', 'acme', '--cv'])).answer.result, {
+    option: 'cv',
+    values: [{ value: 'erika' }, { value: 'jane' }],
+  });
+  // --profile may name a new profile, so it lists the names taken.
+  assert.deepEqual((await call(space, ['read', '--profile'])).answer.result, {
+    option: 'profile',
+    taken: ['Big_Job', 'acme', 'badjson', 'big', 'broken', 'ghost'],
+  });
 });
 
 // One answer names every issue of every input, and a refused call stores nothing at all.
-test('read refuses with every issue of every input, and then stores nothing', async () => {
-  const space = reading();
-  writeFileSync(join(space.cwd, 'job.pdf'), pdf('Senior Go Engineer'));
-  writeFileSync(join(space.cwd, 'scan.pdf'), pdf());
-  writeFileSync(join(space.cwd, 'image.png'), photo());
-  writeFileSync(join(space.cwd, 'a.md'), 'Led the move to Go');
-  mkdirSync(join(space.cwd, 'empty'));
-  const cases: [string[], string[]][] = [
-    [['read'], ['MISSING_INPUT']],
-    [['read', '--posting', 'job.pdf'], ['MISSING_OPTION']],
-    [['read', '--profile', '../acme', '--posting', 'job.pdf'], ['SCHEMA']],
+test('read refuses with every issue of every input, and then stores nothing', async t => {
+  const space = reading(t, {
+    'https://jobs.example/gone': { status: 404 },
+    'https://jobs.example/busy': { status: 503 },
+  });
+  const at = (name: string) => join(space.cwd, name);
+  writeFileSync(at('job.pdf'), pdf('Senior Go Engineer'));
+  writeFileSync(at('scan.pdf'), pdf());
+  writeFileSync(at('image.png'), photo());
+  writeFileSync(at('a.md'), 'Led the move to Go');
+  writeFileSync(at('huge.txt'), Buffer.alloc(10_000_001, 'a'));
+  writeFileSync(at('locked.md'), 'no one may read this', { mode: 0o000 });
+  mkdirSync(at('empty'));
+  const posting = ['read', '--profile', 'acme', '--posting'];
+  const cases: [string[], string[], string][] = [
+    [['read'], ['NOTHING_TO_READ'], 'fix'],
+    [['read', '--posting', at('job.pdf')], ['MISSING_OPTION'], 'fix'],
+    [['read', '--profile', '../acme', '--posting', at('job.pdf')], ['SCHEMA'], 'fix'],
     [
-      [
-        'read',
-        '--profile',
-        'acme',
-        '--posting',
-        'scan.pdf',
-        '--notes',
-        'a.md',
-        '--notes',
-        'image.png',
-      ],
+      [...posting, at('scan.pdf'), '--notes', at('a.md'), '--notes', at('image.png')],
       ['NO_TEXT', 'UNSUPPORTED_KIND'],
+      'fix',
     ],
-    [['read', '--profile', 'acme', '--posting', 'http://jobs.example/1'], ['URL_NOT_ALLOWED']],
-    [['read', '--profile', 'acme', '--posting', 'missing.pdf'], ['FILE_NOT_FOUND']],
-    [['read', '--notes', 'a.md', '--home', 'empty'], ['NO_CV']],
+    [[...posting, 'http://jobs.example/1'], ['ADDRESS_NOT_ALLOWED'], 'fix'],
+    [[...posting, 'https://intranet.example/1'], ['PRIVATE_ADDRESS'], 'fix'],
+    [[...posting, 'https://jobs.example/gone'], ['HTTP_STATUS'], 'fix'],
+    [[...posting, 'https://jobs.example/busy'], ['SITE_BUSY'], 'retry'],
+    [[...posting, 'https://nowhere.example/1'], ['DOWNLOAD_FAILED'], 'retry'],
+    [[...posting, at('missing.pdf')], ['SOURCE_NOT_FOUND'], 'fix'],
+    [[...posting, at('empty')], ['SOURCE_NOT_A_FILE'], 'fix'],
+    [[...posting, at('huge.txt')], ['SOURCE_TOO_LARGE'], 'fix'],
+    [[...posting, at('locked.md')], ['PATH_REFUSED'], 'fix'],
+    [
+      ['read', '--notes', at('missing.md'), '--home', at('empty')],
+      ['NO_CV', 'SOURCE_NOT_FOUND'],
+      'fix',
+    ],
   ];
-  for (const [argv, expected] of cases) {
-    const { exit, codes } = await call(space, argv);
-    assert.deepEqual([exit, codes], [1, expected], argv.join(' '));
+  for (const [argv, expected, kind] of cases) {
+    const { exit, codes, answer } = await call(space, argv);
+    assert.deepEqual([exit, codes, answer.kind], [1, expected, kind], argv.join(' '));
   }
   assert.deepEqual(
     [stored(space, 'profiles', 'acme.posting.md'), stored(space, 'cvs', 'jane.notes.md')],
     [null, null],
+  );
+  // Each issue stands at the option that named its source, its message headed by the source.
+  const [refused] = (await call(space, [...posting, 'http://jobs.example/1'])).answer.issues ?? [];
+  assert.deepEqual(
+    [refused?.path, refused?.message],
+    ['posting', '"http://jobs.example/1": The address "http://jobs.example/1" uses no https'],
   );
   const [missing] = (await call(space, ['read'])).answer.issues ?? [];
   assert.equal(missing?.command, 'oriko schema read');
 });
 
 // A posting is replaced only on request; the same text again is no change, and a dry run writes nothing.
-test('read keeps a stored posting unless --replace is given', async () => {
-  const space = reading();
-  writeFileSync(join(space.cwd, 'job.pdf'), pdf('Senior Go Engineer'));
-  writeFileSync(join(space.cwd, 'new.txt'), 'Staff Go Engineer');
+test('read keeps a stored posting unless --replace is given', async t => {
+  const space = reading(t);
+  const [job, other] = [join(space.cwd, 'job.pdf'), join(space.cwd, 'new.txt')];
+  writeFileSync(job, pdf('Senior Go Engineer'));
+  writeFileSync(other, 'Staff Go Engineer');
   const posting = ['read', '--profile', 'acme', '--posting'];
-  assert.equal((await call(space, [...posting, 'job.pdf'])).exit, 0);
-  assert.equal((await call(space, [...posting, 'job.pdf'])).exit, 0);
-  assert.deepEqual((await call(space, [...posting, 'new.txt'])).codes, ['POSTING_EXISTS']);
-  assert.equal((await call(space, [...posting, 'new.txt', '--replace', '--dry-run'])).exit, 0);
+  const Posting = z.object({ posting: z.object({ unchanged: z.boolean().optional() }) });
+  assert.equal((await call(space, [...posting, job])).exit, 0);
+  const same = await call(space, [...posting, job]);
+  assert.equal(Posting.parse(same.answer.result).posting.unchanged, true);
+  const [taken] = (await call(space, [...posting, other])).answer.issues ?? [];
+  assert.deepEqual(
+    [taken?.code, taken?.command],
+    [
+      'ALREADY_EXISTS',
+      `oriko read --posting ${other} --profile acme --home ${space.home} --replace --dry-run`,
+    ],
+  );
+  assert.equal((await call(space, [...posting, other, '--replace', '--dry-run'])).exit, 0);
   assert.match(stored(space, 'profiles', 'acme.posting.md') ?? '', /Senior Go Engineer/);
-  assert.equal((await call(space, [...posting, 'new.txt', '--replace'])).exit, 0);
+  assert.equal((await call(space, [...posting, other, '--replace'])).exit, 0);
   assert.match(stored(space, 'profiles', 'acme.posting.md') ?? '', /Staff Go Engineer/);
+});
+
+// adx writes through a link at its target to a file inside the data folder, so read refuses such
+// a link at the posting and at the notes; adx refuses or replaces every other link and a folder.
+test('read refuses a link to a stored file at the posting or the notes, and writes neither', async t => {
+  const space = reading(t);
+  const a = join(space.cwd, 'a.md');
+  writeFileSync(a, 'Led the move to Go');
+  const outside = join(space.cwd, 'outside.md');
+  writeFileSync(outside, 'untouched');
+  const profiles = join(space.home, 'profiles');
+  symlinkSync('acme.json', join(profiles, 'linked.posting.md'));
+  symlinkSync('missing.md', join(profiles, 'nowhere.posting.md'));
+  symlinkSync(outside, join(profiles, 'out.posting.md'));
+  mkdirSync(join(profiles, 'folder.posting.md'));
+  const posting = (profile: string, ...flags: string[]) => [
+    'read',
+    '--posting',
+    a,
+    '--profile',
+    profile,
+    ...flags,
+  ];
+  const cases: [string[], string, string | undefined][] = [
+    [posting('linked'), 'TARGET_NOT_A_FILE', 'profile'],
+    [posting('linked', '--replace'), 'TARGET_NOT_A_FILE', 'profile'],
+    [posting('nowhere'), 'ALREADY_EXISTS', undefined],
+    [posting('out'), 'ALREADY_EXISTS', undefined],
+    [posting('folder', '--replace'), 'NOT_A_FILE', undefined],
+    // The notes are refused too, so the posting of the same call is not written either.
+    [[...posting('globex'), '--notes', a], 'TARGET_NOT_A_FILE', 'cv'],
+  ];
+  symlinkSync('jane.json', join(space.home, 'cvs', 'jane.notes.md'));
+  for (const [argv, code, path] of cases) {
+    const { exit, answer } = await call(space, argv);
+    const [issue] = answer.issues ?? [];
+    assert.deepEqual([exit, issue?.code, issue?.path], [1, code, path], argv.join(' '));
+  }
+  assert.equal(existsSync(join(profiles, 'globex.posting.md')), false);
+  // A link that leads nowhere or out of the data folder is replaced with --replace, never followed.
+  for (const profile of ['nowhere', 'out'])
+    assert.equal((await call(space, posting(profile, '--replace'))).exit, 0, profile);
+  assert.deepEqual(
+    [
+      lstatSync(join(profiles, 'out.posting.md')).isFile(),
+      readFileSync(outside, 'utf8'),
+      existsSync(join(profiles, 'missing.md')),
+      lstatSync(join(space.home, 'cvs', 'jane.notes.md')).isSymbolicLink(),
+    ],
+    [true, 'untouched', false, true],
+  );
+  // Notes behind a link out of the data folder are adx's PATH_OUTSIDE, before any write.
+  rmSync(join(space.home, 'cvs', 'jane.notes.md'));
+  symlinkSync(outside, join(space.home, 'cvs', 'jane.notes.md'));
+  assert.deepEqual((await call(space, ['read', '--notes', a])).codes, ['PATH_OUTSIDE']);
+  assert.equal(readFileSync(outside, 'utf8'), 'untouched');
+});
+
+// The notes of a CV stay within the size of a read file, as each source does.
+test('read refuses notes that would grow past the limit of a read file', async t => {
+  const space = reading(t);
+  const a = join(space.cwd, 'a.md');
+  writeFileSync(a, 'Led the move to Go');
+  const notes = join(space.home, 'cvs', 'jane.notes.md');
+  writeFileSync(notes, `${'a'.repeat(9_999_990)}\n`);
+  const { codes, answer } = await call(space, ['read', '--notes', a]);
+  assert.deepEqual([codes, answer.issues?.[0]?.path], [['SOURCE_TOO_LARGE'], 'notes']);
+  assert.equal(statSync(notes).size, 9_999_991);
 });
 
 const profileSet = (name: string, profile: unknown, ...flags: string[]) => [
@@ -2387,7 +2575,8 @@ test('profile set refuses a profile that does not fit its CV, and stores nothing
 
 test('profile show answers a stored profile and its posting', async () => {
   const space = workspace();
-  writeFileSync(join(space.cwd, 'job.txt'), 'Senior Go Engineer');
+  const job = join(space.cwd, 'job.txt');
+  writeFileSync(job, 'Senior Go Engineer');
   writeFileSync(join(space.home, 'profiles', 'odd.json'), JSON.stringify({ colour: 'red' }));
   assert.deepEqual((await call(space, ['profile', 'show', '--profile', 'acme'])).answer, {
     ok: true,
@@ -2403,12 +2592,12 @@ test('profile show answers a stored profile and its posting', async () => {
       },
     ],
   });
-  await call(space, ['read', '--profile', 'globex', '--posting', 'job.txt']);
+  await call(space, ['read', '--profile', 'globex', '--posting', job]);
   const posting = (await call(space, ['profile', 'show', '--profile', 'globex'])).answer;
   assert.deepEqual(posting.result, {
     name: 'globex',
     profile: null,
-    posting: '---\nsource: "job.txt"\nkind: text\n---\n\nSenior Go Engineer\n',
+    posting: `---\nsource: "${job}"\nkind: text\n---\n\nSenior Go Engineer\n`,
   });
   // A posting without a profile counts as a name, and a stored profile must pass its shape; adx
   // lists regular files only, so a link and a folder count as no name.
