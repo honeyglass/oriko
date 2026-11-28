@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import JSZip from 'jszip';
-import { place } from '../../core/place.old.ts';
+import { pagePlan } from '../../core/place.ts';
 import { render } from '../../classic/docx.ts';
 import { fixture, photo, unwrap } from '../utils/fixture.ts';
 
 const build = async () => {
-  const docx = await render(fixture(), unwrap(place(fixture())), { bytes: photo(), file: 'cv' });
+  const docx = await render(fixture(), unwrap(pagePlan(fixture())), { bytes: photo(), file: 'cv' });
   assert.ok(docx instanceof Uint8Array);
   return docx;
 };
@@ -42,7 +42,7 @@ test('writes the date of a job after its title and the place after its employer'
 
 // The issue stands below the file that names the photo, so a profile's photo is the profile's.
 test('refuses a photo that is no PNG, below the file that names it', async () => {
-  const plan = unwrap(place(fixture()));
+  const plan = unwrap(pagePlan(fixture()));
   const bytes = Buffer.from('not a png');
   for (const file of ['cv', 'profile'] as const) {
     const result = await render(fixture(), plan, { bytes, file });

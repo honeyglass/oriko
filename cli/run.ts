@@ -74,10 +74,9 @@ async function answered(argv: string[], io: Io) {
     ...(isHomeEmpty ? [] : await homeIssues(home)),
     ...(isKnownOutput ? [] : [issue.unknownOutput(values.output ?? '')]),
   ];
-  if (issues.length > 0)
-    return { result: await withCommands(call, rejected('oriko', issues)), asText };
+  if (issues.length > 0) return { result: withCommands(call, rejected('oriko', issues)), asText };
   const result = args.empty.length === 0 ? await dispatched(call) : await emptied(call, args.empty);
-  return { result: await withCommands(call, withNext(call, result)), asText };
+  return { result: withCommands(call, withNext(call, result)), asText };
 }
 
 // A pipe gives its text only once; a refusal that looks at the input again gets the same text.

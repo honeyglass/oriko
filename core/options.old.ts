@@ -4,7 +4,7 @@
  * OPTIONS, OptionName: every option with its type, whether a list holds its values, and its texts.
  * ListedOption, isListed: the options whose values sit in a list.
  * Switch, Many, One: the options without a value, with several values, and with one value.
- * missingHint, NEW_NAME: what to add to an option without a value, or one that takes a new name.
+ * missingHint: what to add to an option without a value.
  * optionText, isDashed: one option with its value, quoted so a shell reads the value back.
  * optionsText, shellWord: every option of a call, and one word, written back the same way.
  *
@@ -54,9 +54,9 @@ export const OPTIONS = {
     text: 'the JSON input of the command, in the shape oriko schema <command> shows; without it the input comes from stdin',
     missing: 'Run the command for the input shape, then pass it as one JSON object',
   },
+  // Only show takes --block, and adx lists its blocks; the old shell lists no value of it.
   block: {
     type: 'string',
-    listed: true,
     text: 'the id of one block to show in full, for show',
   },
   'dry-run': { type: 'boolean', text: 'check and answer, but write no file' },
@@ -119,10 +119,6 @@ export type Many = {
   [Name in OptionName]: Options[Name] extends { multiple: true } ? Name : never;
 }[OptionName];
 export type One = Exclude<OptionName, Switch | Many>;
-
-/** What a new name looks like, for an option that takes one. */
-export const NEW_NAME =
-  'Add a new name in lower-case words joined by hyphens; the command lists the names already taken';
 
 // Node's own test: '-' alone is a value, so only a dash with more after it starts an option.
 export const isDashed = (arg: string | undefined) =>

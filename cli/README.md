@@ -13,10 +13,9 @@ from `core/`, the classic or terminal style (`--style`) from `classic/` or `term
 for the PDF.
 
 oriko moves onto the toolkit `@honeyglass/adx` one command at a time. A command in the table of
-`oriko.ts`, today `plan`, `preview`, `build`, the profile commands of `profile/`, `photo set` and
-the edits of `edit/`, is read,
-checked and answered by adx in the one answer shape adx gives every tool; every other call still
-goes through the shell described here.
+`oriko.ts`, today every command but `read`, `schema` and `oriko` alone, is read, checked and
+answered by adx in the one answer shape adx gives every tool; every other call still goes through
+the shell described here.
 
 ## Modules
 
@@ -26,7 +25,6 @@ goes through the shell described here.
 - `route.ts`: picks the command a call names, refuses an option or word it does not take, and
   refuses a call that leaves out an option the command requires.
 - `dispatch.ts`: hands a checked call to the feature that does the work.
-- `input.ts`: reads the JSON input of a command from `--json` or from stdin.
 - `values.ts`: lists the values an option accepts when it is given without one, such as `--cv`.
 - `build.ts`: runs `preview` and `build` on adx, which need the page plan, a style and maybe the
   PDF; `build` writes its file inside the working directory.
@@ -45,6 +43,8 @@ goes through the shell described here.
 - `next.ts`: names the steps on adx that lead from a feature into `cli/`, such as `build` after
   `photo set`, `plan` after `profiles`, and `preview` and `build` after an edit or a stored
   profile that leaves the CV fitting its pages.
+- `hints.ts`: names the command of `cv/` that helps with a refusal every feature raises: `init`
+  for `NO_CV`, `cvs` for `UNKNOWN_CV`, and `show` with the block ids for `UNKNOWN_BLOCK`.
 
 ## Example
 
@@ -64,8 +64,8 @@ answer.
 - **Uses:**
   - [classic/](../classic/README.md): imports `docx.ts`, `photo.ts`
   - [core/](../core/README.md): imports `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
-    `files.limits.ts`, `home.old.ts`, `home.ts`, `issues.old.ts`, `issues.ts`, `load.old.ts`,
-    `load.ts`, `options.old.ts`, `options.ts`, `place.ts`, `sources.ts`
+    `files.limits.ts`, `home.old.ts`, `home.ts`, `issues.ts`, `load.old.ts`, `load.ts`,
+    `options.old.ts`, `options.ts`, `place.ts`, `sources.ts`
   - [cv/](../cv/README.md): imports `init.ts`, `list.ts`, `show.ts`
   - [edit/](../edit/README.md): imports `commands.ts`, `edit.schema.old.ts`
   - [pdf/](../pdf/README.md): imports `convert.ts`, `limits.ts`

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { place } from '../../core/place.old.ts';
+import { pagePlan } from '../../core/place.ts';
 import { codes, fixture, unwrap } from '../utils/fixture.ts';
 
 const ids = (blocks: { id: string }[]) => blocks.map(block => block.id);
@@ -11,7 +11,7 @@ const near = (actual: number | undefined, expected: number) =>
   );
 
 test('places the reference CV as the reference PDF shows it', () => {
-  const { pages } = unwrap(place(fixture()));
+  const { pages } = unwrap(pagePlan(fixture()));
   assert.equal(pages.length, 2);
   assert.deepEqual(ids(pages[0]?.left.blocks ?? []), ['northwind', 'bluebird', 'harbor', 'lumen']);
   assert.deepEqual(ids(pages[1]?.left.blocks ?? []), ['campus', 'freelance', 'cedar']);
@@ -30,7 +30,7 @@ test('places the reference CV as the reference PDF shows it', () => {
 // blank line below its title, as a Google Docs PDF of the examples shows. The blocks here have
 // that shape, with texts short enough that each stays on one line.
 test('estimates a block as high as the reference PDF shows that shape', () => {
-  const { pages } = unwrap(place(fixture()));
+  const { pages } = unwrap(pagePlan(fixture()));
   const left = pages[0]?.left.blocks ?? [];
   const right = pages[0]?.right.blocks ?? [];
   near(left[1]?.height, 118.9);
@@ -40,7 +40,7 @@ test('estimates a block as high as the reference PDF shows that shape', () => {
 });
 
 test('prints a section heading once per page', () => {
-  const { pages } = unwrap(place(fixture()));
+  const { pages } = unwrap(pagePlan(fixture()));
   const headings = (pages[0]?.right.blocks ?? []).map(block => block.heading?.text ?? null);
   assert.deepEqual(headings, ['Skills', null, null, null, null]);
   assert.equal(pages[1]?.left.blocks[0]?.heading?.text, 'Professional Experience');
@@ -50,7 +50,7 @@ test('prints a section heading once per page', () => {
 // below a contact block of 163.7 pt here, and the first group sits as far below it as a job.
 test('lines the first right heading and group up with the left ones on page 1', () => {
   const cv = fixture();
-  const first = () => unwrap(place(cv)).pages[0]?.right.blocks[0]?.heading;
+  const first = () => unwrap(pagePlan(cv)).pages[0]?.right.blocks[0]?.heading;
   assert.deepEqual(first(), { text: 'Skills', before: 929, after: 188 });
   cv.contact.items.pop();
   assert.equal(first()?.before, 929 + 392, 'one contact row of 19.6 pt less');
@@ -68,7 +68,7 @@ test('moves a block that no longer fits to the next page as a whole', () => {
   const campus = cv.blocks[4];
   if (campus !== undefined) delete campus.page;
   cv.pages = 3;
-  const { pages } = unwrap(place(cv));
+  const { pages } = unwrap(pagePlan(cv));
   assert.deepEqual(ids(pages[0]?.left.blocks ?? []), ['northwind', 'bluebird', 'harbor']);
   assert.equal(pages[1]?.left.blocks[0]?.id, 'lumen');
 });
@@ -78,7 +78,7 @@ test('starts a pinned block and all blocks after it on its page', () => {
   const harbor = cv.blocks[2];
   if (harbor !== undefined) harbor.page = 2;
   cv.pages = 3;
-  const { pages } = unwrap(place(cv));
+  const { pages } = unwrap(pagePlan(cv));
   assert.deepEqual(ids(pages[0]?.left.blocks ?? []), ['northwind', 'bluebird']);
   assert.deepEqual(ids(pages[1]?.left.blocks ?? []).slice(0, 2), ['harbor', 'lumen']);
 });
@@ -86,7 +86,7 @@ test('starts a pinned block and all blocks after it on its page', () => {
 test('refuses a CV that needs more pages than it allows, and names the blocks', () => {
   const cv = fixture();
   cv.pages = 1;
-  const result = place(cv);
+  const result = pagePlan(cv);
   assert.deepEqual(codes(result), ['PAGE_OVERFLOW', 'PAGE_OVERFLOW']);
   assert.match(result.error?.issues[0]?.message ?? '', /campus/);
 });
@@ -95,11 +95,11 @@ test('refuses a CV that needs more pages than it allows, and names the blocks', 
 test('refuses a role that does not fit on one line beside the photo', () => {
   const cv = fixture();
   cv.person.role = 'IT-Projektmanager Infrastruktur & Cloud';
-  const result = place(cv);
+  const result = pagePlan(cv);
   assert.deepEqual(codes(result), ['ROLE_TOO_LONG']);
   assert.equal(result.error?.issues[0]?.path, 'person.role');
   cv.person.role = 'IT-Projektmanager Infrastruktur';
-  assert.equal(place(cv).error, null);
+  assert.equal(pagePlan(cv).error, null);
 });
 
 test('refuses a block that is higher than a page', () => {
@@ -107,5 +107,5 @@ test('refuses a block that is higher than a page', () => {
   const northwind = cv.blocks[0];
   if (northwind?.kind === 'job')
     northwind.bullets = Array.from({ length: 12 }, () => 'word '.repeat(59) + 'end');
-  assert.ok(codes(place(cv)).includes('BLOCK_TOO_TALL'));
+  assert.ok(codes(pagePlan(cv)).includes('BLOCK_TOO_TALL'));
 });

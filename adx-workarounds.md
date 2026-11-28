@@ -4,20 +4,20 @@ Each place where oriko on adx meets a gap of adx: what oriko builds around it wi
 offers, the code of its own it keeps, or the behavior it loses, and the golden differences of
 each move, with their sources.
 
-- W1 core/issues.ts:136
+- W1 core/issues.ts:213
   gap: a tool cannot raise `SCHEMA` itself; adx owns the code, and only `check()` raises it,
   against a schema (decision 78, guide "Input that has parts")
   call: `oriko plan --profile climb`, whose field `cv` fails its schema
   today: `SCHEMA` at `cv`, hint "Run the command for the accepted shape", command
   `oriko schema profile --home …`
   now: `SCHEMA` at `profile.cv` with adx's hint and the command `oriko schema profile`; the issue
-  of oriko's own check (`core/check.ts`, which the old shell still calls) is raised again through
-  `check()` with `z.never(message)` and `{ as: Profile }`, or `{ as: Master }` for the CV, and
-  the tool lists both shapes
+  of oriko's own check (`core/check.ts`, which answers issues of its own, W41) is raised again
+  through `check()` with `z.never(message)` and `{ as: Profile }`, or `{ as: Master }` for the CV,
+  or `{ as: Block }` below `profile.blocks.<id>`, a patch, and the tool lists the shapes
   proposal: a tool can raise `SCHEMA` at a path with its own message and name the shape it shows
   kind: workaround
   golden: no difference
-- W2 core/load.ts:90
+- W2 core/load.ts:59
   gap: a tool cannot raise a code adx owns (proto/oriko README "What does not fit yet"), and a
   stored file read through a root answers adx's refusals, which stand at no field (guide
   "Reading a file")
@@ -29,7 +29,7 @@ each move, with their sources.
   proposal: the issue of a stored file stands at the field of the call that names the file
   kind: loss
   golden: no difference
-- W3 core/load.ts:41
+- W3 core/load.ts:137
   gap: a path cannot point into a stored file on its own; it starts with a field of the call
   (decision 69, proto/oriko README "What does not fit yet")
   call: `oriko plan --home FOLDER` on a data folder without a CV
@@ -38,7 +38,7 @@ each move, with their sources.
   proposal: a path can start at a root, for a folder no field of the call names
   kind: loss
   golden: no difference
-- W4 core/load.ts:41
+- W4 core/load.ts:137
   gap: a handler cannot see the folder of a root: the type `Root` of adx answers its name, its
   files and a list, and no path (guide "Reading a file")
   call: `oriko plan` on a data folder without a CV
@@ -49,7 +49,7 @@ each move, with their sources.
   proposal: a handler can ask a root for the place it lies at, to show it in a message
   kind: loss
   golden: no difference
-- W5 core/sources.ts:12
+- W5 core/sources.ts:17
   gap: one source answers both the list of an option given without a value and the check of a
   value the call gives (guide "Options and their values")
   call: `oriko plan --profile acme --cv` with the CVs `erika` and `jane` stored
@@ -66,7 +66,7 @@ each move, with their sources.
   call: `oriko plan --home …/inlink`, where `cvs/jane.json` is a link to `store/jane.json`
   inside the data folder
   today: `oriko cvs` lists jane with `fits: true`, and the old shell reads her, as `oriko show
-  --home …/inlink` still does. A folder
+  --home …/inlink` did until it moved. A folder
   or a pipe at `cvs/NAME.json` is refused with `NOT_A_FILE` at `cv`. A regular file `cvs`
   (`--home …/flat`) is refused with `PATH_REFUSED` at `home`, ENOTDIR in the message. A link at
   `cvs/NAME.json` that leads out of the data folder counts as a CV
@@ -93,7 +93,7 @@ each move, with their sources.
   proposal: one command can take a global field without its source
   kind: workaround
   golden: no difference
-- W8 core/sources.ts:14
+- W8 core/sources.ts:19
   gap: a tool cannot give a code of adx a hint, and a value outside the list of a field is adx's
   `NOT_IN_LIST` (proto/oriko README "A value outside a list is `NOT_IN_LIST`")
   call: `oriko plan --profile acme` in a data folder with a CV and without a profile
@@ -106,7 +106,7 @@ each move, with their sources.
   command
   kind: loss
   golden: no difference
-- W9 core/issues.ts:120
+- W9 core/issues.ts:117
   gap: adx fills the command of an issue below a field from the source of that field (decision
   69, "adx fills `command` from the source of the first part")
   call: `oriko plan --home FOLDER --cv jane` on a CV with `"pages": 1` and more than one page of
@@ -426,7 +426,7 @@ each move, with their sources.
   proposal: a handler can read the input object as the call gave it, beside its parsed value
   kind: loss
   golden: no difference
-- W33 profile/list.ts:53
+- W33 profile/list.ts:52
   gap: a stored file read through a root answers adx's refusals, which end the call (guide "Reading
   a file")
   call: `oriko profiles` with `profiles/badjson.json` holding `{`, and with `profiles/sealed.json` of
@@ -460,7 +460,7 @@ each move, with their sources.
   kind: workaround
   golden: no difference
   same gap as: W17
-- W35 core/issues.ts:71
+- W35 core/issues.ts:72
   gap: adx reads the input itself, `--json -` up to 1,048,576 characters (adx `STDIN_LIMIT`), and
   hands a handler its value only, so a tool cannot set the limit of its input (guide "What every
   tool gets", the limits a call meets); and a tool cannot raise a code adx owns
@@ -470,37 +470,168 @@ each move, with their sources.
   now: `JSON_TOO_LARGE` with no path, kind fix, hint "Send at most 1000000 bytes; a CV is a few
   thousand", from the `check` of `profile set` and of the 13 edits, which call `oversized` of
   `core/issues.ts`. The limit counts the value as compact JSON, so an input whose text is larger
-  only by its spaces passes, where it was refused
+  only by its spaces passes, where it was refused. `init` the same: `oriko init --cv padded
+  --dry-run --json -` with the input of a new CV and 1,020,000 spaces before its last `}` on stdin,
+  1,020,079 bytes, was `INPUT_TOO_LARGE` at `json` (the old `cli/input.ts`) and passes now;
+  with a `role` of 1,020,000 characters it is `SCHEMA` at `role`, "Too big: expected string to have
+  <=300 characters". `init` calls no `oversized`: `NewCv` is a strict object, so it refuses every
+  key it does not name, `cv` is an id of at most 60 characters, `language` two letters and the
+  three other fields texts of at most 300 characters, so no input that passes the schema can pass
+  the limit
   proposal: a tool sets the limit of its input, counted in bytes of the text the call gave
   kind: workaround
   golden: no difference
+- W36 core/sources.ts:55
+  gap: a source answers choices or `needs()`, and nothing else; it cannot refuse the call for what
+  keeps it from listing (guide "Options and their values"; adx `src/values/ask.ts`). That adx answers
+  a `Refused` a source throws as the refusal of the call is no promise of the guide: it holds because
+  `refusedOf` of adx `src/core/failed.ts` keeps a `Refused` with its issues as it comes, wherever it
+  was thrown
+  call: `oriko show --block` and `oriko show --block awards` on a data folder without a CV
+  today: `NO_CV` at `home`, from the list of `--block` and from `show` alike; with several CVs and
+  no `--cv` `CV_REQUIRED`, and a CV that fails its shape `SCHEMA`
+  now: the same codes: the source of `--block` throws adx's `Refused` with the issues that keep the
+  CV from being shown (`NO_CV`, `CV_REQUIRED`, `CV_MISMATCH`, `UNKNOWN_CV`, `SCHEMA` below `cv`), and
+  adx answers it as the refusal of the call, with the commands of the hints, such as `oriko init`
+  for `NO_CV`. An empty list would refuse `--block awards` with `NOT_IN_LIST` and answer
+  `oriko show --block` with no value
+  proposal: a source can answer the issues that keep it from listing, which adx answers as the
+  refusal of the layer of the lists
+  kind: workaround
+  golden: no difference
+- W37 cv/list.ts:59
+  gap: a stored file read through a root answers adx's refusals, which end the call (guide "Reading
+  a file")
+  call: `oriko cvs` with `cvs/badjson.json` holding `{`, and with `cvs/sealed.json` of mode 000
+  today: the list goes on and shows the CV with `fits: false` and `issues: ["INVALID_JSON"]`, the
+  sealed one with `["PATH_REFUSED"]`
+  now: the list goes on and shows `issues: ["STORED_INVALID"]` and `["SYSTEM_REFUSED"]`: the list
+  takes a refusal of adx of the read of one CV as that CV's codes, with `$try`; any other error is a
+  bug and ends the call. A folder, a pipe or a link at `cvs/NAME.json` is left out of the list (W6)
+  proposal: a read of a stored file can answer its refusal as a value, so a list can name a broken
+  file and go on
+  kind: workaround
+  golden: no difference
+  same gap as: W2
+- W38 cv/init.ts:45
+  gap: a write follows a link at its target to a file inside the root and writes through it, or
+  writes nothing when that file holds the same bytes; and a write with `replace: false` refuses any
+  other thing at its target with `ALREADY_EXISTS` or `NOT_A_FILE` at no field (guide "Files the call
+  names"; adx `src/files/paths.ts`, `linkedFile`)
+  call: `oriko init --cv linked --json '{"language":"de","firstName":"Erika","lastName":"Muster","role":"Entwicklerin"}'`,
+  where `cvs/linked.json` is a link to `cvs/jane.json`; the same for a link that leads nowhere, a
+  link out of the data folder and a folder at `cvs/NAME.json`, each also with `--dry-run`
+  today: `CV_EXISTS` at `cv` for all four, since the old list of CVs saw every name in `cvs/`
+  now: `TARGET_NOT_A_FILE` at `cv`, kind fix, "cvs/linked.json is a link to another file, which the
+  write would change", from `targetIssue` of `core/home.ts`. Without it a link to a file with the
+  bytes of the new CV answers `unchanged: true`, and no CV of that name exists (measured). A link
+  that leads nowhere and a link out of the data folder are adx's `ALREADY_EXISTS` at no field,
+  "cvs/nowhere.json exists and holds other bytes", hint "pick another name"; a folder adx's
+  `NOT_A_FILE` at no field. init takes no `--replace`, so no form of the call replaces any of them,
+  and the target of a link stays as it was. The placeholder needs no such check (W39)
+  proposal: a link at the target of a write is replaced, as the guide says, or the answer names the
+  real file the write changed; a write refused for what stands at its target stands at the field
+  that names the target
+  kind: workaround
+  golden: no difference
+  same gap as: W17
+- W39 cv/init.ts:48
+  gap: a root is a folder of the person; the files a package ships lie in none (proto/oriko README
+  "Two files of the package lie in no root")
+  call: `oriko init --cv erika --json '{"language":"de","firstName":"Erika","lastName":"Muster","role":"Entwicklerin"}'`
+  today: oriko's own code reads `assets/placeholder.png` with node:fs and writes it as
+  `cvs/erika.png` beside the CV, for every CV
+  now: oriko's own code reads `assets/placeholder.png` with node:fs, and `files.write` stages it as
+  `placeholder.png` of the data folder only when `exists` says nothing stands there; every new CV
+  names it (decision 70). Whatever stands at `placeholder.png` is kept, with no check that it is a
+  picture: a link to `cvs/jane.json` there is kept and named by the new CV, nothing is written
+  through it, and `oriko build --cv erika --out x.docx` answers `PHOTO_UNREADABLE` at
+  `cv.person.photo` later (measured). A link that leads nowhere is `ALREADY_EXISTS`, a link out of
+  the data folder `PATH_OUTSIDE`, a folder `NOT_A_FILE`, each at no field, and init writes neither
+  file
+  proposal: a tool can declare a read-only root for the files it ships
+  kind: kept own code
+  golden: no difference
+  same gap as: W11
+- W40 cv/show.ts:43
+  gap: one source answers both the list of an option given without a value and the check of a
+  value the call gives (guide "Options and their values")
+  call: `oriko show --profile acme --cv` with the CVs `erika` and `jane` stored
+  today: the values `["jane"]`, only the CV the profile names
+  now: every stored CV, `erika` and `jane`; `--cv erika --profile acme` is `NOT_IN_LIST` at
+  `profile` (W42)
+  proposal: a source can answer the list of an option apart from the check of a value
+  kind: loss
+  golden: no difference
+  same gap as: W5
+- W41 core/issues.ts:151
+  gap: a public `Issue` of adx shows its `code`, its `path` and `command()` only; its message and
+  hint stay inside adx (adx `dist/core/issue.d.ts`), and an issue takes its path when it is made
+  call: `oriko cv update --cv jane --json '{"pages":1}'`, whose answer lists under `layout` what no
+  longer fits; and `oriko plan --profile acme` on a CV whose role the profile makes too long
+  today: the check and the page plan answer issues with code, path, message and hint as data
+  now: the same: `core/check.ts` and `core/place.ts` answer issues of their own, which
+  `issues.old.ts` makes, and `raised`, `turnedEach` and `issueAt` of `core/issues.ts` turn each
+  into an issue of adx once its field is known. Issues of adx could not fill `layout` of a
+  successful answer, which holds code, path, message and hint as data (decision D10), and `fileOf`
+  of `core/place.ts` needs the code and the path of each issue in the CV alone before it decides
+  whether the issue stands below `cv` or `profile`
+  proposal: an issue of a tool can be read back as data, its code, path, message and hint, and be
+  placed below a field after it is made
+  kind: workaround
+  golden: no difference
+- W42 core/sources.ts:30
+  gap: a step of a hint carries each value checked alone against its source, beside the other
+  fields of the refused call, not the carried values together as one call of the target (adx
+  `src/values/accepts.ts`, decision 79)
+  call: `oriko profile set --profile acme --json '{"cv":"erika","blocks":{"nobody":{}}}'`, with or
+  without `--replace`, and `oriko profile set --profile acme --cv erika --order nobody --replace
+  --dry-run`, where the CVs erika and jane are stored and `profiles/acme.json` holds
+  `{"cv":"jane"}`
+  today: before the migration `UNKNOWN_BLOCK` named `oriko show --cv erika --block`, the CV of the
+  input; on adx with `show.step().carry('cv', 'profile')` alone it named `oriko show --cv erika
+  --profile acme --block`, which answers `CV_MISMATCH`
+  now: `oriko show --cv erika --block`, which lists the blocks of erika: the source of `--profile`
+  in `show` lists, beside a `--cv`, only the profiles of that CV and those that name none, so the
+  step leaves acme out. The cost: `oriko show --cv erika --profile acme` is `NOT_IN_LIST` at
+  `profile`, with the command `oriko show --cv erika --profile`, where it was `CV_MISMATCH` at
+  `cv`, and `oriko show --cv erika --profile` lists erika's profiles and those that name no CV,
+  where it listed all
+  proposal: the values a step carries are checked together as one call of the target, so a pair of
+  values the target refuses stays out of the step
+  kind: workaround
+  golden: no difference
+- W43 cv/init.ts:50
+  gap: adx answers a system error of a write as `SYSTEM_REFUSED`, kind ask, at no field, whatever
+  the error (guide "Files the call names", "A full disk")
+  call: `oriko init --cv erika --json '{"language":"de","firstName":"Erika","lastName":"Muster","role":"Entwicklerin"}'`,
+  where `cvs` of the data folder is a folder of mode 555
+  today: `PATH_REFUSED` at `home`, kind fix (measured by the reviewer on 8a15349)
+  now: `SYSTEM_REFUSED`, kind ask, no path, "open of …/cvs/.<uuid>.adx-tmp failed with EACCES",
+  state "Nothing was changed. The temporary files were removed."; `placeholder.png` is not written
+  either. The same call with `--dry-run` answers the plan, exit 0, since a dry run stages no file
+  proposal: a system error on a path the input names stands at that field, and its kind follows who
+  can solve it: a missing right for the caller, a full disk for the person
+  kind: loss
+  golden: no difference
+  same gap as: W15
+- W44 cv/show.ts:51
+  gap: adx answers a system error of a read as `SYSTEM_REFUSED`, kind ask, at no field, whatever the
+  error (guide "Reading a file", "Errors you did not map")
+  call: `oriko show --cv sealed`, where `cvs/sealed.json` has mode 000
+  today: `PATH_REFUSED` at `cv`, kind fix (measured by the reviewer on 8a15349)
+  now: `SYSTEM_REFUSED`, kind ask, no path, "open of …/cvs/sealed.json failed with EACCES"; the same
+  for `oriko show --cv sealed --block`, from the source of `--block`
+  proposal: a system error on a path the input names stands at that field, and its kind follows who
+  can solve it: a missing right for the caller, a full disk for the person
+  kind: loss
+  golden: no difference
+  same gap as: W15
 
 ## Passing outside the golden
 
 What holds only between two packages, and the package that ends it.
 
-- `NO_CV` has no command, where the old shell names `oriko schema init`, and its hint still says
-  "run the command". Calls: `plan`, `preview`, `build --out cv.docx`, `profiles`,
-  `profile set --profile globex --order awards` and every edit, such as
-  `block remove --json '{"id":"awards"}'`, on a data folder without a CV. Package 7 adds the hint
-  to `init`.
-- `UNKNOWN_BLOCK` inside the input of an edit has no command, where the old shell names
-  `oriko show --cv NAME --block`, and its hint still says "run the command". Calls:
-  `block remove --json '{"id":"nobody"}'`, and the same at `before` or `after` of `block add` and
-  `block move` and at `block` of the item edits. The same in the input of `profile set`, where
-  the old shell names `oriko show --cv jane --block`: `profile set --profile globex --json
-  '{"cv":"jane","blocks":{"nobody":{"hidden":true}}}'` (call 102) and the same at `order.1`.
-  Package 7 adds the hint to `show`.
-- `UNKNOWN_BLOCK` and `UNKNOWN_CV` inside a profile carry adx's command `oriko plan … --profile`,
-  a list of profiles, while their hints promise block ids and CV names; `preview` and `build`
-  name `oriko preview … --profile` and `oriko build … --profile` the same way. Calls:
-  `plan --profile broken`, `plan --profile ghost`, `preview --profile broken`. Package 7 adds the
-  hints to `show` and `cvs`.
-- A `SCHEMA` issue inside a patch of a block in a profile names `oriko schema profile`, where the
-  old shell names `oriko schema block`. Calls: `plan --profile NAME` and `preview --profile NAME`
-  whose patch of a block fails its schema. The command names `oriko schema block` again once the
-  check of a profile runs through adx's `check()` with the real shapes, in the package that moves
-  `core/check.ts` onto adx.
 - `ORIKO_HOME` moves the data folder of the moved commands only; the old shell does not read it.
   Package 9 ends it.
 - An option before a moved command (`--home X plan`, `--home X build --out cv.docx`,
@@ -510,13 +641,15 @@ What holds only between two packages, and the package that ends it.
   after the command, no `--file` and no `--replace`, as section 4 of the plan keeps the old schema
   byte for byte. Calls: `schema photo set` and `schema`. Package 9 ends it, when `oriko schema` is
   adx's.
-- A CV that today's `init` creates holds `cvs/NAME.png`, so its first `photo set` needs
-  `--replace`. Call: `photo set --file me.png --cv erika` after `init --cv erika`. Package 7 ends
-  it, when `init` names the shared `placeholder.png`.
 - The old `oriko schema profile set` still describes the old form: the options `profile`, `json`,
   `replace` and `dry-run` and the input `Profile`, with no `--cv`, `--order` or other field as an
   option, as section 4 of the plan keeps the old schema byte for byte. Calls: `schema profile set`
   and `schema`. Package 9 ends it, when `oriko schema` is adx's.
+- The old `oriko schema init` still describes the old form: the options `cv`, `json` and
+  `dry-run`, and `json` says the input comes from stdin without it, while `init` on adx reads stdin
+  only with `--json -` and takes the fields `--language`, `--first-name`, `--last-name` and
+  `--role` as options, as section 4 of the plan keeps the old schema byte for byte. Calls:
+  `schema init` and `schema`. Package 9 ends it, when `oriko schema` is adx's.
 - The step of the old `read` after a posting, `oriko profile set --profile NAME`, needs `json`,
   where a step of adx names fields of the input. Call: `read --posting posting.txt --profile
   globex` (call 106). Package 8 ends it, when `read` names the step on adx.
@@ -568,6 +701,30 @@ Every record that differs from the golden before the move, by its call number in
 | 103 | `profile set --profile initech --json -` | the call names `--json -` for the profile piped to stdin | listed: README "Input through stdin is `--json -`" |
 | 104 | `profile show --profile globex` | `name`, `profile` and `posting` stand in `result`; the step to `plan` is the same | listed: README "One answer shape" |
 | 105 | `profile show --profile nope` | refusal shape; `NOT_IN_LIST` at `profile` with the command `oriko profile show --profile`, in place of `UNKNOWN_PROFILE` with `oriko plan --profile` | listed: README "A value outside a list is `NOT_IN_LIST`" (`--profile` has a source); adx's own: guide "The answer", "Commands adx names" |
+| 34, 78, 131 | `cvs` | `{ ok, result: { items, total }, next }`: the CVs stand in `result.items` with the same fields; the steps to `show` and `profiles` are the same | listed: README "One answer shape" (`cvs` and `profiles` answer `{ items, total }`) |
+| 70 | `cvs --output text` | adx's text form of a list: `items` and `total`, then an empty line and the `Next:` block with the steps to `show` and `profiles` | adx's own: guide "Run it" (the text form); listed: README "One answer shape" |
+| 36 | `show` | the outline stands in `result` beside `cv` and `pages`; the step to `show` that needs `block` is the same | listed: README "One answer shape" |
+| 37 | `show --block` | `{ ok, result: { option, values: [{ value, does }] } }`: each block id with its kind, section and title in `does`, in place of the whole outline and the name of the CV, which `show` answers (call 36) | adx's own: guide "Options and their values" |
+| 38 | `show --block awards` | the block stands in `result` | listed: README "One answer shape" |
+| 39 | `show --block nope` | refusal shape; `NOT_IN_LIST` at `block` with the command `oriko show --block`, in place of `UNKNOWN_BLOCK` with `oriko show --cv jane --block` | listed: README "A value outside a list is `NOT_IN_LIST`" (the `--block` of `show` has a source); adx's own: guide "The answer", "Commands adx names" |
+| 40 | `show --cv` | `{ ok, result: { option, values: [{ value }] } }` | adx's own: guide "Options and their values" |
+| 68 | `show --block -x` | refusal shape; adx's `UNKNOWN_OPTION` at `x`, "show has no option -x", with the command `oriko schema show` | adx's own: guide "The answer", "How adx reads a call" (an unknown option) |
+| 69 | `cvs extra` | refusal shape; adx's `UNEXPECTED_ARGUMENT` wording; the command `oriko schema cvs` stays | adx's own: guide "The answer", "How adx reads a call" (a word after the options) |
+| 72 | `init --cv erika --dry-run --json -` | the call names `--json -` for the input piped to stdin; `{ ok, applied: false, result: { cv, photo, placeholder }, next }`: `cv` and `placeholder` are `{ file, bytes, replaces }` of `cvs/erika.json` and `placeholder.png`, `photo` is `placeholder.png`; the step is the call without `--dry-run`, its input as options, with the `does` of `init`, in place of "repeat the call without --dry-run to write" that needs `json` | listed: README "Input through stdin is `--json -`", "One answer shape", "A write answers `{ file, bytes, replaces }`", "`init` writes one shared placeholder photo" (70); adx's own: guide "A command that changes something" (the step after a dry run), "How adx reads a call" (options and `--json` fill one object) |
+| 73, 130 | `init --cv erika --json …` | the answer of call 72 with `applied: true`; the steps to `contact add`, `block add` and `photo set` are the same, and need `value`, `block` and `file`; `cvs/erika.json` names `placeholder.png` and has mode 600, and `placeholder.png` of the data folder, mode 600, is written in place of `cvs/erika.png` with mode 644; call 130 creates the data folder and `cvs` with mode 700 | listed: README "`init` writes one shared placeholder photo" (70), "One answer shape", "A write answers `{ file, bytes, replaces }`"; section 5 of the plan for the mode; adx's own: guide "Files" (a new file gets 0600, a folder adx creates 0700), "The data folder" (the first real write creates a missing default folder), "Next steps" (`needs` names input fields) |
+| 74 | `init --cv erika --json …` again | refusal shape; `CV_EXISTS` keeps its path, message and hint, and gets the command `oriko init --language de --first-name Erika --last-name Muster --role Entwicklerin --cv`, which lists the names taken | adx's own: guide "The answer", "Refusing bad input with a hint" (adx fills `command` at a field that has a source) |
+| 75 | `init --cv` | exit 0 with `{ ok, result: { option, taken } }`, the names already taken, in place of `MISSING_VALUE` with the command `oriko show --cv` | adx's own: guide "A command that changes something" (`fresh` answers the names taken), "Options and their values" |
+| 76 | `init --cv x --json '{'` | refusal shape; adx's `INVALID_JSON` at `json`, its wording and hint, with the command `oriko schema init` | adx's own: guide "The answer", "How adx reads a call" |
+| 77 | `init --cv x` | refusal shape; `SCHEMA` at `language`, `firstName`, `lastName` and `role` with adx's hint and the command `oriko schema init`, in place of `MISSING_INPUT` at `json` | adx's own: guide "The answer", "How adx reads a call" (a missing field) |
+| 122 | `cvs --home relative-home` | `ROOT_NOT_FOUND`, kind ask, no path, in place of `NO_CV` at `home` | listed: README "The data folder" (13, 35); adx's own: a relative `--home` is refused |
+| 123 | `cvs --home posting.txt` | `ROOT_NOT_FOUND`, kind ask, no path, for the relative path, in place of `NOT_A_FOLDER` at `home` | adx's own: a relative `--home` is refused (guide "Moving the folder") |
+| 124 | `cvs --home` | refusal shape; adx's `MISSING_VALUE` wording and hint, with the command `oriko schema cvs` | adx's own: guide "The answer", "How adx reads a call" (a missing value) |
+| 125 | `cvs --output yaml` | refusal shape; `NOT_IN_LIST` at `output` with the command `oriko --output`, in place of `UNKNOWN_OUTPUT` | adx's own: guide "What every tool gets" (the options adx adds), "Options and their values" (a value outside a list) |
+| 129 | `cvs` in a home without `~/.oriko` | refusal shape; `NO_CV` with no path, message "The data folder holds no CV", hint "Check --home, or create a CV with the command and the fields it needs", command `oriko init`, in place of `oriko schema init` | listed: README "Hints across folders" (73), "A path cannot point into a stored file on its own"; log W3, W4 |
+| 43, 71 | `plan --profile broken`, the same with `--output text` | `UNKNOWN_BLOCK` names `oriko show --profile broken --block`, the block ids of the CV of that profile, in place of adx's `oriko plan --profile` | listed: decision 79 (README "The hint for `UNKNOWN_BLOCK` takes the CV and the profile from the refused call"); passing: ends the passing difference of package 2 |
+| 102 | `profile set --profile globex --json '{"cv":"jane","blocks":{"nobody":{"hidden":true}}}'` | `UNKNOWN_BLOCK` names `oriko show --cv jane --profile globex --block`: globex is stored since call 99, so the step carries it beside `--cv jane` | listed: decision 79; passing: ends the passing difference of package 6 |
+| 81, 82, 85 to 97 | the 15 edits on `erika` that write | `cvs/erika.json` names `placeholder.png`, so the answer counts 2 bytes more, and the file keeps mode 600, the mode `init` gave it | listed: README "`init` writes one shared placeholder photo" (70); adx's own: guide "Files" (an updated file keeps its mode) |
+| 83 | `item add --cv erika --json '{"block":"skills","value":"Rust"}' --dry-run` | the answer counts 2 bytes more, as the CV names `placeholder.png` | listed: README "`init` writes one shared placeholder photo" (70), in a record of another call on the same stored file (section 5 of the plan) |
 
 ## Decisions of the coordinator
 
@@ -715,3 +872,51 @@ work stops only when an approach cannot work at all, and everything else is deci
   reason: decision 81 says the same profile again writes nothing, and the same content is the
   same profile; the cost is that `--replace` does not rewrite a stored profile whose spacing
   alone differs (W32)
+- D16, package 7
+  question: the plan says the pure code, the check of a CV and the page plan, raises issues of
+  adx itself. Does it
+  variants: (a) it keeps issues of its own, which `raised`, `turnedEach` and `issueAt` turn once
+  the field of the call is known; (b) it raises issues of adx through a callback for the path;
+  (c) it builds issues of adx without `code()`
+  choice: a, so this part of the plan is not done
+  reason: a public issue of adx shows its code, its path and its command only, so the `layout`
+  of a successful answer, which holds code, path, message and hint as data (D10), cannot be
+  built from one; and the file an issue lies in (D2) is decided by code and path before the
+  issue has a field. (c) would go around the one way adx declares a code (W41)
+- D17, package 7
+  question: the hint of `UNKNOWN_BLOCK` carries `--cv` and `--profile` into `show`. adx checks
+  each carried value alone, so with a stored profile of another CV the named command refused
+  with `CV_MISMATCH`. How does the hint name a command that runs
+  variants: (a) the source of `--profile` of `show` lists, beside a `--cv`, only the profiles
+  of that CV and those that name none, so a profile of another CV falls out of the step; (b)
+  the hint carries `--cv` alone, and loses the profile where only the profile names the CV;
+  (c) the loss is logged
+  choice: a
+  reason: (a) keeps the hint whole in every command that raises the code. Its cost:
+  `show --cv X --profile P` with a profile of another CV is `NOT_IN_LIST` at `profile`, where
+  it was `CV_MISMATCH` at `cv` (W42)
+- D18, package 7
+  question: the source of `--block` needs the CV of the call. What does it answer when no CV
+  can be shown
+  variants: (a) an empty list, as the sketch; (b) the refusal of the CV, thrown as adx's
+  `Refused`
+  choice: b
+  reason: with (a) `NO_CV`, `CV_REQUIRED`, `UNKNOWN_CV` and `SCHEMA` would all turn into
+  `NOT_IN_LIST` with an empty list. (b) rests on adx answering a refusal a source throws as the
+  refusal of the call, which its code does and its guide does not promise (W36)
+- D19, package 7
+  question: `init` loses two checks the old command ran: the byte limit of its input and the
+  check of the new CV. Does it get them back
+  variants: (a) both are called again; (b) neither
+  choice: b
+  reason: the input of `init` is a strict object of five bounded fields, so a call of the limit
+  could never refuse, and a CV built from these fields cannot fail the check: both would be
+  lines no input reaches. An input padded with spaces passes up to adx's own limit (W35)
+- D20, package 7
+  question: call 83, a dry run of `item add`, differs in the golden, outside the calls the plan
+  lists for this package. Is that a bug
+  variants: (a) a bug; (b) a listed change in a record of another call
+  choice: b
+  reason: the answer counts 2 bytes more, since the CV names `placeholder.png` in place of
+  `cvs/erika.png`; the plan counted the 15 records that write the file and missed the one dry
+  run on it

@@ -72,6 +72,15 @@ and creates a missing folder of `--out`. `--out` is a relative path inside the w
 a link there to another file is refused with `TARGET_NOT_A_FILE`, as is one at a stored profile
 or photo, so a write never changes the file a link leads to.
 
+`init` writes the new CV as `cvs/<cv>.json` and never replaces one: a name that is taken is
+refused with `CV_EXISTS`. Every new CV names the one placeholder photo `placeholder.png` of the
+data folder, which `init` writes once, when it is missing, so the first `photo set` of the CV
+needs no `--replace`.
+
+> [!WARNING]
+> A CV made by an older oriko holds its own placeholder at `cvs/<cv>.png`, so its first
+> `photo set` needs `--replace`.
+
 `oriko` alone answers where to start: the data folder, its CVs and its profiles. A group without
 its action lists the actions, such as `oriko block` for `block add`, `block update`, `block remove`
 and `block move`. A command takes only its own options and words; anything else is refused, with
@@ -123,10 +132,9 @@ itself without `--dry-run`, with its data folder and every value quoted for the 
 }
 ```
 
-A command still on the old shell, such as `init`, says `"written": false` after
-`--dry-run`, and its step is "repeat the call without --dry-run to write". An input that came
-through stdin is not part of the call there, so that step names `json` in `needs`. A command on
-adx reads stdin only with `--json -`.
+A command still on the old shell, `read`, says `"written": false` after `--dry-run`, and its step
+is "repeat the call without --dry-run to write". A command on adx reads stdin only with
+`--json -`.
 
 oriko only names a step and never follows one. A step without `command`, such as the upload to
 Google Docs after `build`, is for the person.
@@ -137,9 +145,9 @@ An option without a value lists the values it accepts:
 | :--- | :--- |
 | `oriko show --cv` | the names of all CVs |
 | `oriko plan --profile` | the names of all profiles |
-| `oriko show --cv jane-doe --block` | the outline of every block of that CV |
+| `oriko show --cv jane-doe --block` | the id of every block of that CV, with its kind, section and title |
 | `oriko build --style` | `classic`, `terminal` |
-| `oriko cvs --output` | `json`, `text` |
+| `oriko --output` | `json`, `text`; a command such as `oriko cvs --output` refuses with `MISSING_VALUE` and names this call |
 
 ## A refusal
 
@@ -182,10 +190,10 @@ the hint says to run it. The agent runs the command and picks a value from its a
 ```json
 {
   "code": "UNKNOWN_CV",
-  "path": "cv",
-  "message": "The data folder has no CV jane-dough",
-  "hint": "Run the command and use one of the CV names it lists",
-  "command": "oriko show --cv"
+  "path": "profile.cv",
+  "message": "The profile names the CV jane-dough, which the data folder does not hold",
+  "hint": "Run the command and set the field cv of the profile to one of the CV names it lists",
+  "command": "oriko cvs"
 }
 ```
 

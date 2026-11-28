@@ -131,7 +131,7 @@ const SEEDED: Call[] = [
   { argv: ['cvs', 'extra'] },
   { argv: ['cvs', '--output', 'text'] },
   { argv: ['plan', '--profile', 'broken', '--output', 'text'] },
-  { argv: ['init', '--cv', 'erika', '--dry-run'], stdin: NEW_CV },
+  { argv: ['init', '--cv', 'erika', '--dry-run', '--json', '-'], stdin: NEW_CV },
   { argv: ['init', '--cv', 'erika', '--json', NEW_CV] },
   { argv: ['init', '--cv', 'erika', '--json', NEW_CV] },
   { argv: ['init', '--cv'] },

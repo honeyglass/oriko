@@ -23,7 +23,7 @@ import { run as runOnAdx } from '@honeyglass/adx/test';
 import { z } from 'zod';
 import { oriko } from '../../cli/oriko.ts';
 import { run } from '../../cli/run.ts';
-import { NEW_CV, call, workspace } from '../utils/cli.ts';
+import { NEW_CV, call, terminal, workspace } from '../utils/cli.ts';
 import type { Space } from '../utils/cli.ts';
 import { docx, pdf } from '../utils/documents.ts';
 import { libreOffice, sofficePaths } from '../../pdf/convert.ts';
@@ -47,11 +47,39 @@ test('plan answers the pages of the only CV, and of a profile by its name', asyn
   assert.equal(JSON.stringify(profiled.answer.result).includes('freelance'), false);
 });
 
+// A CV that does not fit is listed with what keeps it from fitting, never refused; adx answers a
+// stored file it cannot read with its own code.
 test('cvs lists every CV with its language and whether it fits', async () => {
-  const { answer } = await call(workspace(), ['cvs']);
-  assert.deepEqual(answer.cvs, [
-    { name: 'jane', language: 'en', person: 'Jane Doe', fits: true, pages: 2 },
-  ]);
+  const space = workspace();
+  const cvs = join(space.home, 'cvs');
+  const master = JSON.parse(readFileSync(join(cvs, 'jane.json'), 'utf8'));
+  writeFileSync(join(cvs, 'badjson.json'), '{');
+  writeFileSync(join(cvs, 'odd.json'), JSON.stringify({ colour: 'red' }));
+  writeFileSync(join(cvs, 'sealed.json'), '{}', { mode: 0o000 });
+  writeFileSync(join(cvs, 'short.json'), JSON.stringify({ ...master, pages: 1 }));
+  writeFileSync(
+    join(cvs, 'twice.json'),
+    JSON.stringify({ ...master, blocks: [...master.blocks, master.blocks[0]] }),
+  );
+  // adx lists regular files only, so a folder and a link are left out.
+  mkdirSync(join(cvs, 'folder.json'));
+  symlinkSync('jane.json', join(cvs, 'link.json'));
+  const { answer } = await call(space, ['cvs']);
+  assert.deepEqual(answer.result, {
+    items: [
+      { name: 'badjson', fits: false, issues: ['STORED_INVALID'] },
+      { name: 'jane', language: 'en', person: 'Jane Doe', fits: true, pages: 2 },
+      {
+        name: 'odd',
+        fits: false,
+        issues: ['SCHEMA', 'SCHEMA', 'SCHEMA', 'SCHEMA', 'SCHEMA', 'SCHEMA'],
+      },
+      { name: 'sealed', fits: false, issues: ['SYSTEM_REFUSED'] },
+      { name: 'short', fits: false, issues: ['PAGE_OVERFLOW', 'PAGE_OVERFLOW'] },
+      { name: 'twice', fits: false, issues: ['DUPLICATE_ID'] },
+    ],
+    total: 6,
+  });
 });
 
 // A profile that does not build is listed with what keeps it from building, never refused;
@@ -92,7 +120,33 @@ test('init creates a new CV that builds, and the edit commands fill it', async (
     0,
   );
   assert.equal(existsSync(join(space.home, 'cvs', 'erika.json')), false);
-  assert.equal((await call(space, ['init', '--cv', 'erika'], NEW_CV)).exit, 0);
+  const created = await call(space, ['init', '--cv', 'erika', '--json', '-'], NEW_CV);
+  assert.deepEqual(
+    [created.exit, created.answer.result],
+    [
+      0,
+      {
+        cv: { file: 'cvs/erika.json', bytes: 243, replaces: false },
+        photo: 'placeholder.png',
+        placeholder: { file: 'placeholder.png', bytes: 1983, replaces: false },
+      },
+    ],
+  );
+  const stored = JSON.parse(readFileSync(join(space.home, 'cvs', 'erika.json'), 'utf8'));
+  assert.equal(stored.person.photo, 'placeholder.png');
+  assert.deepEqual(
+    readFileSync(join(space.home, 'placeholder.png')),
+    readFileSync(fileURLToPath(new URL('../../assets/placeholder.png', import.meta.url))),
+  );
+  // The placeholder is written once; a second CV names the same file.
+  const second = await call(space, ['init', '--cv', 'eva', '--json', NEW_CV]);
+  assert.deepEqual(second.answer.result, {
+    cv: { file: 'cvs/eva.json', bytes: 243, replaces: false },
+    photo: 'placeholder.png',
+  });
+  // The first photo of a new CV is a new file, so it needs no --replace.
+  const photoSet = ['photo', 'set', '--file', tall(space.cwd), '--cv', 'erika'];
+  assert.equal((await call(space, photoSet)).exit, 0);
   const contact = JSON.stringify({ value: { icon: 'mail', lines: ['erika@example.com'] } });
   assert.equal((await call(space, ['contact', 'add', '--cv', 'erika', '--json', contact])).exit, 0);
   const job = {
@@ -112,7 +166,13 @@ test('init creates a new CV that builds, and the edit commands fill it', async (
     0,
   );
   const { answer } = await call(space, ['cvs']);
-  assert.deepEqual(Array.isArray(answer.cvs) && answer.cvs.map(cv => cv.name), ['erika', 'jane']);
+  assert.deepEqual(
+    z
+      .object({ items: z.array(z.object({ name: z.string() }).loose()) })
+      .parse(answer.result)
+      .items.map(cv => cv.name),
+    ['erika', 'eva', 'jane'],
+  );
   assert.equal((await call(space, ['build', '--cv', 'erika', '--out', 'erika.docx'])).exit, 0);
 });
 
@@ -140,7 +200,8 @@ test('the program sends a moved command to adx and every other one to the old sh
   const code = (...argv: string[]) =>
     z.array(z.object({ code: z.string() })).parse(answer(...argv).issues)[0]?.code;
   assert.equal('result' in answer('plan', '--home', home), true);
-  assert.equal('cvs' in answer('cvs', '--home', home), true);
+  assert.equal('result' in answer('cvs', '--home', home), true);
+  assert.equal('commands' in answer('schema'), true);
   assert.equal(code('--home', home, 'plan'), 'OPTION_BEFORE_COMMAND');
   // A command of a group moves alone; the group itself still lists its actions on the old shell.
   const photo = ['--file', picture, '--profile', 'acme', '--dry-run'];
@@ -173,7 +234,8 @@ test('plan finds the data folder by --home, by ORIKO_HOME, or holds no CV in a m
     {
       code: 'NO_CV',
       message: 'The data folder holds no CV',
-      hint: 'Check --home, or run the command for the input of a new CV',
+      hint: 'Check --home, or create a CV with the command and the fields it needs',
+      command: 'oriko init',
     },
   ]);
   const moved = await runOnAdx(oriko, ['plan'], { env: { ORIKO_HOME: space.home } });
@@ -204,6 +266,7 @@ test('plan refuses what the check and the page plan find, below the file that ho
   };
   const profiles: Record<string, object> = {
     lines: { blocks: { northwind: { bullets: ['a\nb'] } } },
+    flat: { blocks: ['northwind'] },
     role: { person: { role: LONG_ROLE } },
     tall: { blocks: { northwind: { bullets: TALL } } },
     untitled: { blocks: { libraries: { title: null } } },
@@ -218,12 +281,9 @@ test('plan refuses what the check and the page plan find, below the file that ho
     writeFileSync(join(space.home, 'profiles', `${name}.json`), JSON.stringify(profile));
   const cases: [string[], string, string, string | undefined][] = [
     [['--cv', 'bare'], 'SCHEMA', 'cv.pages', 'oriko schema master'],
-    [
-      ['--profile', 'lines'],
-      'SCHEMA',
-      'profile.blocks.northwind.bullets.0',
-      'oriko schema profile',
-    ],
+    [['--profile', 'lines'], 'SCHEMA', 'profile.blocks.northwind.bullets.0', 'oriko schema block'],
+    // Patches that are no record fail the shape of the profile itself.
+    [['--profile', 'flat'], 'SCHEMA', 'profile.blocks', 'oriko schema profile'],
     [['--cv', 'twice'], 'DUPLICATE_ID', 'cv.blocks.northwind', undefined],
     [['--profile', 'broken'], 'UNKNOWN_BLOCK', 'profile.blocks.nobody', undefined],
     [['--cv', 'untitled'], 'UNTITLED_NOT_ALONE', 'cv.blocks.libraries', undefined],
@@ -990,11 +1050,21 @@ test('an edit refuses an issue that lies in the CV below cv', async () => {
 
 test('show lists the blocks, and one block in full by its id', async () => {
   const space = workspace();
-  const all = await call(space, ['show']);
-  assert.equal(Array.isArray(all.answer.blocks) && all.answer.blocks.length, 15);
+  const Shown = z.object({ cv: z.string(), blocks: z.array(z.unknown()) });
+  const all = Shown.parse((await call(space, ['show'])).answer.result);
+  assert.deepEqual([all.cv, all.blocks.length], ['jane', 15]);
   const one = await call(space, ['show', '--block', 'awards']);
-  assert.equal(JSON.stringify(one.answer.block).includes('Team Award'), true);
-  assert.deepEqual((await call(space, ['show', '--block', 'nobody'])).codes, ['UNKNOWN_BLOCK']);
+  assert.equal(JSON.stringify(one.answer.result).includes('Team Award'), true);
+  // --block has a source, so adx refuses an id the CV lacks before show runs.
+  assert.deepEqual((await call(space, ['show', '--block', 'nobody'])).codes, ['NOT_IN_LIST']);
+  // A CV that fails its shape is refused below cv, with the command of the shape.
+  const master = JSON.parse(readFileSync(join(space.home, 'cvs', 'jane.json'), 'utf8'));
+  writeFileSync(join(space.home, 'cvs', 'jane.json'), JSON.stringify({ ...master, pages: 0 }));
+  const [broken] = (await call(space, ['show'])).answer.issues ?? [];
+  assert.deepEqual(
+    [broken?.code, broken?.path, broken?.command],
+    ['SCHEMA', 'cv.pages', 'oriko schema master'],
+  );
 });
 
 test('schema answers the accepted input of a command', async () => {
@@ -1005,7 +1075,9 @@ test('schema answers the accepted input of a command', async () => {
 
 test('every packaged example CV and profile fits and builds', async () => {
   const space = { ...workspace(), home: fileURLToPath(new URL('../../examples', import.meta.url)) };
-  const cvs = (await call(space, ['cvs'])).answer.cvs;
+  const cvs = z
+    .object({ items: z.unknown() })
+    .parse((await call(space, ['cvs'])).answer.result).items;
   const profiles = z
     .object({ items: z.unknown() })
     .parse((await call(space, ['profiles'])).answer.result).items;
@@ -1070,7 +1142,7 @@ test('refuses bad input with exit code 1 and the code of the reason', async () =
     [['build', '--out', 'out.docx', '--style', 'neon'], 'NOT_IN_LIST'],
     [['build', '--out', 'out.docx', '--credits'], 'CREDITS_NEED_TERMINAL'],
     [['init', '--cv', 'erika', '--json', '{broken'], 'INVALID_JSON'],
-    [['init', '--cv', 'erika'], 'MISSING_INPUT'],
+    [['init', '--cv', 'erika'], 'SCHEMA'],
     [['block', 'remove', '--json', '{broken'], 'INVALID_JSON'],
     [['block', 'remove'], 'SCHEMA'],
     [['block', 'remove', '--cv', 'nobody', '--json', '{"id":"awards"}'], 'NOT_IN_LIST'],
@@ -1092,10 +1164,14 @@ test('refuses bad input with exit code 1 and the code of the reason', async () =
     ],
     [['paint'], 'UNKNOWN_COMMAND'],
     [['plan', '--color'], 'UNKNOWN_OPTION'],
-    [['cvs', '--output', 'pdf'], 'UNKNOWN_OUTPUT'],
+    [['cvs', '--output', 'pdf'], 'NOT_IN_LIST'],
     [['preview', '--output', 'pdf'], 'NOT_IN_LIST'],
     [['plan', '--home', join(space.cwd, 'missing')], 'ROOT_NOT_FOUND'],
-    [['cvs', '--home', 'missing'], 'NO_CV'],
+    [['cvs', '--home', 'missing'], 'ROOT_NOT_FOUND'],
+    [['cvs', '--home', join(space.cwd, 'empty-home')], 'NO_CV'],
+    [['show', '--home', join(space.cwd, 'empty-home')], 'NO_CV'],
+    [['show', '--block', 'awards', '--home', join(space.cwd, 'empty-home')], 'NO_CV'],
+    [['show', '--home', join(space.cwd, 'badjson-home')], 'STORED_INVALID'],
     [['profiles', '--home', join(space.cwd, 'empty-home')], 'NO_CV'],
     [
       [
@@ -1128,7 +1204,7 @@ test('refuses bad input with exit code 1 and the code of the reason', async () =
     [['plan', '--profile', 'nobody'], 'NOT_IN_LIST'],
     [['preview', '--profile', 'nobody'], 'NOT_IN_LIST'],
     [['photo', 'set', '--file', notes, '--profile', '../cv'], 'NOT_IN_LIST'],
-    [['init', '--json', NEW_CV], 'MISSING_OPTION'],
+    [['init', '--json', NEW_CV], 'SCHEMA'],
     [['init', '--cv', '../evil', '--json', NEW_CV], 'SCHEMA'],
     [['init', '--cv', 'jane', '--json', NEW_CV], 'CV_EXISTS'],
     [['init', '--cv', 'erika', '--json', '{"language":"german"}'], 'SCHEMA'],
@@ -1160,13 +1236,16 @@ test('an option without a value answers the values it accepts', async () => {
   const values = async (argv: string[]) => (await call(space, argv)).answer;
   assert.deepEqual(await values(['show', '--cv']), {
     ok: true,
-    option: 'cv',
-    values: ['erika', 'jane'],
+    result: { option: 'cv', values: [{ value: 'erika' }, { value: 'jane' }] },
   });
-  assert.deepEqual(await values(['show', '--profile']), {
+  assert.deepEqual(await values(['read', '--profile']), {
     ok: true,
     option: 'profile',
     values: ['acme', 'broken'],
+  });
+  assert.deepEqual(await values(['init', '--cv']), {
+    ok: true,
+    result: { option: 'cv', taken: ['erika', 'jane'] },
   });
   assert.deepEqual(await values(['plan', '--cv']), {
     ok: true,
@@ -1184,17 +1263,28 @@ test('an option without a value answers the values it accepts', async () => {
     ok: true,
     result: { option: 'cv', values: [{ value: 'erika' }, { value: 'jane' }] },
   });
-  assert.deepEqual(await values(['cvs', '--output']), {
+  assert.deepEqual(await values(['read', '--output']), {
     ok: true,
     option: 'output',
     values: ['json', 'text'],
   });
-  const blocks = await values(['show', '--cv', 'jane', '--block']);
+  // The blocks of the stored CV, hidden ones too: the profile acme hides freelance.
+  const Blocks = z.object({ values: z.array(z.object({ value: z.string(), does: z.string() })) });
+  const blocks = Blocks.parse((await values(['show', '--cv', 'jane', '--block'])).result).values;
   assert.deepEqual(
-    [blocks.option, blocks.cv, Array.isArray(blocks.values) && blocks.values.length],
-    ['block', 'jane', 15],
+    [blocks.length, blocks[0], blocks.at(-1)],
+    [
+      15,
+      { value: 'northwind', does: 'job in Professional Experience: Senior Backend Engineer' },
+      { value: 'awards', does: 'entries in Awards' },
+    ],
   );
-  assert.equal((await values(['show', '--profile', 'acme', '--block'])).cv, 'jane');
+  const profiled = Blocks.parse((await values(['show', '--profile', 'acme', '--block'])).result);
+  assert.deepEqual(profiled.values, blocks);
+  assert.deepEqual((await values(['show', '--cv', 'erika', '--block'])).result, {
+    option: 'block',
+    values: [],
+  });
 });
 
 // A free value, such as a path or a JSON input, has no list; the refusal names the option.
@@ -1230,17 +1320,9 @@ test('a refusal names a command that lists the fitting values, and that command 
   await call(space, ['init', '--cv', 'erika', '--json', NEW_CV]);
   const picture = tall(space.cwd);
   const cases: [string[], string, string][] = [
-    [['show'], 'CV_REQUIRED', 'oriko show --cv'],
-    [['show', '--cv', 'nobody'], 'UNKNOWN_CV', 'oriko show --cv'],
-    [
-      ['show', '--cv', 'jane', '--block', 'nobody'],
-      'UNKNOWN_BLOCK',
-      'oriko show --cv jane --block',
-    ],
-    [['cvs', '--output', 'pdf'], 'UNKNOWN_OUTPUT', 'oriko --output'],
+    [['read', '--output', 'pdf'], 'UNKNOWN_OUTPUT', 'oriko --output'],
     [['paint'], 'UNKNOWN_COMMAND', 'oriko schema'],
-    [['cvs', '--color'], 'UNKNOWN_OPTION', 'oriko schema'],
-    [['init', '--json', NEW_CV], 'MISSING_OPTION', 'oriko show --cv'],
+    [['read', '--color'], 'UNKNOWN_OPTION', 'oriko schema'],
     [['read', '--posting', 'job.pdf'], 'MISSING_OPTION', 'oriko read --profile'],
   ];
   // The command keeps the --home of the call, or it would list the CVs of another data folder.
@@ -1253,6 +1335,22 @@ test('a refusal names a command that lists the fitting values, and that command 
   }
   // On adx the command lists the values of the field, with the --home of the call in it.
   const listing: [string[], string, string][] = [
+    [['show'], 'CV_REQUIRED', `oriko show --home ${space.home} --cv`],
+    [['show', '--cv', 'nobody'], 'NOT_IN_LIST', `oriko show --home ${space.home} --cv`],
+    [
+      ['show', '--cv', 'jane', '--block', 'nobody'],
+      'NOT_IN_LIST',
+      `oriko show --cv jane --home ${space.home} --block`,
+    ],
+    [['show', '--block'], 'CV_REQUIRED', `oriko show --home ${space.home} --cv`],
+    [['cvs', '--output', 'pdf'], 'NOT_IN_LIST', `oriko --output`],
+    [['cvs', '--color'], 'UNKNOWN_OPTION', 'oriko schema cvs'],
+    [['init', '--json', NEW_CV], 'SCHEMA', 'oriko schema init'],
+    [
+      ['init', '--cv', 'jane', '--json', NEW_CV],
+      'CV_EXISTS',
+      `oriko init --language de --first-name Erika --last-name Muster --role Entwicklerin --home ${space.home} --cv`,
+    ],
     [['plan'], 'CV_REQUIRED', `oriko plan --home ${space.home} --cv`],
     [['plan', '--cv', 'nobody'], 'NOT_IN_LIST', `oriko plan --home ${space.home} --cv`],
     [['plan', '--profile', 'nobody'], 'NOT_IN_LIST', `oriko plan --home ${space.home} --profile`],
@@ -1321,6 +1419,125 @@ test('a refusal names a command that lists the fitting values, and that command 
   assert.deepEqual(listed.answer.result, { option: 'profile', values: [] });
 });
 
+// NO_CV, UNKNOWN_CV and UNKNOWN_BLOCK lie in core/ and every command raises them; their
+// commands lie in cv/: init creates a CV, cvs lists the CVs, show lists the block ids.
+test('a missing CV, an unknown CV and an unknown block name init, cvs and show', async () => {
+  const space = workspace();
+  const empty = join(space.cwd, 'empty-home');
+  mkdirSync(empty);
+  const picture = tall(space.cwd);
+  writeFileSync(join(space.home, 'profiles', 'ghost.json'), JSON.stringify({ cv: 'ghost' }));
+  const home = ` --home ${space.home}`;
+  const blocksOfJane = `oriko show --cv jane${home} --block`;
+  const cases: [string[], string, string, string][] = [
+    [['plan'], 'NO_CV', '', `oriko init --home ${empty}`],
+    [['preview'], 'NO_CV', '', `oriko init --home ${empty}`],
+    [['build', '--out', 'cv.docx'], 'NO_CV', '', `oriko init --home ${empty}`],
+    [['cvs'], 'NO_CV', '', `oriko init --home ${empty}`],
+    [['show'], 'NO_CV', '', `oriko init --home ${empty}`],
+    [['profiles'], 'NO_CV', '', `oriko init --home ${empty}`],
+    [
+      ['profile', 'set', '--profile', 'globex', '--order', 'awards'],
+      'NO_CV',
+      '',
+      `oriko init --home ${empty}`,
+    ],
+    [['block', 'remove', '--json', '{"id":"awards"}'], 'NO_CV', '', `oriko init --home ${empty}`],
+    [['photo', 'set', '--file', picture], 'NO_CV', '', `oriko init --home ${empty}`],
+    [['plan', '--profile', 'ghost'], 'UNKNOWN_CV', 'profile.cv', `oriko cvs${home}`],
+    [['preview', '--profile', 'ghost'], 'UNKNOWN_CV', 'profile.cv', `oriko cvs${home}`],
+    [
+      ['build', '--profile', 'ghost', '--out', 'g.docx'],
+      'UNKNOWN_CV',
+      'profile.cv',
+      `oriko cvs${home}`,
+    ],
+    [['show', '--profile', 'ghost'], 'UNKNOWN_CV', 'profile.cv', `oriko cvs${home}`],
+    [
+      ['plan', '--profile', 'broken'],
+      'UNKNOWN_BLOCK',
+      'profile.blocks.nobody',
+      `oriko show --profile broken${home} --block`,
+    ],
+    [
+      ['preview', '--profile', 'broken'],
+      'UNKNOWN_BLOCK',
+      'profile.blocks.nobody',
+      `oriko show --profile broken${home} --block`,
+    ],
+    [
+      ['build', '--cv', 'jane', '--profile', 'broken', '--out', 'b.docx'],
+      'UNKNOWN_BLOCK',
+      'profile.blocks.nobody',
+      `oriko show --cv jane --profile broken${home} --block`,
+    ],
+    [
+      ['block', 'remove', '--cv', 'jane', '--json', '{"id":"nobody"}'],
+      'UNKNOWN_BLOCK',
+      'id',
+      blocksOfJane,
+    ],
+    [
+      ['item', 'add', '--cv', 'jane', '--json', '{"block":"nobody","value":"Go"}'],
+      'UNKNOWN_BLOCK',
+      'block',
+      blocksOfJane,
+    ],
+    // A profile that is not stored yet stays out of the command, which then lists the CV's blocks.
+    [
+      ['profile', 'set', '--profile', 'globex', '--json', '{"cv":"jane","blocks":{"nobody":{}}}'],
+      'UNKNOWN_BLOCK',
+      'blocks.nobody',
+      blocksOfJane,
+    ],
+    [
+      [
+        'profile',
+        'set',
+        '--profile',
+        'acme',
+        '--replace',
+        '--json',
+        '{"cv":"jane","order":["nobody"]}',
+      ],
+      'UNKNOWN_BLOCK',
+      'order.0',
+      `oriko show --cv jane --profile acme${home} --block`,
+    ],
+  ];
+  for (const [argv, code, path, command] of cases) {
+    const at = path === '' ? empty : space.home;
+    const [issue] = (await call(space, [...argv, '--home', at])).answer.issues ?? [];
+    assert.deepEqual(
+      [issue?.code, issue?.path ?? '', issue?.command],
+      [code, path, command],
+      argv.join(' '),
+    );
+    if (code === 'NO_CV') continue;
+    assert.equal((await call(space, command.split(' ').slice(1))).answer.ok, true, command);
+  }
+  // The step of NO_CV takes the fields of a new CV.
+  const created = await call(space, ['init', '--home', empty, '--cv', 'erika', '--json', NEW_CV]);
+  assert.equal(created.exit, 0);
+  // A stored profile of another CV stays out of the command, which lists the blocks of the CV
+  // the refused call named.
+  await call(space, ['init', '--cv', 'erika', '--json', NEW_CV]);
+  const blocksOfErika = `oriko show --cv erika${home} --block`;
+  for (const argv of [
+    ['profile', 'set', '--profile', 'acme', '--json', '{"cv":"erika","blocks":{"nobody":{}}}'],
+    ['profile', 'set', '--profile', 'acme', '--cv', 'erika', '--order', 'nobody', '--replace'],
+  ]) {
+    const [issue] = (await call(space, [...argv, '--home', space.home])).answer.issues ?? [];
+    assert.deepEqual(
+      [issue?.code, issue?.command],
+      ['UNKNOWN_BLOCK', blocksOfErika],
+      argv.join(' '),
+    );
+  }
+  const listed = await call(space, blocksOfErika.split(' ').slice(1));
+  assert.deepEqual(listed.answer.result, { option: 'block', values: [] });
+});
+
 test('schema answers every command and every shape it lists', async () => {
   const space = workspace();
   const { commands, schemas } = (await call(space, ['schema'])).answer;
@@ -1386,7 +1603,16 @@ test('a refusal for a wrong shape names the schema command, and it runs', async 
 test('checks the call against its command and names every mistake at once', async () => {
   const space = workspace();
   const cases: [string[], [string, string][]][] = [
-    [['init'], [['MISSING_OPTION', 'cv']]],
+    [
+      ['init'],
+      [
+        ['SCHEMA', 'cv'],
+        ['SCHEMA', 'language'],
+        ['SCHEMA', 'firstName'],
+        ['SCHEMA', 'lastName'],
+        ['SCHEMA', 'role'],
+      ],
+    ],
     [
       ['read', '--posting', 'job.pdf', '--out', 'x.docx'],
       [
@@ -1396,7 +1622,8 @@ test('checks the call against its command and names every mistake at once', asyn
     ],
     [['cvs', 'extra'], [['UNEXPECTED_ARGUMENT', 'extra']]],
     [['photo', 'set', '--file', 'a.png', 'b.png'], [['UNEXPECTED_ARGUMENT', 'b.png']]],
-    [['cvs', '--out', 'x.docx'], [['OPTION_NOT_ALLOWED', 'out']]],
+    [['read', '--out', 'x.docx'], [['OPTION_NOT_ALLOWED', 'out']]],
+    [['cvs', '--out', 'x.docx'], [['UNKNOWN_OPTION', 'out']]],
     [['plan', '--out', 'x.docx'], [['UNKNOWN_OPTION', 'out']]],
     [['show', '--cv', 'jane', '--cv', 'jane'], [['REPEATED_OPTION', 'cv']]],
     [['plan', '--cv', 'jane', '--cv', 'jane'], [['REPEATED_OPTION', 'cv']]],
@@ -1418,9 +1645,8 @@ test('checks the call against its command and names every mistake at once', asyn
         ['UNKNOWN_OPTION', 'size'],
       ],
     ],
-    [['init', '--cv'], [['MISSING_VALUE', 'cv']]],
     [
-      ['show', '--cv', '--profile'],
+      ['read', '--cv', '--profile'],
       [
         ['MISSING_VALUE', 'cv'],
         ['MISSING_VALUE', 'profile'],
@@ -1446,17 +1672,8 @@ test('checks the call against its command and names every mistake at once', asyn
       argv.join(' '),
     );
   }
-  const notAllowed = (await call(space, ['cvs', '--out', 'x.docx'])).answer.issues?.[0];
-  assert.equal(notAllowed?.command, 'oriko schema cvs');
-  const newName = (await call(space, ['init', '--cv'])).answer.issues?.[0];
-  assert.equal(newName?.command, 'oriko show --cv');
-});
-
-test('names the same next step for --cv of init, whether it is missing or empty', async () => {
-  const space = workspace();
-  const hint = async (argv: string[]) =>
-    z.looseObject({ hint: z.string() }).parse((await call(space, argv)).answer.issues?.[0]).hint;
-  assert.equal(await hint(['init']), await hint(['init', '--cv']));
+  const notAllowed = (await call(space, ['read', '--out', 'x.docx'])).answer.issues?.[0];
+  assert.equal(notAllowed?.command, 'oriko schema read');
 });
 
 test('oriko alone answers where to start: the CVs and the profiles of the data folder', async () => {
@@ -1512,19 +1729,24 @@ test('refuses a folder where a file belongs, and a file where a folder belongs',
   const piped = { cv: 'jane', person: { photo: 'cvs/pipe.png' } };
   writeFileSync(join(space.home, 'profiles', 'piped.json'), JSON.stringify(piped));
   const cases: [string[], string, string | undefined][] = [
-    [['show', '--home', 'notes.txt'], 'NOT_A_FOLDER', 'home'],
-    [['show', '--home', 'notes.txt/x'], 'PATH_REFUSED', 'home'],
-    [['cvs', '--home', 'flat'], 'PATH_REFUSED', 'home'],
-    [['show', '--home', 'nested'], 'NOT_A_FILE', 'cv'],
+    [['show', '--home', join(space.cwd, 'notes.txt')], 'ROOT_NOT_FOUND', undefined],
+    [['show', '--home', join(space.cwd, 'notes.txt', 'x')], 'ROOT_NOT_FOUND', undefined],
+    // adx lists regular files only, so a file cvs, a folder or a pipe at a CV holds no CV.
+    [['cvs', '--home', join(space.cwd, 'flat')], 'NO_CV', undefined],
+    [['show', '--home', join(space.cwd, 'nested')], 'NO_CV', undefined],
     [['photo', 'set', '--file', space.cwd], 'PICTURE_NOT_A_FILE', 'file'],
     [['photo', 'set', '--file', join(space.cwd, 'huge.png')], 'PICTURE_TOO_LARGE', 'file'],
     [['photo', 'set', '--file', join(space.cwd, 'pipe.png')], 'PICTURE_NOT_A_FILE', 'file'],
-    [['show', '--home', 'piped'], 'NOT_A_FILE', 'cv'],
+    [['show', '--home', join(space.cwd, 'piped')], 'NO_CV', undefined],
     [['build', '--profile', 'piped', '--out', 'p.docx', '--dry-run'], 'NOT_A_FILE', undefined],
     [['photo', 'set', '--file', join(space.cwd, 'locked.png')], 'PATH_REFUSED', 'file'],
     [['photo', 'set', '--file', join(space.cwd, 'notes.txt', 'x.png')], 'PATH_REFUSED', 'file'],
     [['photo', 'set', '--file', join(space.cwd, `${'a'.repeat(300)}.png`)], 'PATH_REFUSED', 'file'],
-    [['show', '--profile', 'acme', '--home', 'nowhere'], 'NO_CV', 'home'],
+    [
+      ['show', '--profile', 'acme', '--home', join(space.cwd, 'nowhere')],
+      'ROOT_NOT_FOUND',
+      undefined,
+    ],
     [['show', '--profile', 'ghost'], 'UNKNOWN_CV', 'profile.cv'],
     [['plan', '--home', join(space.cwd, 'notes.txt')], 'ROOT_NOT_FOUND', undefined],
     [['plan', '--profile', 'ghost'], 'UNKNOWN_CV', 'profile.cv'],
@@ -1532,7 +1754,11 @@ test('refuses a folder where a file belongs, and a file where a folder belongs',
     [['build', '--out', 'd.docx', '--dry-run'], 'NOT_A_FILE', 'out'],
     [['build', '--out', 'sealed/x.docx'], 'SYSTEM_REFUSED', undefined],
     [['build', '--out', 'loop.docx', '--dry-run'], 'SYSTEM_REFUSED', undefined],
-    [['init', '--cv', 'erika', '--json', NEW_CV, '--home', 'sealed-home'], 'PATH_REFUSED', 'home'],
+    [
+      ['init', '--cv', 'erika', '--json', NEW_CV, '--home', join(space.cwd, 'sealed-home')],
+      'SYSTEM_REFUSED',
+      undefined,
+    ],
   ];
   for (const [argv, code, path] of cases) {
     const { exit, answer } = await call(space, argv);
@@ -1561,13 +1787,32 @@ test('refuses a folder where a file belongs, and a file where a folder belongs',
   );
 });
 
-test('a profile decides the CV for show and for the list of CVs', async () => {
+// One source answers both the list of --cv and the check of its value, so the list holds every
+// CV, the one the profile names among them.
+test('a profile decides the CV for show, and the list of CVs holds every CV', async () => {
   const space = workspace();
   await call(space, ['init', '--cv', 'erika', '--json', NEW_CV]);
-  assert.equal((await call(space, ['show', '--profile', 'acme'])).answer.cv, 'jane');
-  assert.deepEqual((await call(space, ['show', '--profile', 'acme', '--cv'])).answer.values, [
+  const shown = z.object({ cv: z.string() }).loose();
+  assert.equal(
+    shown.parse((await call(space, ['show', '--profile', 'acme'])).answer.result).cv,
     'jane',
+  );
+  assert.deepEqual((await call(space, ['show', '--profile', 'acme', '--cv'])).answer.result, {
+    option: 'cv',
+    values: [{ value: 'erika' }, { value: 'jane' }],
+  });
+  // With --cv, the list of --profile holds only the profiles that may go with that CV.
+  assert.deepEqual((await call(space, ['show', '--profile', 'acme', '--cv', 'erika'])).codes, [
+    'NOT_IN_LIST',
   ]);
+  assert.deepEqual((await call(space, ['show', '--cv', 'erika', '--profile'])).answer.result, {
+    option: 'profile',
+    values: [{ value: 'broken' }],
+  });
+  // A profile that holds no JSON names no CV here, so show takes the CV of --cv.
+  writeFileSync(join(space.home, 'profiles', 'badjson.json'), '{');
+  const named = await call(space, ['show', '--profile', 'badjson', '--cv', 'erika']);
+  assert.equal(shown.parse(named.answer.result).cv, 'erika');
 });
 
 test('names the unknown option in the path of the refusal', async () => {
@@ -1595,22 +1840,30 @@ test('writes never follow a link out of the data folder', async () => {
   const space = workspace();
   const victim = join(space.cwd, 'victim.txt');
   writeFileSync(victim, 'untouched');
-  symlinkSync(victim, join(space.home, 'cvs', 'erika.png'));
-  symlinkSync(victim, join(space.home, 'cvs', `erika.json.${process.pid}.tmp`));
-  assert.equal((await call(space, ['init', '--cv', 'erika', '--json', NEW_CV])).exit, 0);
+  // adx refuses a link out of its root at the placeholder, and init never replaces a file it
+  // finds at the CV, a link there included.
+  symlinkSync(victim, join(space.home, 'placeholder.png'));
+  const outside = await call(space, ['init', '--cv', 'erika', '--json', NEW_CV]);
+  assert.deepEqual([outside.exit, outside.codes], [1, ['PATH_OUTSIDE']]);
+  rmSync(join(space.home, 'placeholder.png'));
+  symlinkSync(victim, join(space.home, 'cvs', 'eva.json'));
+  const linked = await call(space, ['init', '--cv', 'eva', '--json', NEW_CV]);
+  assert.deepEqual([linked.exit, linked.codes], [1, ['ALREADY_EXISTS']]);
   assert.equal(readFileSync(victim, 'utf8'), 'untouched');
+  assert.equal(existsSync(join(space.home, 'placeholder.png')), false);
+  rmSync(join(space.home, 'cvs', 'eva.json'));
   // An edit runs on adx, which stages under a name of its own beside the CV and leaves no
   // file behind; a CV that is a link out of the data folder is no CV adx lists, so the edit
   // never reaches the link's target.
   const cvs = join(space.home, 'cvs');
   const input = JSON.stringify({ id: 'awards' });
   assert.equal((await call(space, ['block', 'remove', '--cv', 'jane', '--json', input])).exit, 0);
-  assert.deepEqual(readdirSync(cvs).sort(), ['erika.json', 'erika.png', 'jane.json', 'jane.png']);
-  const outside = join(space.cwd, 'jane.json');
-  renameSync(join(cvs, 'jane.json'), outside);
-  symlinkSync(outside, join(cvs, 'jane.json'));
-  const before = readFileSync(outside, 'utf8');
-  const linked = await call(space, [
+  assert.deepEqual(readdirSync(cvs).sort(), ['jane.json', 'jane.png']);
+  const moved = join(space.cwd, 'jane.json');
+  renameSync(join(cvs, 'jane.json'), moved);
+  symlinkSync(moved, join(cvs, 'jane.json'));
+  const before = readFileSync(moved, 'utf8');
+  const edited = await call(space, [
     'block',
     'remove',
     '--cv',
@@ -1618,18 +1871,76 @@ test('writes never follow a link out of the data folder', async () => {
     '--json',
     '{"id":"campus"}',
   ]);
-  assert.deepEqual([linked.codes, readFileSync(outside, 'utf8')], [['NOT_IN_LIST'], before]);
+  assert.deepEqual([edited.codes, readFileSync(moved, 'utf8')], [['NOT_IN_LIST'], before]);
 });
 
 // A command that writes several files writes all of them or none: here the CV file cannot be
-// written, so its photo is not left behind either.
+// written, so the placeholder is not left behind either.
 test('a refused write leaves none of the files of the command', async () => {
   const space = workspace();
-  mkdirSync(join(space.home, 'cvs', `erika.json.${process.pid}.tmp`, 'blocker'), {
-    recursive: true,
+  mkdirSync(join(space.home, 'cvs', 'erika.json'));
+  const { exit, codes } = await call(space, ['init', '--cv', 'erika', '--json', NEW_CV]);
+  assert.deepEqual(
+    [exit, codes, existsSync(join(space.home, 'placeholder.png'))],
+    [1, ['NOT_A_FILE'], false],
+  );
+});
+
+// adx writes through a link at its target to a file inside the data folder, so init refuses such
+// a link at the CV; adx refuses every other link and a folder itself. The placeholder is written
+// only when nothing stands there, so a link at it is never written through.
+test('init refuses a link or a folder at the CV, and writes no placeholder through a link', async () => {
+  const space = workspace();
+  const cvs = join(space.home, 'cvs');
+  symlinkSync('jane.json', join(cvs, 'linked.json'));
+  symlinkSync('missing.json', join(cvs, 'nowhere.json'));
+  writeFileSync(join(space.cwd, 'outside.json'), '{}');
+  symlinkSync(join(space.cwd, 'outside.json'), join(cvs, 'out.json'));
+  mkdirSync(join(cvs, 'folder.json'));
+  const cases: [string, string, string | undefined][] = [
+    ['linked', 'TARGET_NOT_A_FILE', 'cv'],
+    ['nowhere', 'ALREADY_EXISTS', undefined],
+    ['out', 'ALREADY_EXISTS', undefined],
+    ['folder', 'NOT_A_FILE', undefined],
+  ];
+  for (const [cv, code, path] of cases) {
+    for (const dryRun of [[], ['--dry-run']]) {
+      const { exit, answer } = await call(space, ['init', '--cv', cv, '--json', NEW_CV, ...dryRun]);
+      const [issue] = answer.issues ?? [];
+      assert.deepEqual([exit, issue?.code, issue?.path], [1, code, path], `${cv} ${dryRun}`);
+    }
+  }
+  assert.equal(readFileSync(join(space.cwd, 'outside.json'), 'utf8'), '{}');
+  assert.equal(lstatSync(join(cvs, 'linked.json')).isSymbolicLink(), true);
+  // A link to a file with the bytes of the new CV would let adx write nothing and answer ok.
+  assert.equal((await call(space, ['init', '--cv', 'erika', '--json', NEW_CV])).exit, 0);
+  symlinkSync('erika.json', join(cvs, 'same.json'));
+  assert.deepEqual((await call(space, ['init', '--cv', 'same', '--json', NEW_CV])).codes, [
+    'TARGET_NOT_A_FILE',
+  ]);
+  // A placeholder that stands as a link to a file inside the data folder is kept and named.
+  const linkedHome = mkdtempSync(join(tmpdir(), 'oriko-home-'));
+  mkdirSync(join(linkedHome, 'cvs'));
+  writeFileSync(join(linkedHome, 'mine.png'), photo());
+  symlinkSync('mine.png', join(linkedHome, 'placeholder.png'));
+  const kept = await call(space, ['init', '--cv', 'eva', '--json', NEW_CV, '--home', linkedHome]);
+  assert.deepEqual(kept.answer.result, {
+    cv: { file: 'cvs/eva.json', bytes: 243, replaces: false },
+    photo: 'placeholder.png',
   });
-  const { exit } = await call(space, ['init', '--cv', 'erika', '--json', NEW_CV]);
-  assert.deepEqual([exit, existsSync(join(space.home, 'cvs', 'erika.png'))], [1, false]);
+  assert.deepEqual(readFileSync(join(linkedHome, 'mine.png')), photo());
+  // A link that leads nowhere and a folder at the placeholder adx refuses, before any write.
+  const nowhere = mkdtempSync(join(tmpdir(), 'oriko-home-'));
+  symlinkSync('missing.png', join(nowhere, 'placeholder.png'));
+  const folder = mkdtempSync(join(tmpdir(), 'oriko-home-'));
+  mkdirSync(join(folder, 'placeholder.png'));
+  for (const [at, code] of [
+    [nowhere, 'ALREADY_EXISTS'],
+    [folder, 'NOT_A_FILE'],
+  ]) {
+    const { codes } = await call(space, ['init', '--cv', 'eva', '--json', NEW_CV, '--home', at]);
+    assert.deepEqual([codes, existsSync(join(at, 'cvs'))], [[code], false], at);
+  }
 });
 
 const PAGE = '<!doctype html><html><body><h1>Senior Go Engineer</h1><p>Berlin</p></body></html>';
@@ -1707,6 +2018,44 @@ test('read appends notes beside the CV, and answers an old CV without storing it
   assert.deepEqual(
     [readdirSync(join(space.home, 'cvs')), readdirSync(join(space.home, 'profiles'))],
     before,
+  );
+});
+
+// read still runs on the old shell, which picks the CV of the notes and checks the data folder.
+test('read picks the CV its notes belong to, and refuses a data folder it cannot use', async () => {
+  const space = reading();
+  writeFileSync(join(space.cwd, 'a.md'), 'Led the move to Go');
+  writeFileSync(join(space.home, 'profiles', 'ghost.json'), JSON.stringify({ cv: 'ghost' }));
+  // A profile that cannot be read names no CV, so the notes go to the only one.
+  writeFileSync(join(space.home, 'profiles', 'badjson.json'), '{');
+  writeFileSync(join(space.home, 'profiles', 'big.json'), ' '.repeat(1_000_001));
+  for (const profile of ['badjson', 'big'])
+    assert.equal((await call(space, ['read', '--notes', 'a.md', '--profile', profile])).exit, 0);
+  mkdirSync(join(space.cwd, 'flat'));
+  writeFileSync(join(space.cwd, 'flat', 'cvs'), 'a file where the folder of CVs belongs');
+  await call(space, ['init', '--cv', 'erika', '--json', NEW_CV]);
+  const cases: [string[], string, string | undefined][] = [
+    [['read', '--notes', 'a.md'], 'CV_REQUIRED', 'cv'],
+    [['read', '--notes', 'a.md', '--cv', 'nobody'], 'UNKNOWN_CV', 'cv'],
+    [['read', '--notes', 'a.md', '--profile', 'ghost'], 'UNKNOWN_CV', 'profile.cv'],
+    [['read', '--notes', 'a.md', '--cv', 'erika', '--profile', 'acme'], 'CV_MISMATCH', 'cv'],
+    [['read', '--posting'], 'MISSING_VALUE', 'posting'],
+    [['read', 'extra'], 'UNEXPECTED_ARGUMENT', 'extra'],
+    [['read', '--home', 'a.md'], 'NOT_A_FOLDER', 'home'],
+    [['read', '--home', 'flat'], 'PATH_REFUSED', 'home'],
+  ];
+  for (const [argv, code, path] of cases) {
+    const [issue] = (await call(space, argv)).answer.issues ?? [];
+    assert.deepEqual([issue?.code, issue?.path], [code, path], argv.join(' '));
+  }
+  // With a profile, the list of --cv holds only the CV the profile names.
+  assert.deepEqual((await call(space, ['read', '--profile', 'acme', '--cv'])).answer.values, [
+    'jane',
+  ]);
+  const shown = await terminal(space, ['read', '--notes', 'a.md', '--cv', 'nobody']);
+  assert.match(
+    shown,
+    /\n- UNKNOWN_CV at cv: "The data folder has no CV nobody"\. .* Command: oriko show --cv\n$/,
   );
 });
 
@@ -1965,12 +2314,12 @@ test('profile set refuses a profile that does not fit its CV, and stores nothing
     [
       profileSet('globex', { cv: 'jane', blocks: { nobody: { hidden: true } } }),
       null,
-      [['UNKNOWN_BLOCK', 'blocks.nobody', undefined]],
+      [['UNKNOWN_BLOCK', 'blocks.nobody', `oriko show --cv jane --home ${space.home} --block`]],
     ],
     [
       profileSet('globex', { cv: 'jane', order: ['awards', 'nobody'] }),
       null,
-      [['UNKNOWN_BLOCK', 'order.1', undefined]],
+      [['UNKNOWN_BLOCK', 'order.1', `oriko show --cv jane --home ${space.home} --block`]],
     ],
     [
       profileSet('globex', { cv: 'jane', blocks: { northwind: { bullets: ['a\nb'] } } }),

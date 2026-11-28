@@ -4,18 +4,17 @@
  * unknownOption, unexpectedValue, repeatedOption: what the arguments get wrong by themselves.
  * optionNotAllowed, unexpectedArgument, unknownCommand: what the named command does not take.
  * missingOption: an option the command needs and the call leaves out.
- * missingValue, newNameMissing, oneListAtATime: an option given without a value.
- * missingInput: a command without its JSON input.
+ * missingValue, oneListAtATime: an option given without a value.
  * unknownSchema, unknownOutput: a name the cli does not know.
  *
  * @example if (isOption(token.name) === false) issues.push(issue.unknownOption(token.name));
  */
 import { shown } from '@honeyglass/utils/ts';
 import type { Issue } from '../core/errors.ts';
-import { NEW_NAME, isListed, missingHint } from '../core/options.old.ts';
+import { isListed, missingHint } from '../core/options.old.ts';
 import type { OptionName } from '../core/options.old.ts';
-import { COMMANDS, OUTPUTS } from './commands.ts';
-import type { Command, CommandName } from './commands.ts';
+import { OUTPUTS } from './commands.ts';
+import type { CommandName } from './commands.ts';
 
 export const unknownOption = (name: string): Issue => ({
   code: 'UNKNOWN_OPTION',
@@ -74,21 +73,18 @@ export function unknownCommand(words: string[], groupActions: string[]): Issue {
  * @returns the issue, with a command that lists what the option may hold
  */
 export function missingOption(option: OptionName, name: CommandName, by?: OptionName): Issue {
-  const command: Command = COMMANDS[name];
-  const isFresh = command.fresh?.includes(option) === true;
   const needs = `The command ${name} needs --${option}`;
   return {
     code: 'MISSING_OPTION',
     path: option,
     message: by === undefined ? needs : `${needs} beside --${by}`,
-    hint: isFresh ? NEW_NAME : missingHint(option),
-    command: listingOf(option, name, isFresh),
+    hint: missingHint(option),
+    command: listingOf(option, name),
   };
 }
 
-// A new name lists the names already taken, a listed option its values, any other its command.
-function listingOf(option: OptionName, name: CommandName, isFresh: boolean) {
-  if (isFresh) return `oriko show --${option}`;
+// A listed option lists its values, any other names the command.
+function listingOf(option: OptionName, name: CommandName) {
   return isListed(option) ? `oriko ${name} --${option}` : `oriko schema ${name}`;
 }
 
@@ -102,27 +98,11 @@ export function missingValue(option: OptionName, schema: string): Issue {
   return option === 'json' ? { ...issue, command: schema } : issue;
 }
 
-export const newNameMissing = (option: string): Issue => ({
-  code: 'MISSING_VALUE',
-  path: option,
-  message: `The option --${option} has no value`,
-  hint: NEW_NAME,
-  command: `oriko show --${option}`,
-});
-
 export const oneListAtATime = (option: string): Issue => ({
   code: 'MISSING_VALUE',
   path: option,
   message: `The option --${option} has no value, and another option has none either`,
   hint: 'Leave one option without a value at a time, and give the others a value',
-});
-
-export const missingInput = (schema: string): Issue => ({
-  code: 'MISSING_INPUT',
-  path: 'json',
-  message: 'The command needs --json, the input of the command',
-  hint: 'Run the command for the input shape, then pass it with --json or through stdin',
-  command: schema,
 });
 
 export const unknownSchema = (name: string): Issue => ({

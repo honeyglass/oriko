@@ -42,8 +42,8 @@ test('a success names its next steps, each a command with what it still needs', 
     [
       ['cvs'],
       [
-        ['oriko show --cv jane', []],
-        ['oriko profiles', []],
+        [`oriko show --cv jane --home ${space.home}`, []],
+        [`oriko profiles --home ${space.home}`, []],
       ],
     ],
     [['profiles'], [[`oriko plan --home ${space.home}`, ['profile']]]],
@@ -84,7 +84,11 @@ test('a success names its next steps, each a command with what it still needs', 
         ],
       ],
     ],
-    [['show'], [['oriko show', ['block']]]],
+    [['show'], [[`oriko show --home ${space.home}`, ['block']]]],
+    [
+      ['show', '--profile', 'acme'],
+      [[`oriko show --profile acme --home ${space.home}`, ['block']]],
+    ],
     // A command on adx keeps the --home of the call, which the test names for every call.
     [
       ['plan', '--profile', 'acme'],
@@ -105,16 +109,16 @@ test('a success names its next steps, each a command with what it still needs', 
     [
       ['init', '--cv', 'erika', '--json', NEW_CV],
       [
-        ['oriko contact add --cv erika', ['json']],
-        ['oriko block add --cv erika', ['json']],
-        ['oriko photo set --cv erika', ['file']],
+        [`oriko contact add --cv erika --home ${space.home}`, ['value']],
+        [`oriko block add --cv erika --home ${space.home}`, ['block']],
+        [`oriko photo set --cv erika --home ${space.home}`, ['file']],
       ],
     ],
     [
       ['cvs'],
       [
-        ['oriko show', ['cv']],
-        ['oriko profiles', []],
+        [`oriko show --home ${space.home}`, ['cv']],
+        [`oriko profiles --home ${space.home}`, []],
       ],
     ],
     [
@@ -237,47 +241,43 @@ test('the steps keep the data folder of the call', async () => {
   const space = workspace();
   const next = await steps(space, ['preview', '--profile', 'acme', '--home', space.home]);
   assert.equal(next[0]?.command, `oriko build --profile acme --home ${space.home}`);
-  const dashed = join(space.cwd, '-data');
-  cpSync(space.home, dashed, { recursive: true });
-  renameSync(join(dashed, 'cvs', 'jane.json'), join(dashed, 'cvs', 'x;touch PWNED.json'));
-  cpSync(space.home, join(space.cwd, '~'), { recursive: true });
+  const spaced = join(space.cwd, 'my data');
+  cpSync(space.home, spaced, { recursive: true });
+  renameSync(join(spaced, 'cvs', 'jane.json'), join(spaced, 'cvs', 'x;touch PWNED.json'));
+  const home = `--home '${spaced}'`;
   const cv = `--cv 'x;touch PWNED'`;
   assert.equal(
-    (await steps(space, ['cvs', '--home=-data']))[0]?.command,
-    `oriko show ${cv} --home=-data`,
+    (await steps(space, ['cvs', '--home', spaced]))[0]?.command,
+    `oriko show ${cv} ${home}`,
   );
-  const [issue] =
-    (await call(space, ['show', '--block', 'nobody', '--home=-data'])).answer.issues ?? [];
-  assert.equal(issue?.command, `oriko show ${cv} --block --home=-data`);
-  assert.equal(
-    (await steps(space, ['cvs', '--home', '~']))[0]?.command,
-    `oriko show --cv jane --home '~'`,
-  );
-  const input = NEW_CV.replace('Muster', "O'Neil");
-  const init = ['init', '--cv', 'erika', '--json', input, '--dry-run', '--home=-data'];
+  const block = ['show', '--cv', 'x;touch PWNED', '--block', 'nobody', '--home', spaced];
+  const [issue] = (await call(space, block)).answer.issues ?? [];
+  assert.equal(issue?.command, `oriko show ${cv} ${home} --block`);
+  const input = NEW_CV.replace('Muster', "O'Neil").replace('"Erika"', '"-Erika"');
+  const init = ['init', '--cv', 'erika', '--json', input, '--dry-run', '--home', spaced];
   assert.equal(
     (await steps(space, init))[0]?.command,
-    `oriko init --cv erika --json '{"language":"de","firstName":"Erika","lastName":"O'\\''Neil","role":"Entwicklerin"}' --home=-data`,
+    `oriko init --cv erika --language de --first-name=-Erika --last-name 'O'\\''Neil' --role Entwicklerin ${home}`,
   );
 });
 
-// A piped input is not part of the call, so repeating the call needs it again.
-test('the step after a dry run of a piped input still needs the input', async () => {
+// An input from stdin is not part of the call, so the step after a dry run names its fields.
+test('the step after a dry run of an input from stdin names its fields', async () => {
   const space = workspace();
-  const { next } = (await call(space, ['init', '--cv', 'erika', '--dry-run'], NEW_CV)).answer;
+  const argv = ['init', '--cv', 'erika', '--dry-run', '--json', '-'];
+  const { next } = (await call(space, argv, NEW_CV)).answer;
   assert.deepEqual(next, [
     {
-      does: 'repeat the call without --dry-run to write',
-      command: 'oriko init --cv erika',
-      needs: ['json'],
+      does: 'creates a CV',
+      command: `oriko init --cv erika --language de --first-name Erika --last-name Muster --role Entwicklerin --home ${space.home}`,
     },
   ]);
 });
 
 test('a terminal shows the steps below the answer, and piped text leaves them out', async () => {
   const space = workspace();
-  const shown = await terminal(space, ['cvs']);
-  assert.match(shown, /\nNext: oriko show --cv jane\nNext: oriko profiles\n$/);
-  const text = await piped(space, ['cvs', '--output', 'text']);
+  const shown = await terminal(space, []);
+  assert.match(shown, /\nNext: oriko profiles\nNext: oriko read \(needs --posting, --profile\)\n$/);
+  const text = await piped(space, ['--output', 'text']);
   assert.equal(text.includes('Next:'), false);
 });

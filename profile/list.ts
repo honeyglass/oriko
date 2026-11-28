@@ -14,8 +14,8 @@
 import { Refused, list, paged } from '@honeyglass/adx';
 import { $try } from '@honeyglass/utils/ts';
 import { z } from 'zod';
-import { cvNames, profileFile, profileNames } from '../core/home.ts';
-import { checked, cvOf, noStoredCv, storedJson } from '../core/load.ts';
+import { cvNames, profileNames } from '../core/home.ts';
+import { checked, noStoredCv, profileCvOf } from '../core/load.ts';
 import { place } from '../core/place.ts';
 
 const Listed = z.object({
@@ -48,8 +48,7 @@ export const profiles = list({
  * @returns the profile with its CV, and the pages it fills or the codes that keep it from building
  */
 async function listedOf(name: string, only: string | undefined) {
-  const read = storedJson(profileFile(name));
-  const cv = cvOf(await $try(read, { or: undefined, expected: isRefused })) ?? only;
+  const cv = (await profileCvOf(name)) ?? only;
   const built = await $try(builtOf(name));
   if (built.error === null)
     return typeof built.data === 'number'
@@ -68,5 +67,3 @@ async function builtOf(name: string) {
   const placed = Array.isArray(loaded) ? loaded : place(loaded);
   return Array.isArray(placed) ? placed.map(found => found.code) : placed.pages.length;
 }
-
-const isRefused = (error: Error) => error instanceof Refused;

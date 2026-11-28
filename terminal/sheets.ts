@@ -14,7 +14,7 @@
 import { REPOSITORY } from './credits.ts';
 import { CV_LIMITS } from '../core/cv.limits.ts';
 import type { Block, Master } from '../core/cv.schema.ts';
-import type { Column, Placed, Plan } from '../core/place.old.ts';
+import type { Column, Placed, Plan } from '../core/place.ts';
 
 const LEFT = 52;
 const RIGHT = 25;

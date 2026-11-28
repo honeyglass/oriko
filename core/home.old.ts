@@ -2,7 +2,6 @@
  * The data folder: every CV in cvs/, and one profile per job posting in profiles/.
  *
  * cvNames, profileNames: the CVs and the profiles of a data folder, by name.
- * heldCvs: the CVs of a data folder, or the refusal that it holds none.
  * chosenCv: the CV a command works on, from --cv, the profile, or the only CV there is.
  * profilePath: the file of one profile.
  *
@@ -84,7 +83,7 @@ export async function profilePath(home: string, name: string): Promise<Result<st
  * @param home - the data folder
  * @returns the names of its CVs; NO_CV when it holds none
  */
-export async function heldCvs(home: string): Promise<Result<string[]>> {
+async function heldCvs(home: string): Promise<Result<string[]>> {
   const names = await cvNames(home);
   return names.length === 0 ? rejected('home', [await noCv(home)]) : done(names);
 }

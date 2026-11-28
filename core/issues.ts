@@ -10,8 +10,9 @@
  * issueAt, unknownBlock: one such issue at a field an edit picks, and a block id no block has.
  *
  * A code of adx has one hint. Where oriko's hint named the field or the column, the message of
- * the issue already names it. The check and the page plan still answer the issues of the old
- * shell, which serves the commands that have not moved yet; raised() turns each one.
+ * the issue already names it. The check and the page plan answer issues of their own, with code,
+ * path, message and hint as data, since `layout` answers them so and an issue of adx shows only
+ * its code and path; raised() turns each one.
  *
  * @example return raised(() => 'cv', placed.error);
  */
@@ -19,7 +20,7 @@ import { RefusalError } from '@honeyglass/utils/ts';
 import { check, code } from '@honeyglass/adx';
 import type { Code, Issue } from '@honeyglass/adx';
 import { z } from 'zod';
-import { Master, Profile } from './cv.schema.ts';
+import { Block, Master, Profile } from './cv.schema.ts';
 import type { Issue as OldIssue, Rejection } from './errors.ts';
 import { FILE_LIMITS } from './files.limits.ts';
 
@@ -29,7 +30,7 @@ export type Issues<F extends string> = [Issue<F>, ...Issue<F>[]];
 export const noCv = code(
   'NO_CV',
   'fix',
-  'Check --home, or run the command for the input of a new CV',
+  'Check --home, or create a CV with the command and the fields it needs',
 );
 export const cvRequired = code(
   'CV_REQUIRED',
@@ -173,7 +174,13 @@ export function turnedEach<F extends string>(
 
 function turned<F extends Stored>(field: F, found: OldIssue): Issue<F> {
   const path: [F, ...string[]] = [field, ...(found.path === '' ? [] : found.path.split('.'))];
-  return issueAt(path, found, SHAPE[field]);
+  return issueAt(path, found, shapeAt(path));
+}
+
+// A profile takes its patches as values of any shape, so an issue below `blocks.<id>` lies in a
+// patch, which the check holds against the block's shape.
+function shapeAt([field, first, id]: [Stored, ...string[]]) {
+  return field === 'profile' && first === 'blocks' && id !== undefined ? Block : SHAPE[field];
 }
 
 /**

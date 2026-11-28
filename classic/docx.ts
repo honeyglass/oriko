@@ -44,7 +44,7 @@ import { CV_LIMITS, ICONS } from '../core/cv.limits.ts';
 import type { Block, Master } from '../core/cv.schema.ts';
 import { spacedRole } from '../core/measure.ts';
 import { HEIGHT, SPACE, WIDTH } from '../core/metrics.ts';
-import type { Column, Heading, Placed, Plan } from '../core/place.old.ts';
+import type { Column, Heading, Placed, Plan } from '../core/place.ts';
 import { circlePhoto, solidPng } from './images.ts';
 import { stable } from '../core/zip.ts';
 

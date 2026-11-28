@@ -10,6 +10,8 @@
  */
 import { after, schema } from '@honeyglass/adx';
 import { set as photoSet } from '../classic/photo.ts';
+import { init } from '../cv/init.ts';
+import { cvs } from '../cv/list.ts';
 import { commands as edit } from '../edit/commands.ts';
 import { profiles } from '../profile/list.ts';
 import { set as profileSet } from '../profile/set.ts';
@@ -22,6 +24,13 @@ const fitted = (out: { fits: boolean }, { cv }: { cv?: string | undefined }) =>
   out.fits ? [preview.step({ cv }), build.step({ cv })] : [];
 
 export const next = [
+  after(cvs, () => [profiles.step()]),
+  // A new CV is empty and names the placeholder photo.
+  after(init, (_, { cv }) => [
+    edit.contact.add.step({ cv }),
+    edit.block.add.step({ cv }),
+    photoSet.step({ cv }),
+  ]),
   after(photoSet, (_, { cv, profile }) => [build.step({ cv, profile })]),
   after(
     [

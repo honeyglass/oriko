@@ -30,8 +30,6 @@ export type Command = {
   joinsWords?: true;
   /** The input read from --json or stdin. */
   input?: ZodType;
-  /** Options whose value is a new name, so no list holds it. */
-  fresh?: OptionName[];
 };
 
 const EDIT: OptionName[] = ['cv', 'json', 'dry-run'];
@@ -51,7 +49,6 @@ export const COMMANDS = {
     options: ['cv', 'json', 'dry-run'],
     required: ['cv'],
     input: NewCv,
-    fresh: ['cv'],
   },
   show: { does: 'outlines a CV, or shows one block in full', options: ['cv', 'profile', 'block'] },
   profiles: { does: 'lists the profiles and whether each fits its pages', options: [] },

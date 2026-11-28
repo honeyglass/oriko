@@ -23,8 +23,8 @@ import { FILE_LIMITS } from '../core/files.limits.ts';
 import { home, isListed, profileFile, profileNames, targetIssue } from '../core/home.ts';
 import { issueAt, oversized, turnedEach } from '../core/issues.ts';
 import type { Stored } from '../core/issues.ts';
-import { fileOf, storedCv } from '../core/load.ts';
-import { fit } from '../core/place.ts';
+import { storedCv } from '../core/load.ts';
+import { fileOf, fit } from '../core/place.ts';
 import { cvChoices } from '../core/sources.ts';
 import * as issue from './issues.ts';
 

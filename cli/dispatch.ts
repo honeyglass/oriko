@@ -10,13 +10,9 @@ import { done } from '../core/errors.ts';
 import type { Result } from '../core/errors.ts';
 import { cvNames, profileNames } from '../core/home.old.ts';
 import { profileCv } from '../core/load.old.ts';
-import { createCv } from '../cv/init.ts';
-import { listCvs } from '../cv/list.ts';
-import { showCv } from '../cv/show.ts';
 import { readDocuments } from '../read/documents.ts';
 import { actionsOf } from './route.ts';
 import { schema } from './describe.ts';
-import { payload } from './input.ts';
 import type { Call, Fields } from './types.ts';
 
 export async function dispatched(call: Call): Promise<Result<Fields>> {
@@ -25,16 +21,10 @@ export async function dispatched(call: Call): Promise<Result<Fields>> {
       return unrouted(call);
     case 'schema':
       return schema(call.rest.join(' '));
-    case 'cvs':
-      return listCvs(call.home);
-    case 'init':
-      return init(call);
-    case 'show':
-      return showCv(call.home, call.values.cv, call.values.profile, call.values.block);
     case 'read':
       return read(call);
-    // plan, preview, build, the profile commands, photo set and the edits run on adx:
-    // cli/interim.ts never sends them here, so a call that reaches this line is a bug of the routing.
+    // Every other command runs on adx: cli/interim.ts never sends one here, so a call that
+    // reaches this line is a bug of the routing.
     default:
       throw new RefusalError({
         kind: 'bug',
@@ -60,13 +50,6 @@ async function start(call: Call): Promise<Result<Fields>> {
     cvs: await cvNames(call.home),
     profiles: await profileNames(call.home),
   });
-}
-
-async function init(call: Call): Promise<Result<Fields>> {
-  const input = await payload(call, 'init');
-  if (input.error !== null) return input;
-  const isDryRun = call.values['dry-run'] === true;
-  return createCv({ home: call.home, name: call.values.cv, input: input.data, isDryRun });
 }
 
 async function read(call: Call): Promise<Result<Fields>> {

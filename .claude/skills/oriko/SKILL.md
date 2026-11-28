@@ -54,8 +54,11 @@ The data folder is `~/.oriko`; when the user names another one, pass `--home <fo
 | :------------------- | :----------------------------------------------------------------------------------- |
 | 'cvs/NAME.json'      | one master CV: 'language', person, contact, 'pages' (the most pages allowed), blocks |
 | 'cvs/NAME.png'       | the photo of that master, shared by its profiles                                     |
+| 'placeholder.png'    | the photo a new master names until its first 'oriko photo set'                       |
 | 'profiles/NAME.json' | one profile per job posting; its field 'cv' names its master                         |
 | 'profiles/NAME.png'  | the photo of one profile, set with 'oriko photo set --file FILE --profile NAME'      |
+
+A master made by an older oriko already holds 'cvs/NAME.png', so its first `oriko photo set` answers `ALREADY_EXISTS`: ask the user before you repeat it with `--replace`.
 
 A command finds its master through the profile, or through `--cv NAME`.
 Without either, oriko takes the only master; with several, it answers `CV_REQUIRED` and lists them.

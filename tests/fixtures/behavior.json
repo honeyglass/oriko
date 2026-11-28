@@ -2080,15 +2080,18 @@
     "stdout": {
       "json": {
         "ok": true,
-        "cvs": [
-          {
-            "name": "jane",
-            "language": "en",
-            "person": "Jane Doe",
-            "fits": true,
-            "pages": 2
-          }
-        ],
+        "result": {
+          "items": [
+            {
+              "name": "jane",
+              "language": "en",
+              "person": "Jane Doe",
+              "fits": true,
+              "pages": 2
+            }
+          ],
+          "total": 1
+        },
         "next": [
           {
             "does": "outlines a CV, or shows one block in full",
@@ -2153,129 +2156,131 @@
     "stdout": {
       "json": {
         "ok": true,
-        "cv": "jane",
-        "pages": 2,
-        "blocks": [
-          {
-            "id": "northwind",
-            "kind": "job",
-            "column": "left",
-            "section": "Professional Experience",
-            "title": "Senior Backend Engineer",
-            "items": 5
-          },
-          {
-            "id": "bluebird",
-            "kind": "job",
-            "column": "left",
-            "section": "Professional Experience",
-            "title": "Backend Engineer",
-            "items": 3
-          },
-          {
-            "id": "harbor",
-            "kind": "job",
-            "column": "left",
-            "section": "Professional Experience",
-            "title": "Backend Engineer",
-            "items": 2
-          },
-          {
-            "id": "lumen",
-            "kind": "job",
-            "column": "left",
-            "section": "Professional Experience",
-            "title": "Software Engineer",
-            "items": 4
-          },
-          {
-            "id": "campus",
-            "kind": "job",
-            "column": "left",
-            "section": "Professional Experience",
-            "title": "Software Engineer",
-            "page": 2,
-            "items": 2
-          },
-          {
-            "id": "freelance",
-            "kind": "job",
-            "column": "left",
-            "section": "Professional Experience",
-            "title": "Software Engineer",
-            "items": 3
-          },
-          {
-            "id": "cedar",
-            "kind": "job",
-            "column": "left",
-            "section": "Professional Experience",
-            "title": "Junior Software Engineer",
-            "items": 4
-          },
-          {
-            "id": "programming-languages",
-            "kind": "rated",
-            "column": "right",
-            "section": "Skills",
-            "title": "Programming Languages",
-            "items": 5
-          },
-          {
-            "id": "expertise",
-            "kind": "rated",
-            "column": "right",
-            "section": "Skills",
-            "title": "Expertise",
-            "items": 5
-          },
-          {
-            "id": "libraries",
-            "kind": "list",
-            "column": "right",
-            "section": "Skills",
-            "title": "Libraries",
-            "items": 5
-          },
-          {
-            "id": "strengths",
-            "kind": "list",
-            "column": "right",
-            "section": "Skills",
-            "title": "Strengths",
-            "items": 3
-          },
-          {
-            "id": "additional-skills",
-            "kind": "list",
-            "column": "right",
-            "section": "Skills",
-            "title": "Additional Skills",
-            "items": 4
-          },
-          {
-            "id": "languages",
-            "kind": "rated",
-            "column": "right",
-            "section": "Languages",
-            "page": 2,
-            "items": 3
-          },
-          {
-            "id": "interests",
-            "kind": "list",
-            "column": "right",
-            "section": "Interests",
-            "items": 4
-          },
-          {
-            "id": "awards",
-            "kind": "entries",
-            "column": "right",
-            "section": "Awards",
-            "items": 2
-          }
-        ],
+        "result": {
+          "cv": "jane",
+          "pages": 2,
+          "blocks": [
+            {
+              "id": "northwind",
+              "kind": "job",
+              "column": "left",
+              "section": "Professional Experience",
+              "title": "Senior Backend Engineer",
+              "items": 5
+            },
+            {
+              "id": "bluebird",
+              "kind": "job",
+              "column": "left",
+              "section": "Professional Experience",
+              "title": "Backend Engineer",
+              "items": 3
+            },
+            {
+              "id": "harbor",
+              "kind": "job",
+              "column": "left",
+              "section": "Professional Experience",
+              "title": "Backend Engineer",
+              "items": 2
+            },
+            {
+              "id": "lumen",
+              "kind": "job",
+              "column": "left",
+              "section": "Professional Experience",
+              "title": "Software Engineer",
+              "items": 4
+            },
+            {
+              "id": "campus",
+              "kind": "job",
+              "column": "left",
+              "section": "Professional Experience",
+              "title": "Software Engineer",
+              "page": 2,
+              "items": 2
+            },
+            {
+              "id": "freelance",
+              "kind": "job",
+              "column": "left",
+              "section": "Professional Experience",
+              "title": "Software Engineer",
+              "items": 3
+            },
+            {
+              "id": "cedar",
+              "kind": "job",
+              "column": "left",
+              "section": "Professional Experience",
+              "title": "Junior Software Engineer",
+              "items": 4
+            },
+            {
+              "id": "programming-languages",
+              "kind": "rated",
+              "column": "right",
+              "section": "Skills",
+              "title": "Programming Languages",
+              "items": 5
+            },
+            {
+              "id": "expertise",
+              "kind": "rated",
+              "column": "right",
+              "section": "Skills",
+              "title": "Expertise",
+              "items": 5
+            },
+            {
+              "id": "libraries",
+              "kind": "list",
+              "column": "right",
+              "section": "Skills",
+              "title": "Libraries",
+              "items": 5
+            },
+            {
+              "id": "strengths",
+              "kind": "list",
+              "column": "right",
+              "section": "Skills",
+              "title": "Strengths",
+              "items": 3
+            },
+            {
+              "id": "additional-skills",
+              "kind": "list",
+              "column": "right",
+              "section": "Skills",
+              "title": "Additional Skills",
+              "items": 4
+            },
+            {
+              "id": "languages",
+              "kind": "rated",
+              "column": "right",
+              "section": "Languages",
+              "page": 2,
+              "items": 3
+            },
+            {
+              "id": "interests",
+              "kind": "list",
+              "column": "right",
+              "section": "Interests",
+              "items": 4
+            },
+            {
+              "id": "awards",
+              "kind": "entries",
+              "column": "right",
+              "section": "Awards",
+              "items": 2
+            }
+          ]
+        },
         "next": [
           {
             "does": "outlines a CV, or shows one block in full",
@@ -2298,129 +2303,71 @@
     "stdout": {
       "json": {
         "ok": true,
-        "option": "block",
-        "cv": "jane",
-        "values": [
-          {
-            "id": "northwind",
-            "kind": "job",
-            "column": "left",
-            "section": "Professional Experience",
-            "title": "Senior Backend Engineer",
-            "items": 5
-          },
-          {
-            "id": "bluebird",
-            "kind": "job",
-            "column": "left",
-            "section": "Professional Experience",
-            "title": "Backend Engineer",
-            "items": 3
-          },
-          {
-            "id": "harbor",
-            "kind": "job",
-            "column": "left",
-            "section": "Professional Experience",
-            "title": "Backend Engineer",
-            "items": 2
-          },
-          {
-            "id": "lumen",
-            "kind": "job",
-            "column": "left",
-            "section": "Professional Experience",
-            "title": "Software Engineer",
-            "items": 4
-          },
-          {
-            "id": "campus",
-            "kind": "job",
-            "column": "left",
-            "section": "Professional Experience",
-            "title": "Software Engineer",
-            "page": 2,
-            "items": 2
-          },
-          {
-            "id": "freelance",
-            "kind": "job",
-            "column": "left",
-            "section": "Professional Experience",
-            "title": "Software Engineer",
-            "items": 3
-          },
-          {
-            "id": "cedar",
-            "kind": "job",
-            "column": "left",
-            "section": "Professional Experience",
-            "title": "Junior Software Engineer",
-            "items": 4
-          },
-          {
-            "id": "programming-languages",
-            "kind": "rated",
-            "column": "right",
-            "section": "Skills",
-            "title": "Programming Languages",
-            "items": 5
-          },
-          {
-            "id": "expertise",
-            "kind": "rated",
-            "column": "right",
-            "section": "Skills",
-            "title": "Expertise",
-            "items": 5
-          },
-          {
-            "id": "libraries",
-            "kind": "list",
-            "column": "right",
-            "section": "Skills",
-            "title": "Libraries",
-            "items": 5
-          },
-          {
-            "id": "strengths",
-            "kind": "list",
-            "column": "right",
-            "section": "Skills",
-            "title": "Strengths",
-            "items": 3
-          },
-          {
-            "id": "additional-skills",
-            "kind": "list",
-            "column": "right",
-            "section": "Skills",
-            "title": "Additional Skills",
-            "items": 4
-          },
-          {
-            "id": "languages",
-            "kind": "rated",
-            "column": "right",
-            "section": "Languages",
-            "page": 2,
-            "items": 3
-          },
-          {
-            "id": "interests",
-            "kind": "list",
-            "column": "right",
-            "section": "Interests",
-            "items": 4
-          },
-          {
-            "id": "awards",
-            "kind": "entries",
-            "column": "right",
-            "section": "Awards",
-            "items": 2
-          }
-        ]
+        "result": {
+          "option": "block",
+          "values": [
+            {
+              "value": "northwind",
+              "does": "job in Professional Experience: Senior Backend Engineer"
+            },
+            {
+              "value": "bluebird",
+              "does": "job in Professional Experience: Backend Engineer"
+            },
+            {
+              "value": "harbor",
+              "does": "job in Professional Experience: Backend Engineer"
+            },
+            {
+              "value": "lumen",
+              "does": "job in Professional Experience: Software Engineer"
+            },
+            {
+              "value": "campus",
+              "does": "job in Professional Experience: Software Engineer"
+            },
+            {
+              "value": "freelance",
+              "does": "job in Professional Experience: Software Engineer"
+            },
+            {
+              "value": "cedar",
+              "does": "job in Professional Experience: Junior Software Engineer"
+            },
+            {
+              "value": "programming-languages",
+              "does": "rated in Skills: Programming Languages"
+            },
+            {
+              "value": "expertise",
+              "does": "rated in Skills: Expertise"
+            },
+            {
+              "value": "libraries",
+              "does": "list in Skills: Libraries"
+            },
+            {
+              "value": "strengths",
+              "does": "list in Skills: Strengths"
+            },
+            {
+              "value": "additional-skills",
+              "does": "list in Skills: Additional Skills"
+            },
+            {
+              "value": "languages",
+              "does": "rated in Languages"
+            },
+            {
+              "value": "interests",
+              "does": "list in Interests"
+            },
+            {
+              "value": "awards",
+              "does": "entries in Awards"
+            }
+          ]
+        }
       }
     },
     "stderr": {
@@ -2436,20 +2383,22 @@
     "stdout": {
       "json": {
         "ok": true,
-        "block": {
-          "id": "awards",
-          "section": "Awards",
-          "kind": "entries",
-          "items": [
-            {
-              "title": "Certified Kubernetes Administrator",
-              "note": "09/2022"
-            },
-            {
-              "title": "Team Award",
-              "note": "03/2019"
-            }
-          ]
+        "result": {
+          "block": {
+            "id": "awards",
+            "section": "Awards",
+            "kind": "entries",
+            "items": [
+              {
+                "title": "Certified Kubernetes Administrator",
+                "note": "09/2022"
+              },
+              {
+                "title": "Team Award",
+                "note": "03/2019"
+              }
+            ]
+          }
         }
       }
     },
@@ -2467,17 +2416,14 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "show",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
-            "code": "UNKNOWN_BLOCK",
+            "code": "NOT_IN_LIST",
             "path": "block",
-            "message": "No block has the id nope",
-            "hint": "Run the command and use one of the block ids it lists",
-            "command": "oriko show --cv jane --block"
+            "message": "\"nope\" is not in the list of block",
+            "hint": "Use a value the list answers",
+            "command": "oriko show --block"
           }
         ]
       }
@@ -2495,8 +2441,14 @@
     "stdout": {
       "json": {
         "ok": true,
-        "option": "cv",
-        "values": ["jane"]
+        "result": {
+          "option": "cv",
+          "values": [
+            {
+              "value": "jane"
+            }
+          ]
+        }
       }
     },
     "stderr": {
@@ -2829,7 +2781,7 @@
             "path": "profile.blocks.nobody",
             "message": "No block has the id nobody",
             "hint": "Run the command and use one of the block ids it lists",
-            "command": "oriko plan --profile"
+            "command": "oriko show --profile broken --block"
           }
         ]
       }
@@ -3779,17 +3731,14 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "oriko",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
             "code": "UNKNOWN_OPTION",
             "path": "x",
-            "message": "No option is called --x",
-            "hint": "Run the command and use one of the options it lists",
-            "command": "oriko schema"
+            "message": "show has no option -x",
+            "hint": "Use an option the command lists",
+            "command": "oriko schema show"
           }
         ]
       }
@@ -3808,16 +3757,13 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "oriko",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
             "code": "UNEXPECTED_ARGUMENT",
             "path": "extra",
-            "message": "The command cvs takes no word extra",
-            "hint": "Run the command and pass only the words and options it lists",
+            "message": "cvs takes no word after its options",
+            "hint": "Remove the word, or pass it as the value of an option",
             "command": "oriko schema cvs"
           }
         ]
@@ -3835,17 +3781,12 @@
     "exit": 0,
     "stdout": {
       "lines": [
-        "{",
-        "  \"cvs\": [",
-        "    {",
-        "      \"name\": \"jane\",",
-        "      \"language\": \"en\",",
-        "      \"person\": \"Jane Doe\",",
-        "      \"fits\": true,",
-        "      \"pages\": 2",
-        "    }",
-        "  ]",
-        "}",
+        "items  [{\"name\":\"jane\",\"language\":\"en\",\"person\":\"Jane Doe\",\"fits\":true,\"pages\":2}]",
+        "total  1",
+        "",
+        "Next:",
+        "  oriko show --cv jane   outlines a CV, or shows one block in full",
+        "  oriko profiles         lists the profiles and whether each fits its pages",
         ""
       ]
     },
@@ -3866,7 +3807,7 @@
         "UNKNOWN_BLOCK at profile.blocks.nobody",
         "  No block has the id nobody",
         "  hint  Run the command and use one of the block ids it lists",
-        "  run   oriko plan --profile",
+        "  run   oriko show --profile broken --block",
         ""
       ]
     },
@@ -3877,21 +3818,30 @@
   },
   {
     "scenario": "seeded",
-    "argv": ["init", "--cv", "erika", "--dry-run"],
+    "argv": ["init", "--cv", "erika", "--dry-run", "--json", "-"],
     "stdin": "{\"language\":\"de\",\"firstName\":\"Erika\",\"lastName\":\"Muster\",\"role\":\"Entwicklerin\"}",
     "exit": 0,
     "stdout": {
       "json": {
         "ok": true,
-        "command": "init",
-        "cv": "cvs/erika.json",
-        "photo": "cvs/erika.png",
-        "written": false,
+        "applied": false,
+        "result": {
+          "cv": {
+            "file": "cvs/erika.json",
+            "bytes": 243,
+            "replaces": false
+          },
+          "photo": "placeholder.png",
+          "placeholder": {
+            "file": "placeholder.png",
+            "bytes": 1983,
+            "replaces": false
+          }
+        },
         "next": [
           {
-            "does": "repeat the call without --dry-run to write",
-            "command": "oriko init --cv erika",
-            "needs": ["json"]
+            "does": "creates a CV",
+            "command": "oriko init --cv erika --language de --first-name Erika --last-name Muster --role Entwicklerin"
           }
         ]
       }
@@ -3915,20 +3865,30 @@
     "stdout": {
       "json": {
         "ok": true,
-        "command": "init",
-        "cv": "cvs/erika.json",
-        "photo": "cvs/erika.png",
-        "written": true,
+        "applied": true,
+        "result": {
+          "cv": {
+            "file": "cvs/erika.json",
+            "bytes": 243,
+            "replaces": false
+          },
+          "photo": "placeholder.png",
+          "placeholder": {
+            "file": "placeholder.png",
+            "bytes": 1983,
+            "replaces": false
+          }
+        },
         "next": [
           {
             "does": "adds a contact line",
             "command": "oriko contact add --cv erika",
-            "needs": ["json"]
+            "needs": ["value"]
           },
           {
             "does": "adds a block, such as a job or a skill group",
             "command": "oriko block add --cv erika",
-            "needs": ["json"]
+            "needs": ["block"]
           },
           {
             "does": "stores the square photo of a CV, or of one profile",
@@ -3950,7 +3910,7 @@
           "    \"firstName\": \"Erika\",",
           "    \"lastName\": \"Muster\",",
           "    \"role\": \"Entwicklerin\",",
-          "    \"photo\": \"cvs/erika.png\"",
+          "    \"photo\": \"placeholder.png\"",
           "  },",
           "  \"contact\": {",
           "    \"title\": \"Contact\",",
@@ -3961,11 +3921,11 @@
           "}",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       },
-      "home/.oriko/cvs/erika.png": {
+      "home/.oriko/placeholder.png": {
         "sha256": "f34fb9c1d87ec484414aaa08fb6a64675f6a20a5db73448b0be576c1ae0a1e5a",
-        "mode": "644",
+        "mode": "600",
         "bytes": 1983
       }
     }
@@ -3985,16 +3945,14 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "init",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
             "code": "CV_EXISTS",
             "path": "cv",
             "message": "The data folder already holds a CV erika",
-            "hint": "Choose another name, or change that CV with cv update and the block commands"
+            "hint": "Choose another name, or change that CV with cv update and the block commands",
+            "command": "oriko init --language de --first-name Erika --last-name Muster --role Entwicklerin --cv"
           }
         ]
       }
@@ -4008,24 +3966,14 @@
     "scenario": "seeded",
     "argv": ["init", "--cv"],
     "stdin": null,
-    "exit": 1,
+    "exit": 0,
     "stdout": {
       "json": {
-        "ok": false,
-        "kind": "fix",
-        "step": "oriko",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
-        "issues": [
-          {
-            "code": "MISSING_VALUE",
-            "path": "cv",
-            "message": "The option --cv has no value",
-            "hint": "Add a new name in lower-case words joined by hyphens; the command lists the names already taken",
-            "command": "oriko show --cv"
-          }
-        ]
+        "ok": true,
+        "result": {
+          "option": "cv",
+          "taken": ["erika", "jane"]
+        }
       }
     },
     "stderr": {
@@ -4042,16 +3990,14 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "init",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
             "code": "INVALID_JSON",
-            "path": "",
-            "message": "The input is not valid JSON",
-            "hint": "Send one valid JSON value"
+            "path": "json",
+            "message": "--json holds no JSON: Expected property name or '}' in JSON at position 1 (line 1 column 2)",
+            "hint": "Pass --json one JSON object",
+            "command": "oriko schema init"
           }
         ]
       }
@@ -4070,16 +4016,34 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "init",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
-            "code": "MISSING_INPUT",
-            "path": "json",
-            "message": "The command needs --json, the input of the command",
-            "hint": "Run the command for the input shape, then pass it with --json or through stdin",
+            "code": "SCHEMA",
+            "path": "language",
+            "message": "Invalid input: expected string, received undefined",
+            "hint": "Pass the input the schema of the command shows",
+            "command": "oriko schema init"
+          },
+          {
+            "code": "SCHEMA",
+            "path": "firstName",
+            "message": "Invalid input: expected string, received undefined",
+            "hint": "Pass the input the schema of the command shows",
+            "command": "oriko schema init"
+          },
+          {
+            "code": "SCHEMA",
+            "path": "lastName",
+            "message": "Invalid input: expected string, received undefined",
+            "hint": "Pass the input the schema of the command shows",
+            "command": "oriko schema init"
+          },
+          {
+            "code": "SCHEMA",
+            "path": "role",
+            "message": "Invalid input: expected string, received undefined",
+            "hint": "Pass the input the schema of the command shows",
             "command": "oriko schema init"
           }
         ]
@@ -4098,22 +4062,25 @@
     "stdout": {
       "json": {
         "ok": true,
-        "cvs": [
-          {
-            "name": "erika",
-            "language": "de",
-            "person": "Erika Muster",
-            "fits": true,
-            "pages": 1
-          },
-          {
-            "name": "jane",
-            "language": "en",
-            "person": "Jane Doe",
-            "fits": true,
-            "pages": 2
-          }
-        ],
+        "result": {
+          "items": [
+            {
+              "name": "erika",
+              "language": "de",
+              "person": "Erika Muster",
+              "fits": true,
+              "pages": 1
+            },
+            {
+              "name": "jane",
+              "language": "en",
+              "person": "Jane Doe",
+              "fits": true,
+              "pages": 2
+            }
+          ],
+          "total": 2
+        },
         "next": [
           {
             "does": "outlines a CV, or shows one block in full",
@@ -4202,7 +4169,7 @@
         "applied": true,
         "result": {
           "file": "cvs/erika.json",
-          "bytes": 345,
+          "bytes": 347,
           "replaces": true,
           "changes": {
             "added": ["contact.items.0"],
@@ -4238,7 +4205,7 @@
           "    \"firstName\": \"Erika\",",
           "    \"lastName\": \"Muster\",",
           "    \"role\": \"Entwicklerin\",",
-          "    \"photo\": \"cvs/erika.png\"",
+          "    \"photo\": \"placeholder.png\"",
           "  },",
           "  \"contact\": {",
           "    \"title\": \"Contact\",",
@@ -4256,7 +4223,7 @@
           "}",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -4278,7 +4245,7 @@
         "applied": true,
         "result": {
           "file": "cvs/erika.json",
-          "bytes": 469,
+          "bytes": 471,
           "replaces": true,
           "changes": {
             "added": ["blocks.0"],
@@ -4314,7 +4281,7 @@
           "    \"firstName\": \"Erika\",",
           "    \"lastName\": \"Muster\",",
           "    \"role\": \"Entwicklerin\",",
-          "    \"photo\": \"cvs/erika.png\"",
+          "    \"photo\": \"placeholder.png\"",
           "  },",
           "  \"contact\": {",
           "    \"title\": \"Contact\",",
@@ -4341,7 +4308,7 @@
           "}",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -4364,7 +4331,7 @@
         "applied": false,
         "result": {
           "file": "cvs/erika.json",
-          "bytes": 485,
+          "bytes": 487,
           "replaces": true,
           "changes": {
             "added": ["blocks.0.items.1"],
@@ -4425,7 +4392,7 @@
         "applied": true,
         "result": {
           "file": "cvs/erika.json",
-          "bytes": 469,
+          "bytes": 471,
           "replaces": true,
           "changes": {
             "added": [],
@@ -4461,7 +4428,7 @@
           "    \"firstName\": \"Erika\",",
           "    \"lastName\": \"Muster\",",
           "    \"role\": \"Entwicklerin\",",
-          "    \"photo\": \"cvs/erika.png\"",
+          "    \"photo\": \"placeholder.png\"",
           "  },",
           "  \"contact\": {",
           "    \"title\": \"Contact\",",
@@ -4488,7 +4455,7 @@
           "}",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -4503,7 +4470,7 @@
         "applied": true,
         "result": {
           "file": "cvs/erika.json",
-          "bytes": 485,
+          "bytes": 487,
           "replaces": true,
           "changes": {
             "added": ["blocks.0.items.1"],
@@ -4539,7 +4506,7 @@
           "    \"firstName\": \"Erika\",",
           "    \"lastName\": \"Muster\",",
           "    \"role\": \"Entwicklerin\",",
-          "    \"photo\": \"cvs/erika.png\"",
+          "    \"photo\": \"placeholder.png\"",
           "  },",
           "  \"contact\": {",
           "    \"title\": \"Contact\",",
@@ -4567,7 +4534,7 @@
           "}",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -4589,7 +4556,7 @@
         "applied": true,
         "result": {
           "file": "cvs/erika.json",
-          "bytes": 489,
+          "bytes": 491,
           "replaces": true,
           "changes": {
             "added": [],
@@ -4625,7 +4592,7 @@
           "    \"firstName\": \"Erika\",",
           "    \"lastName\": \"Muster\",",
           "    \"role\": \"Entwicklerin\",",
-          "    \"photo\": \"cvs/erika.png\"",
+          "    \"photo\": \"placeholder.png\"",
           "  },",
           "  \"contact\": {",
           "    \"title\": \"Contact\",",
@@ -4653,7 +4620,7 @@
           "}",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -4675,7 +4642,7 @@
         "applied": true,
         "result": {
           "file": "cvs/erika.json",
-          "bytes": 489,
+          "bytes": 491,
           "replaces": true,
           "changes": {
             "added": [],
@@ -4711,7 +4678,7 @@
           "    \"firstName\": \"Erika\",",
           "    \"lastName\": \"Muster\",",
           "    \"role\": \"Entwicklerin\",",
-          "    \"photo\": \"cvs/erika.png\"",
+          "    \"photo\": \"placeholder.png\"",
           "  },",
           "  \"contact\": {",
           "    \"title\": \"Contact\",",
@@ -4739,7 +4706,7 @@
           "}",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -4754,7 +4721,7 @@
         "applied": true,
         "result": {
           "file": "cvs/erika.json",
-          "bytes": 473,
+          "bytes": 475,
           "replaces": true,
           "changes": {
             "added": [],
@@ -4790,7 +4757,7 @@
           "    \"firstName\": \"Erika\",",
           "    \"lastName\": \"Muster\",",
           "    \"role\": \"Entwicklerin\",",
-          "    \"photo\": \"cvs/erika.png\"",
+          "    \"photo\": \"placeholder.png\"",
           "  },",
           "  \"contact\": {",
           "    \"title\": \"Contact\",",
@@ -4817,7 +4784,7 @@
           "}",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -4839,7 +4806,7 @@
         "applied": true,
         "result": {
           "file": "cvs/erika.json",
-          "bytes": 571,
+          "bytes": 573,
           "replaces": true,
           "changes": {
             "added": ["contact.items.1"],
@@ -4875,7 +4842,7 @@
           "    \"firstName\": \"Erika\",",
           "    \"lastName\": \"Muster\",",
           "    \"role\": \"Entwicklerin\",",
-          "    \"photo\": \"cvs/erika.png\"",
+          "    \"photo\": \"placeholder.png\"",
           "  },",
           "  \"contact\": {",
           "    \"title\": \"Contact\",",
@@ -4908,7 +4875,7 @@
           "}",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -4930,7 +4897,7 @@
         "applied": true,
         "result": {
           "file": "cvs/erika.json",
-          "bytes": 571,
+          "bytes": 573,
           "replaces": true,
           "changes": {
             "added": [],
@@ -4966,7 +4933,7 @@
           "    \"firstName\": \"Erika\",",
           "    \"lastName\": \"Muster\",",
           "    \"role\": \"Entwicklerin\",",
-          "    \"photo\": \"cvs/erika.png\"",
+          "    \"photo\": \"placeholder.png\"",
           "  },",
           "  \"contact\": {",
           "    \"title\": \"Contact\",",
@@ -4999,7 +4966,7 @@
           "}",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -5014,7 +4981,7 @@
         "applied": true,
         "result": {
           "file": "cvs/erika.json",
-          "bytes": 571,
+          "bytes": 573,
           "replaces": true,
           "changes": {
             "added": [],
@@ -5055,7 +5022,7 @@
           "    \"firstName\": \"Erika\",",
           "    \"lastName\": \"Muster\",",
           "    \"role\": \"Entwicklerin\",",
-          "    \"photo\": \"cvs/erika.png\"",
+          "    \"photo\": \"placeholder.png\"",
           "  },",
           "  \"contact\": {",
           "    \"title\": \"Contact\",",
@@ -5088,7 +5055,7 @@
           "}",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -5103,7 +5070,7 @@
         "applied": true,
         "result": {
           "file": "cvs/erika.json",
-          "bytes": 473,
+          "bytes": 475,
           "replaces": true,
           "changes": {
             "added": [],
@@ -5139,7 +5106,7 @@
           "    \"firstName\": \"Erika\",",
           "    \"lastName\": \"Muster\",",
           "    \"role\": \"Entwicklerin\",",
-          "    \"photo\": \"cvs/erika.png\"",
+          "    \"photo\": \"placeholder.png\"",
           "  },",
           "  \"contact\": {",
           "    \"title\": \"Contact\",",
@@ -5166,7 +5133,7 @@
           "}",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -5188,7 +5155,7 @@
         "applied": true,
         "result": {
           "file": "cvs/erika.json",
-          "bytes": 594,
+          "bytes": 596,
           "replaces": true,
           "changes": {
             "added": ["blocks.1"],
@@ -5224,7 +5191,7 @@
           "    \"firstName\": \"Erika\",",
           "    \"lastName\": \"Muster\",",
           "    \"role\": \"Entwicklerin\",",
-          "    \"photo\": \"cvs/erika.png\"",
+          "    \"photo\": \"placeholder.png\"",
           "  },",
           "  \"contact\": {",
           "    \"title\": \"Contact\",",
@@ -5259,7 +5226,7 @@
           "}",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -5281,7 +5248,7 @@
         "applied": true,
         "result": {
           "file": "cvs/erika.json",
-          "bytes": 598,
+          "bytes": 600,
           "replaces": true,
           "changes": {
             "added": [],
@@ -5317,7 +5284,7 @@
           "    \"firstName\": \"Erika\",",
           "    \"lastName\": \"Muster\",",
           "    \"role\": \"Entwicklerin\",",
-          "    \"photo\": \"cvs/erika.png\"",
+          "    \"photo\": \"placeholder.png\"",
           "  },",
           "  \"contact\": {",
           "    \"title\": \"Contact\",",
@@ -5352,7 +5319,7 @@
           "}",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -5374,7 +5341,7 @@
         "applied": true,
         "result": {
           "file": "cvs/erika.json",
-          "bytes": 598,
+          "bytes": 600,
           "replaces": true,
           "changes": {
             "added": [],
@@ -5417,7 +5384,7 @@
           "    \"firstName\": \"Erika\",",
           "    \"lastName\": \"Muster\",",
           "    \"role\": \"Entwicklerin\",",
-          "    \"photo\": \"cvs/erika.png\"",
+          "    \"photo\": \"placeholder.png\"",
           "  },",
           "  \"contact\": {",
           "    \"title\": \"Contact\",",
@@ -5452,7 +5419,7 @@
           "}",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -5467,7 +5434,7 @@
         "applied": true,
         "result": {
           "file": "cvs/erika.json",
-          "bytes": 473,
+          "bytes": 475,
           "replaces": true,
           "changes": {
             "added": [],
@@ -5503,7 +5470,7 @@
           "    \"firstName\": \"Erika\",",
           "    \"lastName\": \"Muster\",",
           "    \"role\": \"Entwicklerin\",",
-          "    \"photo\": \"cvs/erika.png\"",
+          "    \"photo\": \"placeholder.png\"",
           "  },",
           "  \"contact\": {",
           "    \"title\": \"Contact\",",
@@ -5530,7 +5497,7 @@
           "}",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       }
     }
   },
@@ -5742,7 +5709,8 @@
             "code": "UNKNOWN_BLOCK",
             "path": "blocks.nobody",
             "message": "No block has the id nobody",
-            "hint": "Run the command and use one of the block ids it lists"
+            "hint": "Run the command and use one of the block ids it lists",
+            "command": "oriko show --cv jane --profile globex --block"
           }
         ]
       }
@@ -6473,18 +6441,13 @@
     "stdout": {
       "json": {
         "ok": false,
-        "kind": "fix",
-        "step": "home",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "kind": "ask",
+        "state": "Nothing was changed.",
         "issues": [
           {
-            "code": "NO_CV",
-            "path": "home",
-            "message": "The data folder <ROOT>/work/relative-home does not exist",
-            "hint": "Check --home, or run the command for the input of a new CV",
-            "command": "oriko schema init --home relative-home"
+            "code": "ROOT_NOT_FOUND",
+            "message": "--home names relative-home, no absolute path",
+            "hint": "Ask the person for the folder: the one the message names is not there"
           }
         ]
       }
@@ -6502,17 +6465,13 @@
     "stdout": {
       "json": {
         "ok": false,
-        "kind": "fix",
-        "step": "oriko",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "kind": "ask",
+        "state": "Nothing was changed.",
         "issues": [
           {
-            "code": "NOT_A_FOLDER",
-            "path": "home",
-            "message": "<ROOT>/work/posting.txt is no folder",
-            "hint": "Pass the path of a folder, not of a file"
+            "code": "ROOT_NOT_FOUND",
+            "message": "--home names posting.txt, no absolute path",
+            "hint": "Ask the person for the folder: the one the message names is not there"
           }
         ]
       }
@@ -6531,16 +6490,14 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "oriko",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
             "code": "MISSING_VALUE",
             "path": "home",
-            "message": "The option --home has no value",
-            "hint": "Add the data folder that holds cvs/ and profiles/, or leave out --home for ~/.oriko"
+            "message": "--home came without a value",
+            "hint": "Give the option a value",
+            "command": "oriko schema cvs"
           }
         ]
       }
@@ -6559,16 +6516,13 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "oriko",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
-            "code": "UNKNOWN_OUTPUT",
+            "code": "NOT_IN_LIST",
             "path": "output",
-            "message": "No output is called yaml",
-            "hint": "Run the command and use one of the outputs it lists: json, text",
+            "message": "\"yaml\" is not in the list of output",
+            "hint": "Use a value the list answers",
             "command": "oriko --output"
           }
         ]
@@ -6708,17 +6662,13 @@
       "json": {
         "ok": false,
         "kind": "fix",
-        "step": "home",
-        "reason": "the input has 1 issue(s)",
-        "next": "fix every listed issue and call again",
-        "state": "Nothing was written.",
+        "state": "Nothing was changed.",
         "issues": [
           {
             "code": "NO_CV",
-            "path": "home",
-            "message": "The data folder <ROOT>/home/.oriko does not exist",
-            "hint": "Check --home, or run the command for the input of a new CV",
-            "command": "oriko schema init"
+            "message": "The data folder holds no CV",
+            "hint": "Check --home, or create a CV with the command and the fields it needs",
+            "command": "oriko init"
           }
         ]
       }
@@ -6742,20 +6692,30 @@
     "stdout": {
       "json": {
         "ok": true,
-        "command": "init",
-        "cv": "cvs/erika.json",
-        "photo": "cvs/erika.png",
-        "written": true,
+        "applied": true,
+        "result": {
+          "cv": {
+            "file": "cvs/erika.json",
+            "bytes": 243,
+            "replaces": false
+          },
+          "photo": "placeholder.png",
+          "placeholder": {
+            "file": "placeholder.png",
+            "bytes": 1983,
+            "replaces": false
+          }
+        },
         "next": [
           {
             "does": "adds a contact line",
             "command": "oriko contact add --cv erika",
-            "needs": ["json"]
+            "needs": ["value"]
           },
           {
             "does": "adds a block, such as a job or a skill group",
             "command": "oriko block add --cv erika",
-            "needs": ["json"]
+            "needs": ["block"]
           },
           {
             "does": "stores the square photo of a CV, or of one profile",
@@ -6771,11 +6731,11 @@
     "files": {
       "home/.oriko": {
         "folder": true,
-        "mode": "755"
+        "mode": "700"
       },
       "home/.oriko/cvs": {
         "folder": true,
-        "mode": "755"
+        "mode": "700"
       },
       "home/.oriko/cvs/erika.json": {
         "lines": [
@@ -6785,7 +6745,7 @@
           "    \"firstName\": \"Erika\",",
           "    \"lastName\": \"Muster\",",
           "    \"role\": \"Entwicklerin\",",
-          "    \"photo\": \"cvs/erika.png\"",
+          "    \"photo\": \"placeholder.png\"",
           "  },",
           "  \"contact\": {",
           "    \"title\": \"Contact\",",
@@ -6796,11 +6756,11 @@
           "}",
           ""
         ],
-        "mode": "644"
+        "mode": "600"
       },
-      "home/.oriko/cvs/erika.png": {
+      "home/.oriko/placeholder.png": {
         "sha256": "f34fb9c1d87ec484414aaa08fb6a64675f6a20a5db73448b0be576c1ae0a1e5a",
-        "mode": "644",
+        "mode": "600",
         "bytes": 1983
       }
     }
@@ -6813,15 +6773,18 @@
     "stdout": {
       "json": {
         "ok": true,
-        "cvs": [
-          {
-            "name": "erika",
-            "language": "de",
-            "person": "Erika Muster",
-            "fits": true,
-            "pages": 1
-          }
-        ],
+        "result": {
+          "items": [
+            {
+              "name": "erika",
+              "language": "de",
+              "person": "Erika Muster",
+              "fits": true,
+              "pages": 1
+            }
+          ],
+          "total": 1
+        },
         "next": [
           {
             "does": "outlines a CV, or shows one block in full",

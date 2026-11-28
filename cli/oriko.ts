@@ -13,15 +13,22 @@ import { tool } from '@honeyglass/adx';
 import { set as photoSet } from '../classic/photo.ts';
 import { Block, ContactItem, Item, Master, Profile } from '../core/cv.schema.ts';
 import { home, work } from '../core/home.ts';
+import { init } from '../cv/init.ts';
+import { cvs } from '../cv/list.ts';
+import { show } from '../cv/show.ts';
 import { commands as edit } from '../edit/commands.ts';
 import { profiles } from '../profile/list.ts';
 import { set as profileSet } from '../profile/set.ts';
 import { show as profileShow } from '../profile/show.ts';
 import { build, preview } from './build.ts';
+import { hints } from './hints.ts';
 import { next } from './next.ts';
 import { plan } from './plan.ts';
 
 export const commands = {
+  cvs,
+  init,
+  show,
   profiles,
   plan,
   preview,
@@ -43,4 +50,5 @@ export const oriko = tool({
   shapes: { master: Master, profile: Profile, block: Block, item: Item, contact: ContactItem },
   commands,
   next,
+  hints,
 });

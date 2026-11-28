@@ -8,7 +8,7 @@
  * noCv, cvRequired, unknownCv, unknownCvOfProfile, cvMismatch, unknownProfile: what the data
  * folder does not hold.
  * roleTooLong, blockTooTall, pageOverflow: what does not fit the pages.
- * FILE_NOT_FOUND, UNKNOWN_BLOCK: the codes other files compare.
+ * FILE_NOT_FOUND: the code other files compare.
  *
  * @example if (block === undefined) return rejected('show', [issue.unknownBlock(id, 'block')]);
  */
@@ -19,7 +19,6 @@ import type { Issue } from './errors.ts';
 import { FILE_LIMITS } from './files.limits.ts';
 
 export const FILE_NOT_FOUND = 'FILE_NOT_FOUND';
-export const UNKNOWN_BLOCK = 'UNKNOWN_BLOCK';
 
 /**
  * @param error - the error of a failed safeParse
@@ -44,9 +43,9 @@ export const duplicateId = (id: string): Issue => ({
   hint: 'Give every block its own id',
 });
 
-// The cli adds the command that lists the block ids, as only it knows the name of the CV.
+// The tool adds the command that lists the block ids, as only it knows the name of the CV.
 export const unknownBlock = (id: string, path: string): Issue => ({
-  code: UNKNOWN_BLOCK,
+  code: 'UNKNOWN_BLOCK',
   path,
   message: `No block has the id ${shown(id)}`,
   hint: 'Run the command and use one of the block ids it lists',
