@@ -1,33 +1,32 @@
 /**
- * The issues core raises, and those several folders raise, each made by one function.
+ * The issues the check, the page plan and core/files.ts answer as data, one function each.
  *
  * schemaIssues, duplicateId, unknownBlock, untitledNotAlone: what the check of a CV finds.
  * itemsNotInMaster, levelRaised, factChanged, jobMoved: a fact of the master a profile changes.
- * fileNotFound, notAFile, notAFolder, tooLarge: the failures of a file.
- * pathRefused, systemRefused: a refusal of the system on a path, by who can solve it.
+ * fileNotFound, notAFile, tooLarge: the failures of a file.
+ * pathRefused: a refusal of the system on a path that another path or its rights fix.
  * roleTooLong, blockTooTall, pageOverflow: what does not fit the pages.
  *
- * @example if (block === undefined) return rejected('show', [issue.unknownBlock(id, 'block')]);
+ * An issue of adx shows only its code and its path, and an edit answers what does not fit with
+ * message and hint; core/issues.ts turns each of these into an issue of adx once its field is known.
+ *
+ * @example if (duplicates.length > 0) return rejected(duplicates);
  */
 import { shown } from '@honeyglass/utils/ts';
 import type { z } from 'zod';
-import { SYSTEM_REFUSED } from './errors.ts';
 import type { Issue } from './errors.ts';
-import { FILE_LIMITS } from './files.limits.ts';
 
 /**
  * @param error - the error of a failed safeParse
  * @param prefix - the path of the checked value inside the input
- * @param name - the schema to point the caller to
  * @returns one issue per schema issue
  */
-export function schemaIssues(error: z.ZodError, prefix: PropertyKey[], name: string): Issue[] {
+export function schemaIssues(error: z.ZodError, prefix: PropertyKey[]): Issue[] {
   return error.issues.map(issue => ({
     code: 'SCHEMA',
     path: [...prefix, ...issue.path].join('.'),
     message: issue.message,
     hint: 'Run the command for the accepted shape',
-    command: `oriko schema ${name}`,
   }));
 }
 
@@ -95,14 +94,7 @@ export const notAFile = (path: string, option: string): Issue => ({
   hint: 'Pass the path of a file, not of a folder',
 });
 
-export const notAFolder = (path: string, option: string): Issue => ({
-  code: 'NOT_A_FOLDER',
-  path: option,
-  message: `${shown(path)} is no folder`,
-  hint: 'Pass the path of a folder, not of a file',
-});
-
-export const tooLarge = (path: string, limit: number = FILE_LIMITS.inputBytes): Issue => ({
+export const tooLarge = (path: string, limit: number): Issue => ({
   code: 'INPUT_TOO_LARGE',
   path,
   message: `The input is larger than ${limit} bytes`,
@@ -114,13 +106,6 @@ export const pathRefused = (path: string, option: string, code: string): Issue =
   path: option,
   message: `The system refused ${shown(path)}: ${code}`,
   hint: 'Check the path and that you may read and write there',
-});
-
-export const systemRefused = (path: string, option: string, code: string): Issue => ({
-  code: SYSTEM_REFUSED,
-  path: option,
-  message: `The system refused ${shown(path)}: ${code}`,
-  hint: 'Tell the person what the system answered, such as a full disk, and call again once solved',
 });
 
 export const roleTooLong = (role: string): Issue => ({

@@ -23,8 +23,12 @@ import { cv } from '../core/options.ts';
 import { cvChoices } from '../core/sources.ts';
 import { cleanText } from './clean.ts';
 import * as issue from './issues.ts';
+import { READ_LIMITS } from './limits.ts';
 import { documentsOf } from './sources.ts';
 import type { Document } from './sources.ts';
+
+// What each source may hold, so the schema names the limits before a call meets one.
+const SOURCE_LIMITS = `at most ${FILE_LIMITS.readBytes} bytes, the text of a Word file at most ${READ_LIMITS.documentBytes} bytes, a download at most ${READ_LIMITS.redirects} redirects and ${READ_LIMITS.downloadSeconds} seconds`;
 
 // The steps after it, to profile set, show and init, stand in cli/next.ts.
 export const read = effect({
@@ -34,19 +38,19 @@ export const read = effect({
       .string()
       .optional()
       .describe(
-        'the job posting: a PDF, Word, HTML or text file, or an https:// address; a relative path starts at the working directory',
+        `the job posting: a PDF, Word, HTML or text file, or an https:// address; a relative path starts at the working directory; needs --profile beside it; ${SOURCE_LIMITS}`,
       ),
     notes: z
       .array(z.string())
       .default([])
       .describe(
-        'notes on the career, a file or an https:// address, kept beside the CV; may repeat',
+        `notes on the career, a file or an https:// address, kept beside the CV; may repeat; ${SOURCE_LIMITS}`,
       ),
     resume: z
       .string()
       .optional()
       .describe(
-        'an old CV, a file or an https:// address: its text is answered and stored nowhere',
+        `an old CV, a file or an https:// address: its text is answered and stored nowhere; ${SOURCE_LIMITS}`,
       ),
     // Beside --posting the name becomes a file, so check() holds it to an id there; for notes it
     // only picks a stored profile by its name, so any name a stored profile has passes.

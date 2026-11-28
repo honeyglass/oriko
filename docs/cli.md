@@ -17,7 +17,7 @@ them from building tools for agents.
 | Checks in layers | shape, then version, then pages; all errors at once | fixes real errors in one go | ➕ oriko |
 | Errors with a hint | each error says where and what to change | fixes the input on its own | ➕ oriko |
 | All or nothing | a refused command writes nothing | no file is left half changed | ➕ oriko |
-| Exit codes 0, 1, 2 | 0 ok, 1 fix the input, 2 something broke | knows the next step from one number | ➕ oriko |
+| Exit codes 0, 1, 2 | 0 ok, 1 refused: fix the input, ask the person or call again later, 2 something broke | knows the next step from one number | ➕ oriko |
 | Plan before the file | `plan` shows which block lands on which page | fixes an overflow before building | ➕ oriko |
 | Hints that run | a refusal names the command that lists the fitting values | runs it and picks a real value | ➕ oriko |
 | Options that list | an option without a value lists the values it accepts | finds names and ids in one call | ➕ oriko |
@@ -26,14 +26,16 @@ them from building tools for agents.
 
 ## Commands
 
-Every command answers one JSON object: on one line when another program reads it, indented in a
+Every command answers one JSON object on one line when another program reads it, and text in a
 terminal, where `preview` shows its sheets and a refusal shows as readable lines. oriko ends with
-exit code 0 when all went well, 1 when the input needs a fix (each issue with a hint), and 2 when
-something broke. `oriko schema` lists every command and option, `oriko schema <command>` the input
-one accepts, in `required` the options it cannot run without, and in `requiredWith` the options
-another option needs beside it, such as `--profile` beside `--posting` for `read`. A call that
-leaves out a required option is refused before the command runs, with the command that lists
-what the option may hold.
+exit code 0 when all went well, 1 when the input needs a fix, the person or a later call (each
+issue with a hint), and 2 when something broke. `oriko schema` lists every command with its input, the shapes
+a caller writes, every issue code with its kind and hint, and the limits every call meets.
+`oriko schema <command>` answers the input one accepts: each field with its option, what it
+takes and whether the command needs it, and an example; the text of `--posting` names the
+`--profile` that `read` needs beside it; `oriko <command> --help` shows the same as text, and `oriko --version` the version. A
+call that leaves out a required field is refused before the command runs, with the command that
+shows its schema.
 
 | Command | What it does |
 | :--- | :--- |
@@ -89,15 +91,20 @@ needs no `--replace`.
 > A CV made by an older oriko holds its own placeholder at `cvs/<cv>.png`, so its first
 > `photo set` needs `--replace`.
 
-`oriko` alone answers where to start: the data folder, its CVs and its profiles. A group without
+`oriko` alone answers where to start: its commands, and the first steps, which follow what the
+data folder holds; `oriko cvs` and `oriko profiles` list the CVs and the profiles. A group without
 its action lists the actions, such as `oriko block` for `block add`, `block update`, `block remove`
-and `block move`. A command takes only its own options and words; anything else is refused, with
-every mistake of the call in one answer.
+and `block move`. A command takes only its own options; anything else is refused, with every
+mistake of the call in one answer.
+
+> [!WARNING]
+> `oriko` alone, a group alone and `oriko schema` take `--output` and no other option, `oriko`
+> alone `--version` besides, and `--home` neither: `oriko --home ~/cv-data` and `oriko schema --home ~/cv-data` are refused, and so is
+> `--help` there. For another data folder, put the variable in front instead,
+> `ORIKO_HOME=~/cv-data oriko`; every step it names then carries `--home`.
 
 A success names what can follow in `next`, when anything can, with what each step still needs. At
-a terminal the steps print as `Next:` lines below the answer. Piped text, with `--output text`,
-leaves them out for a command on the old shell, and prints them for a command on adx, such as
-`plan`, `preview` and `build`.
+a terminal, and with `--output text`, the steps print in a `Next:` block below the answer.
 
 An edit, such as
 `oriko block update --cv jane-doe --json '{"id":"awards","set":{"title":"Prizes"}}'`, answers the
@@ -153,7 +160,7 @@ An option without a value lists the values it accepts:
 | `oriko plan --profile` | the names of all profiles |
 | `oriko show --cv jane-doe --block` | the id of every block of that CV, with its kind, section and title |
 | `oriko build --style` | `classic`, `terminal` |
-| `oriko --output` | `json`, `text`; a command such as `oriko cvs --output` refuses with `MISSING_VALUE` and names this call |
+| `oriko --output` | `text`, `json`; a command such as `oriko cvs --output` refuses with `MISSING_VALUE` and names this call |
 
 ## A refusal
 

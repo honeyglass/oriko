@@ -1,9 +1,8 @@
 /**
  * Every file oriko's own code reads, and the checks that keep a read within its limit.
  *
- * readBounded, pipedBytes, pipedText: a file or a pipe, never more than a limit.
+ * readBounded, pipedBytes: a file or a pipe, never more than a limit.
  * pathIssue: any refusal of the system on a path, as an issue for the caller.
- * isMissing: whether an error says that a path does not exist.
  *
  * @example const bytes = await readBounded(path, FILE_LIMITS.readBytes, 'posting');
  */
@@ -13,28 +12,29 @@ import type { FileHandle } from 'node:fs/promises';
 import { $try } from '@honeyglass/utils/ts';
 import { done, rejected } from './errors.ts';
 import type { Issue, Result } from './errors.ts';
-import * as issue from './issues.old.ts';
+import * as issue from './issues.data.ts';
 
-export const isMissing = (error: Error) => 'code' in error && error.code === 'ENOENT';
+const isMissing = (error: Error) => 'code' in error && error.code === 'ENOENT';
 
 // Node marks an error of the operating system with the call that failed.
 const isSystemError = (error: Error): error is Error & { code: string } =>
   'syscall' in error && 'code' in error && typeof error.code === 'string';
 
 /**
- * A path the caller gave, and every file in the data folder, is the caller's to fix, whatever the
- * system answers; any other error is a bug of this program and flies on.
+ * A path the caller gave is the caller's to fix when another path or its access rights fix it,
+ * and the person's to solve for any other answer of the system, which the caller hands to adx
+ * whole; any other error is a bug of this program and flies on.
  *
  * @param error - the error of a call on the path
  * @param path - the path
- * @param option - the cli option that named it, or that names the data folder
- * @returns the issue for the caller
+ * @param option - the option that named it
+ * @returns the issue for the caller, or nothing for an error only the person solves
  */
-export function pathIssue(error: Error, path: string, option: string): Issue {
+export function pathIssue(error: Error, path: string, option: string): Issue | undefined {
   if (isSystemError(error) === false) throw error;
   if (isMissing(error)) return issue.fileNotFound(path, option);
   if (PATH_CODES.has(error.code)) return issue.pathRefused(path, option, error.code);
-  return issue.systemRefused(path, option, error.code);
+  return undefined;
 }
 
 // A definition from POSIX's error numbers: the codes another path or its access rights fix. Any
@@ -65,23 +65,26 @@ export async function readBounded(
   option: string,
 ): Promise<Result<Buffer>> {
   const opened = await $try(open(path, constants.O_RDONLY | constants.O_NONBLOCK));
-  if (opened.error !== null)
-    return rejected('file', [pathIssue(opened.error, path, option)], opened.error);
+  if (opened.error !== null) return refusedFor(opened.error, path, option);
   const read = await $try(regularBytes(opened.data, { path, limit, option }));
   await opened.data.close();
-  if (read.error !== null)
-    return rejected('file', [pathIssue(read.error, path, option)], read.error);
+  if (read.error !== null) return refusedFor(read.error, path, option);
   return read.data;
+}
+
+// An error only the person solves holds no issue, so the caller hands its cause to adx.
+function refusedFor(error: Error, path: string, option: string) {
+  const found = pathIssue(error, path, option);
+  return rejected(found === undefined ? [] : [found], error);
 }
 
 type Bound = { path: string; limit: number; option: string };
 
 async function regularBytes(handle: FileHandle, bound: Bound): Promise<Result<Buffer>> {
   const info = await handle.stat();
-  if (info.isFile() === false) return rejected('file', [issue.notAFile(bound.path, bound.option)]);
+  if (info.isFile() === false) return rejected([issue.notAFile(bound.path, bound.option)]);
   const bytes = await readAtMost(handle, bound.limit + 1);
-  if (bytes.length > bound.limit)
-    return rejected('file', [issue.tooLarge(bound.option, bound.limit)]);
+  if (bytes.length > bound.limit) return rejected([issue.tooLarge(bound.option, bound.limit)]);
   return done(bytes);
 }
 
@@ -102,7 +105,7 @@ async function readAtMost(handle: FileHandle, size: number) {
 const CHUNK_BYTES = 65_536;
 
 /**
- * @param stream - the piped input, such as stdin or the body of a download
+ * @param stream - the piped input, such as the body of a download
  * @param limit - the most bytes the input may hold
  * @returns the bytes, cut one byte past the limit, so the caller refuses them without holding them whole
  */
@@ -117,6 +120,3 @@ export async function pipedBytes(stream: AsyncIterable<unknown>, limit: number) 
   }
   return Buffer.concat(chunks).subarray(0, limit + 1);
 }
-
-export const pipedText = async (stream: AsyncIterable<unknown>, limit: number) =>
-  (await pipedBytes(stream, limit)).toString('utf8');

@@ -9,7 +9,8 @@ The checks that prove oriko still does what it promises, run with `pnpm test`.
 - **fixtures/** and **utils/** hold the reference CV and the helpers the tests share.
 
 Some tests compare new builds with the showcase files in `examples/`, so a change to a style shows
-up here first. One test starts the program `bin/oriko.ts` itself, as a person or an agent does.
+up here first. The golden starts the program `bin/oriko.ts` itself, as a person or an agent does;
+every other test calls the tool in its own process, through the test kit of adx.
 
 ## Modules
 
@@ -20,8 +21,9 @@ up here first. One test starts the program `bin/oriko.ts` itself, as a person or
   - `behavior.api.spec.ts`: starts `bin/oriko.ts` for every call in `utils/behavior.ts`, in a
     home with the reference CV and in an empty one, and checks stdout, stderr, the exit code and
     every file and folder each call writes against `fixtures/behavior.json`.
-  - `conformance.api.spec.ts`: runs the checks of adx's test kit on every command that runs on
-    adx, such as a value outside a list or an option given without a value.
+  - `conformance.api.spec.ts`: runs the checks of adx's test kit on the tool, such as a value
+    outside a list, an option given without a value, or a skill file without its frontmatter. It
+    runs in the repository's root, where the examples of `photo set` and `read` find their files.
   - `pdf.api.spec.ts`: checks that the PDF through LibreOffice shows the lines of the Google PDF;
     it is skipped without LibreOffice.
   - `stale.api.spec.ts`: fails when a showcase .docx no longer matches the sha256 in its

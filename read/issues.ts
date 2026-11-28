@@ -10,8 +10,8 @@
  *
  * adx owns MISSING_INPUT, FILE_NOT_FOUND, NOT_A_FILE, INPUT_TOO_LARGE, URL_NOT_ALLOWED,
  * NETWORK_FAILED and SERVER_BUSY, and a tool that declares one does not start, so these codes have
- * names of their own. A code has one hint, so where the old issues had several, the message
- * names what differs.
+ * names of their own. A code has one hint, so where the issues of ./issues.data.ts have several,
+ * the message names what differs.
  *
  * @example return [issue.nothingToRead.at('posting', 'The command names nothing to read')];
  */

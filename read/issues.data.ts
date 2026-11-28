@@ -1,5 +1,5 @@
 /**
- * The issues the download and the text of a source raise, each made by one function.
+ * The issues the download and the text of a source answer as data, each made by one function.
  *
  * unsupportedKind, unreadable, noText: a document oriko cannot turn into text.
  * urlNotAllowed, privateAddress, tooManyRedirects, encodingNotAllowed, notUnpacked: a download
@@ -9,10 +9,9 @@
  * ./web.ts and ./text.ts answer these issues of their own; ./sources.ts turns each into the code
  * of ./issues.ts that adx answers, since adx owns some of their names.
  *
- * @example return rejected('read', [issue.tooManyRedirects(option)]);
+ * @example return rejected([issue.tooManyRedirects(option)]);
  */
 import { shown } from '@honeyglass/utils/ts';
-import { NETWORK_FAILED, SERVER_BUSY } from '../core/errors.ts';
 import type { Issue } from '../core/errors.ts';
 import { READ_LIMITS } from './limits.ts';
 
@@ -73,28 +72,28 @@ export const notUnpacked = (option: string, encoding: string): Issue => ({
 });
 
 export const lookupFailed = (option: string, host: string, error: Error): Issue => ({
-  code: NETWORK_FAILED,
+  code: 'NETWORK_FAILED',
   path: option,
   message: `The name ${shown(host)} could not be resolved: ${'code' in error ? `${error.code}` : error.name}`,
   hint: 'Check the address and the connection, then call again',
 });
 
 export const networkFailed = (option: string, url: URL, error: Error): Issue => ({
-  code: NETWORK_FAILED,
+  code: 'NETWORK_FAILED',
   path: option,
   message: `The request to ${shown(url.host)} failed: ${'code' in error ? `${error.code}` : error.name}`,
   hint: 'Check the connection, then call again; or save the page and pass the file',
 });
 
 export const bodyFailed = (option: string, error: Error): Issue => ({
-  code: NETWORK_FAILED,
+  code: 'NETWORK_FAILED',
   path: option,
   message: `The download stopped: ${'code' in error ? `${error.code}` : error.name}`,
   hint: `Call again; a download may take at most ${READ_LIMITS.downloadSeconds} seconds`,
 });
 
 export const serverBusy = (option: string, status: number): Issue => ({
-  code: SERVER_BUSY,
+  code: 'SERVER_BUSY',
   path: option,
   message: `The server answered ${status}`,
   hint: 'Call again later',

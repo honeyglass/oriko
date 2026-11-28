@@ -8,7 +8,7 @@
  */
 import { done, rejected } from './errors.ts';
 import type { Issue, Result } from './errors.ts';
-import * as issue from './issues.old.ts';
+import * as issue from './issues.data.ts';
 import { COLUMN } from './cv.limits.ts';
 import { Block, Master, PATCH, Profile } from './cv.schema.ts';
 
@@ -24,14 +24,13 @@ type Entries = Extract<Block, { kind: 'entries' }>;
  */
 export function check(master: unknown, profile?: unknown): Result<Master> {
   const parsed = Master.safeParse(master);
-  if (parsed.success === false)
-    return rejected('check', issue.schemaIssues(parsed.error, [], 'master'));
+  if (parsed.success === false) return rejected(issue.schemaIssues(parsed.error, []));
   const duplicates = duplicateIds(parsed.data.blocks);
-  if (duplicates.length > 0) return rejected('check', duplicates);
+  if (duplicates.length > 0) return rejected(duplicates);
   const resolved = applyProfile(parsed.data, profile);
   if (resolved.error !== null) return resolved;
   const lonely = untitledBesideSection(resolved.data.blocks);
-  if (lonely.length > 0) return rejected('check', lonely);
+  if (lonely.length > 0) return rejected(lonely);
   return resolved;
 }
 
@@ -48,15 +47,14 @@ function duplicateIds(blocks: Block[]) {
 function applyProfile(master: Master, value: unknown): Result<Master> {
   if (value === undefined) return done(withoutHidden(master, master.blocks));
   const parsed = Profile.safeParse(value);
-  if (parsed.success === false)
-    return rejected('check', issue.schemaIssues(parsed.error, [], 'profile'));
+  if (parsed.success === false) return rejected(issue.schemaIssues(parsed.error, []));
   const profile = parsed.data;
   const issues = unknownIds(master, profile);
   const blocks = master.blocks.map(block => patched(block, profile.blocks?.[block.id], issues));
   issues.push(...changedFacts(master.blocks, blocks));
   const sorted = ordered(blocks, profile.order ?? []);
   if (jobsMoved(master.blocks, sorted)) issues.push(issue.jobMoved());
-  if (issues.length > 0) return rejected('check', issues);
+  if (issues.length > 0) return rejected(issues);
   const person = { ...master.person, ...profile.person };
   return done(withoutHidden({ ...master, person }, sorted));
 }
@@ -158,12 +156,12 @@ function patched(block: Block, patch: unknown, issues: Issue[]) {
   if (patch === undefined) return block;
   const fields = PATCH[block.kind].safeParse(patch);
   if (fields.success === false) {
-    issues.push(...issue.schemaIssues(fields.error, ['blocks', block.id], 'block'));
+    issues.push(...issue.schemaIssues(fields.error, ['blocks', block.id]));
     return block;
   }
   const merged = Block.safeParse(laidOver(block, fields.data));
   if (merged.success) return merged.data;
-  issues.push(...issue.schemaIssues(merged.error, ['blocks', block.id], 'block'));
+  issues.push(...issue.schemaIssues(merged.error, ['blocks', block.id]));
   return block;
 }
 

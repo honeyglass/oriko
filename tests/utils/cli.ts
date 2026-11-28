@@ -7,21 +7,19 @@
  * terminal, piped: run oriko as a person at a terminal sees it, or as a program reads it, as text.
  * NEW_CV: the input of a second CV, 'erika'.
  *
- * A call goes where bin/oriko.ts sends it: a command on adx through run() of adx's test kit, with
- * the --home of the test's data folder unless the call names its own, every other one through
- * the old shell. A test stands in for LibreOffice by replacing libreOffice.program of
- * pdf/convert.ts, and for the network by replacing the calls of NODE_WEB in read/web.ts.
+ * A call runs through run() of adx's test kit, with ORIKO_HOME at the test's data folder, since
+ * oriko alone takes no --home; adx then names that folder in every command of an answer. A test
+ * stands in for LibreOffice by replacing libreOffice.program of pdf/convert.ts, and for the
+ * network by replacing the calls of NODE_WEB in read/web.ts.
  *
  * @example const { exit, answer } = await call(workspace(), ['plan']);
  */
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { run as runOnAdx } from '@honeyglass/adx/test';
+import { run } from '@honeyglass/adx/test';
 import { z } from 'zod';
-import { onAdx } from '../../cli/interim.ts';
 import { oriko } from '../../cli/oriko.ts';
-import { run } from '../../cli/run.ts';
 import { FIXTURE_URL, photo } from './fixture.ts';
 
 const Answer = z.looseObject({
@@ -36,18 +34,15 @@ const Answer = z.looseObject({
       }),
     )
     .optional(),
-  // A refusal says its next step in a sentence; a success lists its steps.
+  // Only a success names its next steps.
   next: z
-    .union([
-      z.string(),
-      z.array(
-        z.strictObject({
-          does: z.string(),
-          command: z.string().optional(),
-          needs: z.array(z.string()).optional(),
-        }),
-      ),
-    ])
+    .array(
+      z.strictObject({
+        does: z.string(),
+        command: z.string().optional(),
+        needs: z.array(z.string()).optional(),
+      }),
+    )
     .optional(),
 });
 
@@ -90,27 +85,9 @@ export const terminal = async (space: Space, argv: string[]) =>
 export const piped = async (space: Space, argv: string[]) =>
   (await ran(space, argv, null, false)).out;
 
-async function ran(space: Space, argv: string[], stdin: string | null, isTTY: boolean) {
-  if (onAdx(argv))
-    return runOnAdx(oriko, withHome(argv, space.home), { cwd: space.cwd, stdin, tty: isTTY });
-  const { home, cwd } = space;
-  let out = '';
-  const exit = await run(argv, {
-    home,
-    cwd,
-    isTTY,
-    stdin: async () => stdin,
-    write: text => (out += text),
-  });
-  return { exit, out };
-}
-
-// The --home goes before a '--', after which every argument is a word.
-function withHome(argv: string[], home: string) {
-  if (argv.some(arg => arg === '--home' || arg.startsWith('--home='))) return argv;
-  const end = argv.includes('--') ? argv.indexOf('--') : argv.length;
-  return [...argv.slice(0, end), '--home', home, ...argv.slice(end)];
-}
+// The variable places the data folder for every call, oriko alone too; a --home of the call wins.
+const ran = (space: Space, argv: string[], stdin: string | null, tty: boolean) =>
+  run(oriko, argv, { env: { ORIKO_HOME: space.home }, cwd: space.cwd, stdin, tty });
 
 export const NEW_CV = JSON.stringify({
   language: 'de',

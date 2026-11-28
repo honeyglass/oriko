@@ -5,11 +5,19 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { run } from '@honeyglass/adx/test';
 import { z } from 'zod';
-import { COMMANDS } from '../../cli/commands.ts';
 import { oriko } from '../../cli/oriko.ts';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const SKILL = join(ROOT, '.claude/skills/oriko');
+
+// The commands and the codes as the tool itself lists them in its schema.
+const Schema = z.object({
+  result: z.object({
+    commands: z.array(z.object({ command: z.string() })),
+    codes: z.array(z.object({ code: z.string() })),
+  }),
+});
+const listed = Schema.parse(JSON.parse((await run(oriko, ['schema'])).out)).result;
 
 // The skill and its references, as the agent reads them.
 function skillText() {
@@ -29,7 +37,11 @@ function spans(text: string) {
   return { fenced, inline: [...ticked, ...quoted] };
 }
 
-const KNOWN = new Set<string>(Object.keys(COMMANDS));
+// schema is adx's own command, which the schema does not list among the tool's.
+const KNOWN = new Set([
+  'schema',
+  ...listed.commands.map(({ command }) => command.replace(/^oriko /, '')),
+]);
 
 // Each 'oriko <command>' a span names, as the command it resolves to: a two-word command first,
 // such as 'photo set', then a one-word one. A name oriko does not know stays as written.
@@ -54,12 +66,12 @@ const codes = (text: string) =>
   spans(text).inline.filter(span => /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$/.test(span));
 
 // Every code an issue can carry: a 'code:' literal, a constant that holds its own name, or a
-// code() of adx, in each folder's issues.ts or issues.old.ts and in core; and adx's own codes,
+// code() of adx, in each folder's issues.ts or issues.data.ts and in core; and adx's own codes,
 // as the schema of the tool lists them.
-async function issueCodes() {
+function issueCodes() {
   const folders = readdirSync(ROOT, { withFileTypes: true }).filter(entry => entry.isDirectory());
   const issues = folders
-    .flatMap(folder => [join(folder.name, 'issues.ts'), join(folder.name, 'issues.old.ts')])
+    .flatMap(folder => [join(folder.name, 'issues.ts'), join(folder.name, 'issues.data.ts')])
     .filter(path => existsSync(join(ROOT, path)));
   const core = readdirSync(join(ROOT, 'core'))
     .filter(name => name.endsWith('.ts'))
@@ -67,9 +79,7 @@ async function issueCodes() {
   const sources = [...new Set([...issues, ...core])].map(path =>
     readFileSync(join(ROOT, path), 'utf8'),
   );
-  const { out } = await run(oriko, ['schema']);
-  const listed = Schema.parse(JSON.parse(out)).result.codes.map(listed => listed.code);
-  return new Set([...listed, ...sources.flatMap(declared)]);
+  return new Set([...listed.codes.map(({ code }) => code), ...sources.flatMap(declared)]);
 }
 
 const declared = (source: string) => [
@@ -77,8 +87,6 @@ const declared = (source: string) => [
   ...[...source.matchAll(/export const ([A-Z][A-Z0-9_]*) = '\1'/g)].map(match => match[1]),
   ...[...source.matchAll(/\bcode\(\s*'([A-Z][A-Z0-9_]*)'/g)].map(match => match[1]),
 ];
-
-const Schema = z.object({ result: z.object({ codes: z.array(z.object({ code: z.string() })) }) });
 
 test('every oriko command the skill names is a command of the CLI', () => {
   const named = commands(skillText());
@@ -90,14 +98,14 @@ test('every oriko command the skill names is a command of the CLI', () => {
   );
 });
 
-test('every issue code the skill names is a code oriko raises', async () => {
+test('every issue code the skill names is a code oriko raises', () => {
   const named = codes(skillText());
   assert.ok(named.includes('ITEM_NOT_IN_MASTER'), 'the skill names ITEM_NOT_IN_MASTER');
-  const known = await issueCodes();
+  const known = issueCodes();
   assert.deepEqual([...new Set(named.filter(code => known.has(code) === false))], []);
 });
 
-test('reads commands and codes only from code spans, and keeps unknown ones as written', async () => {
+test('reads commands and codes only from code spans, and keeps unknown ones as written', () => {
   const text = [
     "oriko keeps one master; the user's 'oriko plan' and `oriko photo set --file <file> --cv NAME`.",
     "`oriko plna --cv` and 'oriko block' and '$ORIKO_REPO/bin/oriko.ts' and `~/.oriko`.",
@@ -106,7 +114,7 @@ test('reads commands and codes only from code spans, and keeps unknown ones as w
   ].join('\n');
   assert.deepEqual(commands(text).sort(), ['block', 'cvs', 'photo set', 'plan', 'plna']);
   assert.deepEqual(codes(text).sort(), ['NO_CV', 'NO_SUCH_CODE', 'PAGE_OVERFLOW', 'SCHEMA']);
-  const known = await issueCodes();
+  const known = issueCodes();
   assert.equal(known.has('NO_SUCH_CODE'), false);
   assert.equal(known.has('NOT_INSTALLED'), true);
   // A code adx raises itself, and one declared with code() of adx.

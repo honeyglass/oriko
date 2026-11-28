@@ -168,7 +168,8 @@ What each mark of the preview means: [the terminal preview page](docs/terminal-p
 
 ## <picture><source media="(prefers-color-scheme: dark)" srcset="brand/icons/folder-lock-dark.svg"><img src="brand/icons/folder-lock.svg" width="24" height="24" alt=""></picture> Your data
 
-Your CVs live outside the repository, in `~/.oriko`; `--home <folder>` points oriko at another one.
+Your CVs live outside the repository, in `~/.oriko`; `--home <folder>`, or the variable
+`ORIKO_HOME`, points oriko at another one.
 
 ```text
 ~/.oriko/

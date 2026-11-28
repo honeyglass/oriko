@@ -25,6 +25,7 @@ import { fileOf, place } from '../core/place.ts';
 import type { Plan } from '../core/place.ts';
 import { cvChoices, profileChoices } from '../core/sources.ts';
 import { toPdf } from '../pdf/convert.ts';
+import { PDF_LIMITS } from '../pdf/limits.ts';
 import { withCredits } from '../terminal/credits.ts';
 import { renderTerminal } from '../terminal/docx.ts';
 import { preview as drawn } from '../terminal/sheets.ts';
@@ -61,7 +62,7 @@ export const build = effect({
     cv,
     profile,
     out: outFile(work).describe(
-      'the .docx or .pdf to write, a path inside the working directory; a .pdf needs LibreOffice',
+      `the .docx or .pdf to write, a path inside the working directory; a .pdf needs LibreOffice, which may take at most ${PDF_LIMITS.pdfSeconds} seconds`,
     ),
     style: z
       .enum(STYLES)

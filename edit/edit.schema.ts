@@ -6,7 +6,7 @@
  * `--cv` and `--json` fill one object, so a call reads as before:
  * `oriko block move --cv jane --json '{"id":"awards","page":2}'`. A part whose shape the kind of
  * a stored block picks, such as an item, says `unknown` here, and apply.ts checks it once it found
- * the block. The old `oriko schema` still prints edit.schema.old.ts.
+ * the block.
  *
  * @example const input = INPUT['block move'];
  */

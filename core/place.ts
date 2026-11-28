@@ -21,7 +21,7 @@ import { done, rejected } from './errors.ts';
 import type { Issue, Result } from './errors.ts';
 import { raised } from './issues.ts';
 import type { Issues, Stored } from './issues.ts';
-import * as issue from './issues.old.ts';
+import * as issue from './issues.data.ts';
 import type { Checked } from './load.ts';
 import { blockHeight, contactHeight, roleLines } from './measure.ts';
 import { COLUMN_HEIGHT, LEFT_START, LINE, SPACE, pt } from './metrics.ts';
@@ -139,7 +139,7 @@ export function pagePlan(cv: Master): Result<Plan> {
     ...overflow(cv, left, 'left'),
     ...overflow(cv, right, 'right'),
   ];
-  if (issues.length > 0) return rejected('place', issues);
+  if (issues.length > 0) return rejected(issues);
   const count = Math.max(1, ...[...left, ...right].map(spot => spot.page + 1));
   const pages = Array.from({ length: count }, (_, page) => ({
     left: columnOf(cv, left, 'left', page),

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import {
   chmodSync,
   existsSync,
@@ -20,12 +20,11 @@ import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
-import { run as runOnAdx } from '@honeyglass/adx/test';
+import { run } from '@honeyglass/adx/test';
 import { z } from 'zod';
 import { oriko } from '../../cli/oriko.ts';
-import { run } from '../../cli/run.ts';
 import { NODE_WEB } from '../../read/web.ts';
-import { NEW_CV, call, terminal, workspace } from '../utils/cli.ts';
+import { NEW_CV, call, workspace } from '../utils/cli.ts';
 import type { Space } from '../utils/cli.ts';
 import { docx, pdf } from '../utils/documents.ts';
 import { libreOffice, sofficePaths } from '../../pdf/convert.ts';
@@ -191,47 +190,10 @@ test('a CV is chosen by --cv, by the profile, or as the only one', async () => {
   assert.deepEqual((await call(space, ['plan', '--cv', 'nobody'])).codes, ['NOT_IN_LIST']);
 });
 
-// A command on adx answers its fields in result; the old shell answers them beside ok.
-test('the program sends a moved command to adx and every other one to the old shell', () => {
-  const { home, cwd } = workspace();
-  const picture = tall(cwd);
-  const program = fileURLToPath(new URL('../../bin/oriko.ts', import.meta.url));
-  const answer = (...argv: string[]) => {
-    const ran = spawnSync(process.execPath, [program, ...argv], { encoding: 'utf8', input: '' });
-    return z.looseObject({ ok: z.boolean() }).parse(JSON.parse(ran.stdout));
-  };
-  const code = (...argv: string[]) =>
-    z.array(z.object({ code: z.string() })).parse(answer(...argv).issues)[0]?.code;
-  assert.equal('result' in answer('plan', '--home', home), true);
-  assert.equal('result' in answer('cvs', '--home', home), true);
-  assert.equal('commands' in answer('schema'), true);
-  assert.equal(code('--home', home, 'plan'), 'OPTION_BEFORE_COMMAND');
-  // A command of a group moves alone; the group itself still lists its actions on the old shell.
-  const photo = ['--file', picture, '--profile', 'acme', '--dry-run'];
-  assert.equal('result' in answer('photo', 'set', '--home', home, ...photo), true);
-  assert.deepEqual(answer('photo', '--home', home).values, ['photo set']);
-  assert.equal(code('--home', home, 'photo', 'set', ...photo), 'OPTION_BEFORE_COMMAND');
-});
-
-// The old shell keeps no case for a command on adx, so a call that reaches it there is a bug.
-test('the old shell answers a command that runs on adx as a bug', async () => {
-  const { home, cwd } = workspace();
-  let out = '';
-  const exit = await run(['block', 'remove', '--json', '{"id":"awards"}'], {
-    home,
-    cwd,
-    isTTY: false,
-    stdin: async () => null,
-    write: text => (out += text),
-  });
-  const { kind } = z.object({ kind: z.string() }).parse(JSON.parse(out));
-  assert.deepEqual([exit, kind], [2, 'bug']);
-});
-
 // A missing default folder holds no CV; ORIKO_HOME moves the folder as --home does.
 test('plan finds the data folder by --home, by ORIKO_HOME, or holds no CV in a missing one', async () => {
   const space = workspace();
-  const missing = JSON.parse((await runOnAdx(oriko, ['plan'])).out);
+  const missing = JSON.parse((await run(oriko, ['plan'])).out);
   assert.deepEqual(missing.issues, [
     {
       code: 'NO_CV',
@@ -240,7 +202,7 @@ test('plan finds the data folder by --home, by ORIKO_HOME, or holds no CV in a m
       command: 'oriko init',
     },
   ]);
-  const moved = await runOnAdx(oriko, ['plan'], { env: { ORIKO_HOME: space.home } });
+  const moved = await run(oriko, ['plan'], { env: { ORIKO_HOME: space.home } });
   assert.equal(moved.exit, 0);
 });
 
@@ -1070,9 +1032,9 @@ test('show lists the blocks, and one block in full by its id', async () => {
 });
 
 test('schema answers the accepted input of a command', async () => {
-  const { exit, answer } = await call(workspace(), ['schema', 'block move']);
+  const { exit, answer } = await call(workspace(), ['schema', 'block', 'move']);
   assert.equal(exit, 0);
-  assert.equal(JSON.stringify(answer.input).includes('"after"'), true);
+  assert.equal(JSON.stringify(answer.result).includes('"after"'), true);
 });
 
 test('every packaged example CV and profile fits and builds', async () => {
@@ -1264,11 +1226,16 @@ test('an option without a value answers the values it accepts', async () => {
     ok: true,
     result: { option: 'cv', values: [{ value: 'erika' }, { value: 'jane' }] },
   });
-  // The old shell still answers oriko alone, and lists the forms of --output there.
+  // oriko alone lists the forms of --output, which every command takes.
   assert.deepEqual(await values(['--output']), {
     ok: true,
-    option: 'output',
-    values: ['json', 'text'],
+    result: {
+      option: 'output',
+      values: [
+        { value: 'text', does: 'text for a person' },
+        { value: 'json', does: 'one JSON document for a program' },
+      ],
+    },
   });
   // The blocks of the stored CV, hidden ones too: the profile acme hides freelance.
   const Blocks = z.object({ values: z.array(z.object({ value: z.string(), does: z.string() })) });
@@ -1297,8 +1264,6 @@ test('an option without a value and without a list is refused by its name', asyn
     [['plan', '--home'], 'home'],
     [['block', 'add', '--json'], 'json'],
     [['profile', 'set', '--profile', 'globex', '--json'], 'json'],
-    // schema runs on the old shell, which refuses the option by its name as well.
-    [['schema', '--home'], 'home'],
   ];
   for (const [argv, path] of cases) {
     const { exit, answer } = await call(space, argv);
@@ -1323,20 +1288,21 @@ test('a refusal names a command that lists the fitting values, and that command 
   const space = workspace();
   await call(space, ['init', '--cv', 'erika', '--json', NEW_CV]);
   const picture = tall(space.cwd);
+  // oriko alone and schema take no data folder, so their commands name none.
   const cases: [string[], string, string][] = [
-    [['schema', '--output', 'pdf'], 'UNKNOWN_OUTPUT', 'oriko --output'],
-    [['paint'], 'UNKNOWN_COMMAND', 'oriko schema'],
+    [['schema', '--output', 'pdf'], 'NOT_IN_LIST', 'oriko --output'],
+    [['paint'], 'UNKNOWN_COMMAND', 'oriko'],
+    [['block', 'paint'], 'UNKNOWN_COMMAND', 'oriko block'],
     [['schema', '--color'], 'UNKNOWN_OPTION', 'oriko schema'],
+    [['schema', 'nope'], 'UNKNOWN_COMMAND', 'oriko schema'],
   ];
-  // The command keeps the --home of the call, or it would list the CVs of another data folder.
   for (const [argv, code, command] of cases) {
-    const home = ` --home ${space.home}`;
-    const [issue] = (await call(space, [...argv, '--home', space.home])).answer.issues ?? [];
-    assert.deepEqual([issue?.code, issue?.command], [code, `${command}${home}`], argv.join(' '));
-    const listed = await call(space, `${command}${home}`.split(' ').slice(1));
-    assert.equal(listed.answer.ok, true, command);
+    const [issue] = (await call(space, argv)).answer.issues ?? [];
+    assert.deepEqual([issue?.code, issue?.command], [code, command], argv.join(' '));
+    assert.equal((await call(space, command.split(' ').slice(1))).answer.ok, true, command);
   }
-  // On adx the command lists the values of the field, with the --home of the call in it.
+  // The command lists the values of the field, with the --home of the call in it, or it would
+  // list the CVs of another data folder.
   const listing: [string[], string, string][] = [
     [['show'], 'CV_REQUIRED', `oriko show --home ${space.home} --cv`],
     [['show', '--cv', 'nobody'], 'NOT_IN_LIST', `oriko show --home ${space.home} --cv`],
@@ -1548,42 +1514,42 @@ test('a missing CV, an unknown CV and an unknown block name init, cvs and show',
 
 test('schema answers every command and every shape it lists', async () => {
   const space = workspace();
-  const { commands, schemas } = (await call(space, ['schema'])).answer;
-  const names = [...z.array(z.string()).parse(commands), ...z.array(z.string()).parse(schemas)];
+  const { commands, shapes } = Overview.parse((await call(space, ['schema'])).answer.result);
+  const names = [...commands.map(({ command }) => command.replace(/^oriko /, '')), ...shapes];
+  assert.equal(names.length, 29);
   for (const name of names)
     assert.equal((await call(space, ['schema', ...name.split(' ')])).answer.ok, true, name);
-  const plan = (await call(space, ['schema', 'plan'])).answer;
-  assert.deepEqual(
-    [
-      plan.name,
-      plan.input,
-      plan.required,
-      Object.keys(z.record(z.string(), z.unknown()).parse(plan.options)),
-    ],
-    ['plan', null, [], ['cv', 'profile', 'home', 'output']],
-  );
-  const required = async (name: string[]) => {
-    const { answer } = await call(space, ['schema', ...name]);
-    return [answer.required, answer.requiredWith];
+  // Each command names the fields it cannot run without.
+  const required = async (...name: string[]) => {
+    const { result } = (await call(space, ['schema', ...name])).answer;
+    return Described.parse(result).fields.flatMap(field => (field.required ? [field.field] : []));
   };
   assert.deepEqual(
     [
-      await required(['plan']),
-      await required(['build']),
-      await required(['init']),
-      await required(['profile', 'set']),
-      await required(['profile', 'show']),
-      await required(['read']),
+      await required('plan'),
+      await required('build'),
+      await required('init'),
+      await required('profile', 'set'),
+      await required('profile', 'show'),
+      await required('read'),
     ],
     [
-      [[], {}],
-      [['out'], {}],
-      [['cv'], {}],
-      [['profile'], {}],
-      [['profile'], {}],
-      [[], { posting: ['profile'] }],
+      [],
+      ['out'],
+      ['cv', 'language', 'firstName', 'lastName', 'role'],
+      ['profile'],
+      ['profile'],
+      [],
     ],
   );
+});
+
+const Overview = z.object({
+  commands: z.array(z.object({ command: z.string() })),
+  shapes: z.array(z.string()),
+});
+const Described = z.object({
+  fields: z.array(z.object({ field: z.string(), required: z.boolean().optional() })),
 });
 
 // A wrong input names the schema that shows the accepted shape, and that schema exists.
@@ -1610,7 +1576,7 @@ test('a refusal for a wrong shape names the schema command, and it runs', async 
 // Nothing a command does not take passes silently, and one answer names every mistake.
 test('checks the call against its command and names every mistake at once', async () => {
   const space = workspace();
-  const cases: [string[], [string, string][]][] = [
+  const cases: [string[], [string, string | undefined][]][] = [
     [
       ['init'],
       [
@@ -1625,7 +1591,16 @@ test('checks the call against its command and names every mistake at once', asyn
     [['read', '--posting', 'job.pdf', '--out', 'x.docx'], [['UNKNOWN_OPTION', 'out']]],
     [['cvs', 'extra'], [['UNEXPECTED_ARGUMENT', 'extra']]],
     [['photo', 'set', '--file', 'a.png', 'b.png'], [['UNEXPECTED_ARGUMENT', 'b.png']]],
-    [['schema', '--out', 'x.docx'], [['OPTION_NOT_ALLOWED', 'out']]],
+    [['schema', '--out', 'x.docx'], [['UNKNOWN_OPTION', 'out']]],
+    [['schema', '--home', space.home], [['UNKNOWN_OPTION', 'home']]],
+    // The value of an option before the command reads as a command word.
+    [
+      ['--home', space.home, 'plan'],
+      [
+        ['OPTION_BEFORE_COMMAND', 'home'],
+        ['UNKNOWN_COMMAND', undefined],
+      ],
+    ],
     [['cvs', '--out', 'x.docx'], [['UNKNOWN_OPTION', 'out']]],
     [['plan', '--out', 'x.docx'], [['UNKNOWN_OPTION', 'out']]],
     [['show', '--cv', 'jane', '--cv', 'jane'], [['REPEATED_OPTION', 'cv']]],
@@ -1654,11 +1629,18 @@ test('checks the call against its command and names every mistake at once', asyn
       ['init', '--cv', 'erika', '--json', NEW_CV, '--home', '--dry-run'],
       [['MISSING_VALUE', 'home']],
     ],
-    [['bogus', '--cv='], [['UNKNOWN_COMMAND', 'command']]],
-    [['photo set', 'a.png'], [['UNKNOWN_COMMAND', 'command']]],
-    [['block', '--json', '{}'], [['OPTION_NOT_ALLOWED', 'json']]],
-    [['block', '--bogus'], [['UNKNOWN_OPTION', 'bogus']]],
-    [['--profile'], [['OPTION_NOT_ALLOWED', 'profile']]],
+    [['bogus', '--cv='], [['UNKNOWN_COMMAND', undefined]]],
+    [['photo set', 'a.png'], [['UNKNOWN_COMMAND', undefined]]],
+    // A group alone takes no option, so the word after it is no command either.
+    [
+      ['block', '--json', '{}'],
+      [
+        ['OPTION_BEFORE_COMMAND', 'json'],
+        ['UNKNOWN_COMMAND', undefined],
+      ],
+    ],
+    [['block', '--bogus'], [['OPTION_BEFORE_COMMAND', 'bogus']]],
+    [['--profile'], [['OPTION_BEFORE_COMMAND', 'profile']]],
     [['photo', 'set'], [['SCHEMA', 'file']]],
     [['photo', 'set', '--file', join(space.cwd, 'missing.png')], [['NO_PICTURE', 'file']]],
   ];
@@ -1670,26 +1652,31 @@ test('checks the call against its command and names every mistake at once', asyn
       argv.join(' '),
     );
   }
-  const notAllowed = (await call(space, ['schema', '--out', 'x.docx'])).answer.issues?.[0];
-  assert.equal(notAllowed?.command, 'oriko schema schema');
-  // The old shell shows a refusal at a terminal as one line per issue.
-  const shown = await terminal(space, ['schema', 'nope']);
-  assert.match(
-    shown,
-    /\n- UNKNOWN_COMMAND at name: "No command or shape is called nope"\. .* Command: oriko schema\n$/,
+});
+
+// The data folder decides the first steps; the CVs and the profiles stand in cvs and profiles.
+test('oriko alone answers where to start, and holds no data of the folder', async () => {
+  const space = workspace();
+  const { exit, answer } = await call(space, []);
+  assert.deepEqual(
+    [exit, Started.parse(answer.result), answer.next?.map(step => step.command)],
+    [
+      0,
+      { name: 'oriko', skill: 'oriko', commands: 24 },
+      [`oriko profiles --home ${space.home}`, `oriko read --home ${space.home}`],
+    ],
+  );
+  const empty = await call({ ...space, home: mkdtempSync(join(tmpdir(), 'oriko-empty-')) }, []);
+  assert.deepEqual(
+    empty.answer.next?.map(step => step.needs),
+    [['resume'], ['cv', 'language', 'firstName', 'lastName', 'role']],
   );
 });
 
-test('oriko alone answers where to start: the CVs and the profiles of the data folder', async () => {
-  const space = workspace();
-  assert.deepEqual(
-    [(await call(space, [])).answer.cvs, (await call(space, [])).answer.profiles],
-    [['jane'], ['acme', 'broken']],
-  );
-  const empty = mkdtempSync(join(tmpdir(), 'oriko-empty-'));
-  const start = (await call(space, ['--home', empty])).answer;
-  assert.deepEqual([start.ok, start.cvs, start.profiles], [true, [], []]);
-});
+// The fields a test reads of the start answer; the commands as their number.
+const Started = z
+  .object({ name: z.string(), skill: z.string(), commands: z.array(z.unknown()) })
+  .transform(({ commands, ...rest }) => ({ ...rest, commands: commands.length }));
 
 test('a group of commands without its action lists the actions', async () => {
   const space = workspace();
@@ -1701,12 +1688,15 @@ test('a group of commands without its action lists the actions', async () => {
     ['photo', ['photo set']],
     ['profile', ['profile set', 'profile show']],
   ];
-  for (const [group, actions] of cases)
-    assert.deepEqual((await call(space, [group])).answer, {
-      ok: true,
-      command: group,
-      values: actions,
-    });
+  for (const [group, actions] of cases) {
+    const { exit, answer } = await call(space, [group]);
+    const { commands } = Overview.pick({ commands: true }).parse(answer.result);
+    assert.deepEqual(
+      [exit, commands.map(({ command }) => command)],
+      [0, actions.map(action => `oriko ${action}`)],
+      group,
+    );
+  }
   const [issue] = (await call(space, ['block', 'frobnicate'])).answer.issues ?? [];
   assert.deepEqual([issue?.code, issue?.command], ['UNKNOWN_COMMAND', 'oriko block']);
 });
@@ -1733,9 +1723,6 @@ test('refuses a folder where a file belongs, and a file where a folder belongs',
   const piped = { cv: 'jane', person: { photo: 'cvs/pipe.png' } };
   writeFileSync(join(space.home, 'profiles', 'piped.json'), JSON.stringify(piped));
   const cases: [string[], string, string | undefined][] = [
-    // The old shell, which answers oriko alone, checks the data folder itself.
-    [['--home', join(space.cwd, 'notes.txt')], 'NOT_A_FOLDER', 'home'],
-    [['--home', join(space.cwd, 'flat')], 'PATH_REFUSED', 'home'],
     [['show', '--home', join(space.cwd, 'notes.txt')], 'ROOT_NOT_FOUND', undefined],
     [['show', '--home', join(space.cwd, 'notes.txt', 'x')], 'ROOT_NOT_FOUND', undefined],
     // adx lists regular files only, so a file cvs, a folder or a pipe at a CV holds no CV.
@@ -1773,6 +1760,29 @@ test('refuses a folder where a file belongs, and a file where a folder belongs',
     assert.deepEqual([exit, issue?.code, issue?.path], [1, code, path], argv.join(' '));
   }
   assert.deepEqual(readdirSync(join(space.cwd, 'sealed')), []);
+  // oriko alone finds the data folder through ORIKO_HOME: a file is no folder; a file cvs holds no
+  // CV, and init cannot write there; a cvs nobody may read is the person's to solve.
+  mkdirSync(join(space.cwd, 'locked', 'cvs'), { recursive: true });
+  chmodSync(join(space.cwd, 'locked', 'cvs'), 0o000);
+  const started = async (home: string) => {
+    const { exit, answer } = await call({ ...space, home }, []);
+    const needs = answer.next?.map(step => step.needs);
+    return [exit, answer.kind, answer.issues?.map(issue => issue.code), needs];
+  };
+  assert.deepEqual(
+    [
+      await started(join(space.cwd, 'notes.txt')),
+      await started(join(space.cwd, 'flat')),
+      await started(join(space.cwd, 'locked')),
+    ],
+    [
+      [1, 'ask', ['ROOT_NOT_FOUND'], undefined],
+      [0, undefined, undefined, [['resume'], ['cv', 'language', 'firstName', 'lastName', 'role']]],
+      [1, 'ask', ['SYSTEM_REFUSED'], undefined],
+    ],
+  );
+  const flatInit = ['init', '--cv', 'erika', '--json', NEW_CV, '--home', join(space.cwd, 'flat')];
+  assert.deepEqual((await call(space, flatInit)).codes, ['NOT_A_FOLDER']);
   // A link to a folder at --out is replaced by the write, never followed.
   assert.equal((await call(space, ['build', '--out', 'dirlink.docx', '--dry-run'])).exit, 0);
   // A link to a folder inside the working directory leads the write there; the answer names

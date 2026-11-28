@@ -146,8 +146,9 @@ test('stops a body at the limit, packed or not, and takes only listed encodings'
   );
 });
 
-// A missing page is the caller's to fix; a busy server or a failed connection is for later.
-test('names who acts on a failed download', async () => {
+// A missing page is the caller's to fix; a busy server or a failed connection is for later, a
+// kind read/issues.ts declares for the code each of these turns into.
+test('tells a missing page apart from a busy server and a failed connection', async () => {
   const { web } = fakeWeb(
     { 'jobs.example': [PUBLIC] },
     {
@@ -161,13 +162,7 @@ test('names who acts on a failed download', async () => {
     await download('https://nowhere.example/', web, 'posting'),
   ];
   assert.deepEqual(
-    answers.map(answer => [codes(answer)[0], answer.error?.refusal.kind]),
-    [
-      ['HTTP_STATUS', 'fix'],
-      ['SERVER_BUSY', 'retry'],
-      ['NETWORK_FAILED', 'retry'],
-    ],
+    answers.map(answer => codes(answer)[0]),
+    ['HTTP_STATUS', 'SERVER_BUSY', 'NETWORK_FAILED'],
   );
-  // The agent skill counts the same tries, so the refusal names their number.
-  assert.match(answers[1]?.error?.refusal.next ?? '', /after three tries/);
 });

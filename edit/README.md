@@ -19,8 +19,6 @@ still written, so the next step can fix it.
   and refuses a change that would break the CV, at the part of the input that names it.
 - `issues.ts`: the refusals for a move without a place, a wrong anchor, and an index past the end
   of a list.
-- `edit.schema.old.ts`: describes the input each edit command takes, as the old `oriko schema`
-  still prints it.
 - `block.ts`: the commands that add, change, remove and move a whole block.
 - `commands.ts`: the four groups of commands this folder adds to the tool: block, item, cv and
   contact.
@@ -47,7 +45,7 @@ lists them all.
   - [core/](../core/README.md): imports `check.ts`, `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
     `files.limits.ts`, `home.ts`, `issues.ts`, `load.ts`, `options.ts`, `place.ts`, `sources.ts`
 - **Used by:**
-  - [cli/](../cli/README.md): imports `commands.ts`, `edit.schema.old.ts`
+  - [cli/](../cli/README.md): imports `commands.ts`
 
 ---
 

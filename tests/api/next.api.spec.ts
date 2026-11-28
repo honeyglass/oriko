@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { UNSAFE_CHAR } from '@honeyglass/utils/ts';
 import { NEW_CV, call, piped, terminal, workspace } from '../utils/cli.ts';
 import { photo } from '../utils/fixture.ts';
 import type { Space } from '../utils/cli.ts';
@@ -18,28 +20,33 @@ test('a success names its next steps, each a command with what it still needs', 
   const space = workspace();
   const picture = join(space.cwd, 'me.png');
   const job = join(space.cwd, 'job.txt');
+  const empty = join(space.cwd, 'empty');
+  const solo = join(space.cwd, 'solo');
+  // oriko alone takes no --home; the data folder of the test comes through ORIKO_HOME.
+  const starts: [string, [string | null, string[]][]][] = [
+    [
+      space.home,
+      [
+        [`oriko profiles --home ${space.home}`, []],
+        [`oriko read --home ${space.home}`, ['posting', 'profile']],
+      ],
+    ],
+    [
+      empty,
+      [
+        [`oriko read --home ${empty}`, ['resume']],
+        [`oriko init --home ${empty}`, ['cv', 'language', 'firstName', 'lastName', 'role']],
+      ],
+    ],
+    [
+      solo,
+      [
+        [`oriko cvs --home ${solo}`, []],
+        [`oriko read --home ${solo}`, ['posting', 'profile']],
+      ],
+    ],
+  ];
   const cases: [string[], [string | null, string[]][]][] = [
-    [
-      [],
-      [
-        ['oriko profiles', []],
-        ['oriko read', ['posting', 'profile']],
-      ],
-    ],
-    [
-      ['--home', 'empty'],
-      [
-        ['oriko read --home empty', ['resume']],
-        ['oriko init --home empty', ['cv', 'json']],
-      ],
-    ],
-    [
-      ['--home', 'solo'],
-      [
-        ['oriko cvs --home solo', []],
-        ['oriko read --home solo', ['posting', 'profile']],
-      ],
-    ],
     [
       ['cvs'],
       [
@@ -49,7 +56,7 @@ test('a success names its next steps, each a command with what it still needs', 
     ],
     [['profiles'], [[`oriko plan --home ${space.home}`, ['profile']]]],
     // Without a profile, the shape of one comes first.
-    [['profiles', '--home', join(space.cwd, 'solo')], [['oriko schema profile', []]]],
+    [['profiles', '--home', solo], [['oriko schema profile', []]]],
     [
       ['profile', 'show', '--profile', 'acme'],
       [[`oriko plan --profile acme --home ${space.home}`, []]],
@@ -192,8 +199,10 @@ test('a success names its next steps, each a command with what it still needs', 
   writeFileSync(job, 'Senior Go Engineer');
   writeFileSync(join(space.home, 'profiles', 'posted.posting.md'), 'Senior Go Engineer\n');
   writeFileSync(picture, photo());
-  mkdirSync(join(space.cwd, 'empty'));
-  cpSync(join(space.home, 'cvs'), join(space.cwd, 'solo', 'cvs'), { recursive: true });
+  mkdirSync(empty);
+  cpSync(join(space.home, 'cvs'), join(solo, 'cvs'), { recursive: true });
+  for (const [home, expected] of starts)
+    assert.deepEqual(shapes(await steps({ ...space, home }, [])), expected, home);
   for (const [argv, expected] of cases)
     assert.deepEqual(shapes(await steps(space, argv)), expected, argv.join(' '));
 });
@@ -228,9 +237,12 @@ test('every next command is a call oriko knows', async () => {
     if (step.command === undefined) continue;
     const { exit, codes } = await call(space, step.command.split(' ').slice(1));
     const isUnknown = codes.some(code =>
-      ['UNKNOWN_COMMAND', 'UNKNOWN_OPTION', 'OPTION_NOT_ALLOWED', 'UNEXPECTED_ARGUMENT'].includes(
-        code,
-      ),
+      [
+        'UNKNOWN_COMMAND',
+        'UNKNOWN_OPTION',
+        'OPTION_BEFORE_COMMAND',
+        'UNEXPECTED_ARGUMENT',
+      ].includes(code),
     );
     assert.deepEqual([exit < 2, isUnknown], [true, false], step.command);
     if (step.needs === undefined) assert.equal(exit, 0, step.command);
@@ -264,6 +276,48 @@ test('the steps keep the data folder of the call', async () => {
 });
 
 // An input from stdin is not part of the call, so the step after a dry run names its fields.
+// Each value, and whether it shows as itself; adx refuses a control character at the field.
+const VALUES: [string, 'visible' | 'invisible' | 'refused'][] = [
+  ['jane', 'visible'],
+  ['x;touch PWNED', 'visible'],
+  ["it's", 'visible'],
+  ['~', 'visible'],
+  ['-data', 'visible'],
+  ['$(id) `id`', 'visible'],
+  ['Jürgen 😀', 'visible'],
+  ['bidi‮evil', 'invisible'],
+  ['zero​width', 'invisible'],
+  ['a\u001b]0;TITLE\u0007b', 'refused'],
+  ['line\nNext: oriko build', 'refused'],
+  ['tab\there', 'refused'],
+];
+
+// bash prints each word it splits the text into, so the test sees what a caller's shell passes on.
+const shellWords = (text: string) =>
+  execFileSync('bash', ['-c', `printf '%s\\0' ${text}`], { encoding: 'utf8' })
+    .split('\0')
+    .slice(0, -1);
+
+// The command of a refused photo set carries the --file of the call. adx quotes a character that
+// does not show as itself, such as a bidi override, but leaves it in the line as it is.
+test('a value in a command comes back from the shell as itself, on one line', async () => {
+  const space = workspace();
+  for (const [value, kind] of VALUES) {
+    const argv = ['photo', 'set', `--file=${value}`, '--profile', 'nobody'];
+    const [issue] = (await call(space, argv)).answer.issues ?? [];
+    const shown = JSON.stringify(value);
+    if (kind === 'refused') {
+      assert.deepEqual([issue?.code, issue?.path], ['SCHEMA', 'file'], shown);
+      continue;
+    }
+    const command = issue?.command ?? '';
+    if (kind === 'visible') assert.equal(UNSAFE_CHAR.test(command), false, shown);
+    const words = shellWords(command);
+    const joined = words.find(word => word.startsWith('--file='))?.slice('--file='.length);
+    assert.equal(joined ?? words[words.indexOf('--file') + 1], value, shown);
+  }
+});
+
 test('the step after a dry run of an input from stdin names its fields', async () => {
   const space = workspace();
   const argv = ['init', '--cv', 'erika', '--dry-run', '--json', '-'];
@@ -276,10 +330,12 @@ test('the step after a dry run of an input from stdin names its fields', async (
   ]);
 });
 
-test('a terminal shows the steps below the answer, and piped text leaves them out', async () => {
+test('a terminal shows the steps below the answer, and so does piped text', async () => {
   const space = workspace();
   const shown = await terminal(space, []);
-  assert.match(shown, /\nNext: oriko profiles\nNext: oriko read \(needs --posting, --profile\)\n$/);
-  const text = await piped(space, ['--output', 'text']);
-  assert.equal(text.includes('Next:'), false);
+  assert.match(
+    shown,
+    /\n\nNext:\n {2}oriko profiles --home \S+ +lists .*\n {2}oriko read --home \S+ +reads .*; needs posting, profile\n$/,
+  );
+  assert.equal(await piped(space, ['--output', 'text']), shown);
 });

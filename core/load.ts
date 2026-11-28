@@ -26,7 +26,7 @@ import { FILE_LIMITS } from './files.limits.ts';
 import { cvFile, cvNames, profileFile } from './home.ts';
 import { SHAPE, cvMismatch, cvRequired, noCv, raised, unknownCv } from './issues.ts';
 import type { Issues, Stored } from './issues.ts';
-import { schemaIssues } from './issues.old.ts';
+import { schemaIssues } from './issues.data.ts';
 import { fileOf } from './place.ts';
 
 /** The checked CV, and the CV and the profile as their files hold them. */
@@ -79,7 +79,7 @@ export async function storedShape(field: Stored, file: File) {
   const parsed = SHAPE[field].safeParse(await storedJson(file));
   if (parsed.success) return parsed.data;
   // raised() keeps the code, the path and the message; the command comes from the shape.
-  return raised(() => field, rejected('check', schemaIssues(parsed.error, [], field)).error);
+  return raised(() => field, rejected(schemaIssues(parsed.error, [])).error);
 }
 
 /** The CV a profile names; check() reports a profile that fails its schema, so this one only reads. */

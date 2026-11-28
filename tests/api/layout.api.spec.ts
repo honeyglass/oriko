@@ -67,8 +67,8 @@ test('names a feature that imports another feature, and counts a new folder as a
 });
 
 test('names the cli when it imports a maintainer tool', () => {
-  const root = repository({ 'cli/run.ts': "import { readmes } from '../tools/readmes/x.ts';\n" });
-  assert.deepEqual(toolImports(codeOf(root)), ['cli/run.ts imports ../tools/readmes/x.ts']);
+  const root = repository({ 'cli/oriko.ts': "import { readmes } from '../tools/readmes/x.ts';\n" });
+  assert.deepEqual(toolImports(codeOf(root)), ['cli/oriko.ts imports ../tools/readmes/x.ts']);
   rmSync(root, { recursive: true });
 });
 

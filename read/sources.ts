@@ -6,8 +6,9 @@
  *
  * adx reads a file only inside a root and talks only to a server the tool declares, so this is
  * oriko's own code: a file through core/files.ts, with the byte limit and the refusal of what is
- * no regular file, and a download through ./web.ts with all its checks. Each refusal becomes a
- * code of ./issues.ts at the option that names the source, its message headed by the source.
+ * no regular file, and a download through ./web.ts with all its checks. Each refusal, an issue of
+ * core/issues.data.ts or ./issues.data.ts, becomes a code of ./issues.ts at the option that names
+ * the source, its message headed by the source.
  *
  * @example const read = await documentsOf({ posting: 'job.pdf', notes: [], resume: undefined });
  */
@@ -87,12 +88,12 @@ const TURNED: Record<string, Code | undefined> = {
   SERVER_BUSY: issue.siteBusy,
 };
 
-// SYSTEM_REFUSED is adx's own code, so its system error goes to adx whole, which sorts it; a code
-// missing from the list goes the same way, and adx answers it as a bug.
+// A system error only the person solves holds no issue, so it goes to adx whole, which sorts it;
+// a code missing from the list goes the same way, and adx answers it as a bug.
 function turned(refused: Rejection, { role, source }: Source): Issues<Role> {
   const [found] = refused.issues;
   const declared = TURNED[found?.code ?? ''];
   if (found === undefined || declared === undefined)
-    throw failed('Nothing was written.', refused.refusal.cause);
+    throw failed('Nothing was written.', refused.cause);
   return [declared.at(role, `${shown(source)}: ${found.message}`)];
 }

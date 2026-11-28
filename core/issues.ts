@@ -11,9 +11,9 @@
  * issueAt, unknownBlock: one such issue at a field an edit picks, and a block id no block has.
  *
  * A code of adx has one hint. Where oriko's hint named the field or the column, the message of
- * the issue already names it. The check and the page plan answer issues of their own, with code,
- * path, message and hint as data, since `layout` answers them so and an issue of adx shows only
- * its code and path; raised() turns each one.
+ * the issue already names it. The check and the page plan answer the issues of ./issues.data.ts,
+ * with code, path, message and hint as data, since `layout` answers them so and an issue of adx
+ * shows only its code and path; raised() turns each one.
  *
  * @example return raised(() => 'cv', placed.error);
  */

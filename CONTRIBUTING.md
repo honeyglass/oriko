@@ -16,7 +16,7 @@ sample data, which never touches a CV of yours:
 
 ```sh
 pnpm install --frozen-lockfile
-node bin/oriko.ts schema --home examples
+ORIKO_HOME="$PWD/examples" node bin/oriko.ts schema
 ```
 
 ## How the code is laid out

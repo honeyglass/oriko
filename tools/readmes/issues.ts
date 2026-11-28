@@ -9,7 +9,7 @@
  *
  * Every issue fails the check: what the tool cannot read is a problem, never a skip.
  *
- * @example issues.push(issue.noSentence('cli/README.md', 'run.ts'));
+ * @example issues.push(issue.noSentence('cli/README.md', 'oriko.ts'));
  */
 
 export type Issue = { code: string; path: string; message: string };

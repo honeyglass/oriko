@@ -3,8 +3,7 @@
  *
  * nothingToStore: a profile set that names no field of a profile, only its name.
  *
- * adx owns MISSING_INPUT, the code the old shell gave a call without input, so this one has a
- * name of oriko's.
+ * adx owns MISSING_INPUT, the code for a call without input, so this one has a name of oriko's.
  *
  * @example return [issue.nothingToStore.issue('The call names no field of the profile')];
  */

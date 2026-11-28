@@ -8,8 +8,8 @@ which block stands on which page, each block whole, with heights estimated from 
 classic and the terminal style (`--style`) both build on that plan, so the preview and the files
 always agree.
 
-It also holds what several features need alike: reading and writing files safely, finding the
-data folder, the options of the commands, and the one shape of an error. `core/` imports nothing
+It also holds what several features need alike: reading files safely, finding the data folder,
+the fields `--cv` and `--profile`, and the codes several features raise. `core/` imports nothing
 from the other folders, so every feature can rely on it.
 
 ## Modules
@@ -29,14 +29,8 @@ from the other folders, so every feature can rely on it.
 - `measure.ts`: estimates how tall a block is from its text alone.
 - `zip.ts`: makes a finished .docx the same bytes for the same input, and sets the photo line so
   Google Docs lays it out right.
-- `errors.ts`: holds the one error shape, a refusal that lists every issue, and the `Result` that
-  holds either `data` or an `error`. [docs/cli.md](../docs/cli.md#a-refusal) shows how a refusal
-  reads.
-- `home.old.ts`: finds the CVs in `cvs/` and the profiles in `profiles/` of the data folder for
-  the old shell, and checks that the data folder can be read.
-- `issues.old.ts`: makes each issue that `core/` or several folders raise, one function per issue.
-- `options.old.ts`: lists every option of every command, and writes the options of a call with
-  their values quoted for a shell.
+- `errors.ts`: holds the refusal of oriko's own code, the issues it found and the error behind
+  them, and the `Result` that holds either `data` or an `error`.
 - `home.ts`: names the data folder and the working directory for adx, and the CV, profile and
   posting files in the data folder; it refuses a write whose target is a link to another file.
 - `issues.ts`: declares the codes `core/` and several folders raise on adx, holds the input to
@@ -50,6 +44,8 @@ from the other folders, so every feature can rely on it.
   issue of the photo included, and says whether a CV an edit changed still fits its pages.
 - `sources.ts`: lists the stored CVs and profiles, the values `--cv` and `--profile` take, the
   profiles that may go with one CV, and the blocks of one CV, the values of `--block`.
+- `issues.data.ts`: makes each issue the check, the page plan and `files.ts` answer as data, one
+  function per issue.
 
 ## Example
 
@@ -64,21 +60,19 @@ return Array.isArray(placed) ? refuse(...placed) : placed;
 ```
 
 A command on adx checks the CV first and plans the pages from it; each step gives back its value
-or the issues, which the command refuses with. The files that end in `.old.ts` serve what still
-runs on the old shell, such as `oriko schema`, and `issues.old.ts` also makes the issues of
-`check.ts`, `place.ts` and `files.ts`, which only the commands on adx call.
+or the issues, which the command refuses with. `check.ts`, `place.ts` and `files.ts` answer
+issues of their own, made by `issues.data.ts`, since an edit answers what does not fit as data;
+`issues.ts` turns each into an issue of adx once its field is known.
 
 ## Connections
 
 - **Uses:** nothing outside itself.
 - **Used by:**
-  - [bin/](../bin/README.md): imports `files.limits.ts`, `files.ts`
   - [classic/](../classic/README.md): imports `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
     `files.limits.ts`, `files.ts`, `home.ts`, `issues.ts`, `load.ts`, `measure.ts`, `metrics.ts`,
     `options.ts`, `place.ts`, `sources.ts`, `zip.ts`
-  - [cli/](../cli/README.md): imports `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
-    `files.limits.ts`, `home.old.ts`, `home.ts`, `issues.ts`, `load.ts`, `options.old.ts`,
-    `options.ts`, `place.ts`, `sources.ts`
+  - [cli/](../cli/README.md): imports `cv.schema.ts`, `files.limits.ts`, `home.ts`, `issues.ts`,
+    `load.ts`, `options.ts`, `place.ts`, `sources.ts`
   - [cv/](../cv/README.md): imports `check.ts`, `cv.limits.ts`, `cv.schema.ts`, `home.ts`,
     `issues.ts`, `load.ts`, `options.ts`, `place.ts`, `sources.ts`
   - [edit/](../edit/README.md): imports `check.ts`, `cv.limits.ts`, `cv.schema.ts`, `errors.ts`,
@@ -87,7 +81,7 @@ runs on the old shell, such as `oriko schema`, and `issues.old.ts` also makes th
   - [profile/](../profile/README.md): imports `check.ts`, `cv.schema.ts`, `errors.ts`,
     `files.limits.ts`, `home.ts`, `issues.ts`, `load.ts`, `place.ts`, `sources.ts`
   - [read/](../read/README.md): imports `cv.schema.ts`, `errors.ts`, `files.limits.ts`, `files.ts`,
-    `home.ts`, `issues.old.ts`, `issues.ts`, `load.ts`, `options.ts`, `sources.ts`
+    `home.ts`, `issues.data.ts`, `issues.ts`, `load.ts`, `options.ts`, `sources.ts`
   - [terminal/](../terminal/README.md): imports `cv.limits.ts`, `cv.schema.ts`, `metrics.ts`,
     `place.ts`, `zip.ts`
 

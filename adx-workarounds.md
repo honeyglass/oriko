@@ -144,7 +144,7 @@ each move, with their sources.
   proposal: a tool can declare a read-only root for the files it ships
   kind: kept own code
   golden: no difference
-- W12 cli/build.ts:149
+- W12 cli/build.ts:150
   gap: a file read through a root answers adx's refusals, which stand at no field, and a file past
   the limit is `STORED_INVALID` (guide "Reading a file")
   call: `oriko build --profile piped --out p.docx --dry-run`, whose profile names `cvs/pipe.png`, a
@@ -172,7 +172,7 @@ each move, with their sources.
   kind: loss
   golden: no difference
   same gap as: W9
-- W14 cli/build.ts:63
+- W14 cli/build.ts:64
   gap: a path field of a root takes a path relative to the root only; an absolute path is
   `PATH_OUTSIDE` also when it leads inside the root (adx `src/files/paths.ts`, `partsOf`; guide
   "Files the call names")
@@ -183,7 +183,7 @@ each move, with their sources.
   it relative to the root
   kind: loss
   golden: no difference
-- W15 cli/build.ts:97
+- W15 cli/build.ts:98
   gap: adx answers a system error of a write as `SYSTEM_REFUSED`, kind ask, at no field, whatever
   the error (guide "Files the call names", "A full disk")
   call: `oriko build --out sealed/cv.docx`, where `sealed` is a folder the caller may not write to
@@ -194,7 +194,7 @@ each move, with their sources.
   can solve it: a missing right for the caller, a full disk for the person
   kind: loss
   golden: no difference
-- W16 cli/build.ts:63
+- W16 cli/build.ts:64
   gap: adx resolves the target of a write before it stages the file, and a link at the target that
   leads nowhere fails there (adx `src/files/paths.ts`, `target`)
   call: `oriko build --out loop.docx --dry-run`, where `loop.docx` is a link to itself
@@ -203,7 +203,7 @@ each move, with their sources.
   proposal: a link at the target of a write that leads nowhere is replaced like any other link
   kind: loss
   golden: no difference
-- W17 cli/build.ts:97
+- W17 cli/build.ts:98
   gap: a write answers its file as the call named it, cleaned, not by its real place inside the root
   (guide "Files the call names")
   call: `oriko build --out latest/cv.docx`, where `latest` is a link to the folder `reports` of the
@@ -214,7 +214,7 @@ each move, with their sources.
   proposal: a write answers the real place of its file inside the root beside the path the call gave
   kind: loss
   golden: no difference
-- W18 cli/build.ts:92
+- W18 cli/build.ts:93
   gap: a write follows a link at its target to a file inside the root and writes through it, while
   the guide says a link at the target is replaced and adx never writes through a link (guide "Files
   the call names"; adx `src/files/paths.ts`, `linkedFile`)
@@ -571,7 +571,7 @@ each move, with their sources.
   longer fits; and `oriko plan --profile acme` on a CV whose role the profile makes too long
   today: the check and the page plan answer issues with code, path, message and hint as data
   now: the same: `core/check.ts` and `core/place.ts` answer issues of their own, which
-  `issues.old.ts` makes, and `raised`, `turnedEach` and `issueAt` of `core/issues.ts` turn each
+  `core/issues.data.ts` makes, and `raised`, `turnedEach` and `issueAt` of `core/issues.ts` turn each
   into an issue of adx once its field is known. Issues of adx could not fill `layout` of a
   successful answer, which holds code, path, message and hint as data (decision D10), and `fileOf`
   of `core/place.ts` needs the code and the path of each issue in the CV alone before it decides
@@ -627,7 +627,7 @@ each move, with their sources.
   kind: loss
   golden: no difference
   same gap as: W15
-- W45 read/sources.ts:67
+- W45 read/sources.ts:68
   gap: adx reads a file only inside a root and talks only to a server the tool declares (guide
   "Reading a file", "Wrapping a remote API"; proto/oriko README "`read` reads what adx cannot", adx
   TODO #6)
@@ -645,7 +645,7 @@ each move, with their sources.
   kind: kept own code
   golden: no difference
   same gap as: W19
-- W46 read/sources.ts:73
+- W46 read/sources.ts:74
   gap: a tool cannot raise a code adx owns (proto/oriko README "What does not fit yet")
   call: `oriko read --resume missing.pdf`, `oriko read --resume <folder>`, `oriko read --resume
   huge.txt` with 10,000,001 bytes, `oriko read --posting http://example.com/job --profile globex`,
@@ -683,7 +683,7 @@ each move, with their sources.
   kind: workaround
   golden: no difference
   same gap as: W29
-- W48 read/documents.ts:81
+- W48 read/documents.ts:85
   gap: adx cannot promise that a dry run sends nothing when the tool's own code sends, and the test
   kit can stand in only for a declared remote (proto/oriko README "`read` reads what adx cannot",
   guide "Testing your tool")
@@ -696,7 +696,7 @@ each move, with their sources.
   on a dry run, as it does for a declared server
   kind: kept own code
   golden: no difference
-- W49 read/documents.ts:64
+- W49 read/documents.ts:68
   gap: the test kit can give a probe no file outside every root, and its probe of `--replace`
   fails an effect whose example stages no `files.write` (guide "Testing your tool", "`--replace`")
   call: `conformance(t, oriko, { seed })`, which probes `oriko read`
@@ -712,7 +712,7 @@ each move, with their sources.
   kind: workaround
   golden: no difference
   same gap as: W23
-- W50 read/documents.ts:93
+- W50 read/documents.ts:97
   gap: a write follows a link at its target to a file inside the root and writes through it, while
   the guide says a link at the target is replaced (guide "Files the call names"; adx
   `src/files/paths.ts`, `linkedFile`)
@@ -748,7 +748,7 @@ each move, with their sources.
   kind: loss
   golden: no difference
   same gap as: W5
-- W52 read/documents.ts:146
+- W52 read/documents.ts:150
   gap: `--replace` is refused with `UNKNOWN_OPTION` on a call whose plan stages no `files.write`,
   and `files.update` takes none (guide "A command that changes something")
   call: `oriko read --resume old.docx --replace`, and `oriko read --notes a.md --cv jane --replace`
@@ -759,7 +759,7 @@ each move, with their sources.
   answer says that nothing was replaced
   kind: loss
   golden: no difference
-- W53 read/documents.ts:146
+- W53 read/documents.ts:150
   gap: a stored file read through a root answers adx's refusals, which stand at no field (guide
   "Reading a file")
   call: `oriko read --notes a.md --cv jane`, where `cvs/jane.notes.md` holds 10,000,001 bytes, and
@@ -776,7 +776,7 @@ each move, with their sources.
   kind: loss
   golden: no difference
   same gap as: W2
-- W54 read/sources.ts:96
+- W54 read/sources.ts:97
   gap: a tool cannot raise a code adx owns (proto/oriko README "What does not fit yet")
   call: `oriko read --resume old.docx`, where the read of `old.docx` fails with a system error
   outside the list of `core/files.ts` that the caller fixes, such as EIO
@@ -790,29 +790,118 @@ each move, with their sources.
   kind: loss
   golden: no difference
   same gap as: W2
+- W55 cli/oriko.ts:55
+  gap: the tool called alone, a group alone and `schema` take `--output` and no other option, so
+  a root's option cannot move the folder they read; only the root's variable can (guide "Next
+  steps", "Moving the folder")
+  call: `oriko --home ~/cv-data`, `oriko block --home ~/cv-data`, and `oriko schema --home
+  ~/cv-data`
+  today: the start of that data folder: its CVs, its profiles and the first steps, each with
+  `--home ~/cv-data`; the group's actions; the schema; `--home` was an option of every call
+  now: `oriko --home ~/cv-data` is `OPTION_BEFORE_COMMAND` at `home`, hint "Put the command words
+  first, then the options", and `UNKNOWN_COMMAND` for the folder, read as a command word. The
+  command of the issue, `oriko`, reads the default data folder and not the one the call named, and
+  the hint, adx's own text, does not fit a call that names no command. `oriko block --home …` is
+  `OPTION_BEFORE_COMMAND` at `home` and `UNKNOWN_COMMAND` with the command `oriko block`, and
+  `oriko schema --home …` is `UNKNOWN_OPTION` at `home`. `ORIKO_HOME=~/cv-data oriko` answers the first steps of that folder,
+  each with `--home`; CONTRIBUTING.md, docs/cli.md and the skill name the variable for the three
+  forms
+  proposal: the tool called alone, a group alone and the schema take the options of the roots, as
+  every command does; a refusal of an option on a call without a command names a command that
+  keeps the root the call named
+  kind: workaround
+  golden: no difference
+- W56 cli/oriko.ts:29
+  gap: a command adx names puts every value in single quotes for the shell, and leaves a character
+  that does not show as itself in the line as it is, the folder of a root too (guide "Commands adx
+  names", "Known limits": a value can change the look of the text form)
+  call: `oriko photo set --file=bidi<U+202E>evil --profile nobody`, the same with a zero-width
+  space in the file name; and `oriko cvs` with `ORIKO_HOME` or `--home` naming a folder whose name
+  holds a line break or ESC, such as `…/line<LF>break` and `…/esc<ESC>x`
+  today: the command writes such a character as escaped bytes, `$'bidi\xe2\x80\xaeevil'` and
+  `--home $'…/line\x0abreak'`, so the command stays one visible line that bash, zsh and ksh read
+  back
+  now: `oriko photo set --file 'bidi<U+202E>evil' --profile`: after U+202E the rest of the line
+  renders reversed, and a zero-width character hides a name that differs from the one the line
+  shows. A line break, a tab or a control character in a field is refused with `SCHEMA` before any
+  command is named, but the folder of the root is no field: the JSON step `oriko show --cv jane
+  --home '…/line<LF>break'` holds the raw line break, `…/esc<ESC>x` the raw ESC, inside the quotes,
+  and `--output text` shows them escaped as `\u{a}` and `\u{1b}`, which is no command that runs as
+  shown (measured). Every value stands in single quotes, so its bytes always run as that one
+  argument and nothing else; the loss is that a reader can be misled by what the line shows
+  proposal: a named command writes a value with a character that does not show as itself, the
+  folder of a root included, in an escaped form every common shell reads back, such as `$'…'` with
+  the bytes, in the JSON answer and in the text form alike
+  kind: loss
+  golden: no difference
+- W57 tests/api/conformance.api.spec.ts:22
+  gap: the test kit can give a probe of a program no file outside every root: it starts the
+  program in a fresh, empty working directory and copies only the seed into the data folder, and
+  its samples hold no files for the working directory (adx `src/test/program.ts`, guide "Testing
+  your tool")
+  call: `conformance(t, ['node', 'bin/oriko.ts'], { seed, skillFile: '.claude/skills/oriko/SKILL.md' })`
+  today: no conformance; the old shell has no example
+  now: measured in a test outside the repository: 13 of the 15 probes of the program pass, "agent
+  skill" among them; "raw JSON input" and "dry runs" fail, since the examples of `read` and `photo set` name
+  `examples/showcase/go-e-senior-backend/posting.md` and `assets/placeholder.png`, which the
+  working directory of the probe lacks (`SOURCE_NOT_FOUND` and `NO_PICTURE`, "There is no file
+  …/adx-run-…/work/assets/placeholder.png"), so the program is not checked by the kit. The tool is,
+  with the same samples, in the process of the test in the repository's root (D24)
+  proposal: the samples of the test kit can name files a probe finds at a plain path, such as a
+  folder copied in as the working directory of each probe, for the tool and for the program alike
+  kind: loss
+  golden: no difference
+  same gap as: W23
+- W58 core/home.ts:21
+  gap: a root takes a name and a place, and no text of its own: `schema` names its variable and
+  its option, and the option of every command says "the folder of the root home" (adx
+  `dist/files/roots.d.ts`, `root(name, from)`; guide "Where the folder lies")
+  call: `oriko schema`
+  today: the option `home` says "the data folder with cvs/NAME.json and profiles/NAME.json;
+  ~/.oriko when left out"
+  now: the root `home` with `ORIKO_HOME` and `--home`, and `--home` "the folder of the root home,
+  in place of ORIKO_HOME"; what the data folder holds and where it lies by default stand in the
+  skill, the README and docs/cli.md, and in no answer of oriko
+  proposal: a root takes a text that says what the folder holds, which `schema` and the option of
+  every command show, with the place it lies at by default
+  kind: loss
+  golden: call 2 and the options of calls 4 to 27
+  same gap as: W4
+- W59 cli/oriko.ts:64
+  gap: `root.list()` answers regular files only, and a folder of a root that is no folder counts as
+  empty (adx `src/files/handle.ts:12`, guide "A command that changes something")
+  call: `ORIKO_HOME=…/flat oriko`, where `cvs` of the data folder is a regular file
+  today: `oriko --home …/flat` is `PATH_REFUSED` at `home`, kind fix, "The system refused
+  …/flat/cvs: ENOTDIR" (measured on 7294215)
+  now: exit 0 with the first steps of an empty data folder, `oriko read` that needs `resume` and
+  `oriko init`; `oriko init --cv erika … --home …/flat` then is adx's `NOT_A_FOLDER` at no field,
+  "cvs/erika.json goes through cvs, which is no folder", so the step it names cannot write there
+  (measured)
+  proposal: `list()` answers a link whose target is a regular file inside the root, and a folder
+  of a root that is no folder is refused instead of counted as empty
+  kind: loss
+  golden: no difference
+  same gap as: W6
+- W60 cli/oriko.ts:64
+  gap: adx answers a system error of a read as `SYSTEM_REFUSED`, kind ask, at no field, whatever the
+  error (guide "Reading a file", "Errors you did not map")
+  call: `ORIKO_HOME=…/sealed oriko`, where `cvs` of the data folder has mode 000
+  today: `oriko --home …/sealed` is `PATH_REFUSED` at `home`, kind fix, "The system refused
+  …/sealed/cvs: EACCES" (measured on 7294215)
+  now: `SYSTEM_REFUSED`, kind ask, no path, "scandir of …/sealed/cvs failed with EACCES", state "The
+  call stopped at an error; what it changed before is not known.", although the start writes
+  nothing (measured)
+  proposal: a system error on a path the input names stands at that field, and its kind follows who
+  can solve it: a missing right for the caller, a full disk for the person
+  kind: loss
+  golden: no difference
+  same gap as: W15, as W44 for the read of a stored file
 
 ## Passing outside the golden
 
-What holds only between two packages, and the package that ends it.
-
-- `ORIKO_HOME` moves the data folder of the moved commands only; the old shell does not read it.
-  Package 9 ends it.
-- An option before a moved command (`--home X plan`, `--home X build --out cv.docx`,
-  `--home X photo set --file me.png`, `--home X block remove --json '{"id":"awards"}'`) is refused with `OPTION_BEFORE_COMMAND`, while the old shell
-  takes it before a command that is not moved. Package 9 ends it.
-- The old `oriko schema photo set` still describes the old form: the picture as the word `file`
-  after the command, no `--file` and no `--replace`, as section 4 of the plan keeps the old schema
-  byte for byte. Calls: `schema photo set` and `schema`. Package 9 ends it, when `oriko schema` is
-  adx's.
-- The old `oriko schema profile set` still describes the old form: the options `profile`, `json`,
-  `replace` and `dry-run` and the input `Profile`, with no `--cv`, `--order` or other field as an
-  option, as section 4 of the plan keeps the old schema byte for byte. Calls: `schema profile set`
-  and `schema`. Package 9 ends it, when `oriko schema` is adx's.
-- The old `oriko schema init` still describes the old form: the options `cv`, `json` and
-  `dry-run`, and `json` says the input comes from stdin without it, while `init` on adx reads stdin
-  only with `--json -` and takes the fields `--language`, `--first-name`, `--last-name` and
-  `--role` as options, as section 4 of the plan keeps the old schema byte for byte. Calls:
-  `schema init` and `schema`. Package 9 ends it, when `oriko schema` is adx's.
+What holds only between two packages, and the package that ends it. No line is open: every
+command, `oriko` alone, `oriko schema`, a group alone, an unknown command and `--version` run on
+adx.
 
 ## Golden changes
 
@@ -895,6 +984,16 @@ Every record that differs from the golden before the move, by its call number in
 | 115 | `read --resume other.txt` | `{ ok, applied: true, result: { read }, next }`, in place of `written: false`; the step to `init` needs `cv`, `language`, `firstName`, `lastName` and `role` in place of `cv` and `json`, and the step to `schema` says adx's "shows the schema of init" | listed: README "One answer shape", "Steps to `schema`" (77); adx's own: guide "Files" (a real run that writes nothing answers `applied: true`), "Next steps" (`needs` names input fields) |
 | 116 | `read --resume missing.pdf` | refusal shape; `SOURCE_NOT_FOUND` in place of `FILE_NOT_FOUND`, with the same path, message and hint | listed: README "Five codes get a name of their own"; log W46; adx's own: guide "The answer" |
 | 117 | `read` | refusal shape; `NOTHING_TO_READ` in place of `MISSING_INPUT`, with the same path, message, hint and command `oriko schema read` | listed: README "Five codes get a name of their own"; log W46; adx's own: guide "The answer" |
+| 1, 128 | `oriko` alone | `{ ok, result: { name, version, does, skill, commands }, next }`: `home`, `cvs` and `profiles` are gone, `commands` names each command with its `does`; the first steps are the same, and the step to `init` of call 128 needs `cv`, `language`, `firstName`, `lastName` and `role` in place of `cv` and `json` | listed: README "The start answer holds no data" (72); adx's own: guide "What every tool gets" (the tool alone), "Next steps" (`needs` names input fields) |
+| 2 | `schema` | adx's overview: `commands` with the input of each, `shapes`, the `options` adx gives, `roots`, `kinds`, `codes` with kind and hint, and the `limits` of a call, in `result`; the old option texts, `schemas`, `kinds` of a block, `icons` and `limits` of oriko are gone: the block kinds, the icons and the sizes of a CV stand in the shapes, the byte limits of the input and of a photo in the hints of `JSON_TOO_LARGE` and `PICTURE_TOO_LARGE`, those of `read` and the seconds of LibreOffice in the texts of the fields of `read` and `build`; what the data folder holds stands in no answer | listed: README "`oriko schema` is adx's command" (rule 2); adx's own: guide "What every tool gets" (`tool schema`); a logged loss: W58 |
+| 3 | `schema schema` | exit 1, refusal shape; `UNKNOWN_COMMAND` "oriko schema knows no schema: it shows a command or a shape", no path, command `oriko schema`, since `schema` is adx's own command, and neither a command of the tool nor a shape | listed: README "`oriko schema` is adx's command"; adx's own: guide "The answer", "How adx reads a call" (an unknown command) |
+| 4 to 27 | `schema <command>` for each of the 24 commands | `{ ok, result: { command, does, input, fields, options, example, lists, global, … } }` in place of `{ ok, name, does, options, required, requiredWith, words, input }`: `input` is the schema of the command on adx, every field stands in `fields` with its option, its text and `required` where the command needs it, `options` names those adx gives the command; `photo set`, `profile set` and `init` describe their form on adx, with `--file`, `--replace` and the fields as options; the texts of the sources of `read` name their byte limits and, for `--posting`, the `--profile` beside it, and the text of `--out` of `build` the seconds of LibreOffice | listed: README "`oriko schema` is adx's command"; adx's own: guide "What every tool gets" (`tool schema <command>`); ends the three passing lines of `schema photo set`, `schema profile set` and `schema init` |
+| 28 to 32 | `schema master`, `schema profile`, `schema block`, `schema item`, `schema contact` | `{ ok, result: { shape } }` in place of `{ ok, name, input }`; the JSON Schema of each shape is the same | listed: README "Shapes" (72); adx's own: guide "What every tool gets" (`tool schema <shape>`) |
+| 33 | `schema nope` | refusal shape; adx's `UNKNOWN_COMMAND` wording, "oriko schema knows no nope: it shows a command or a shape", no path; the command `oriko schema` stays | adx's own: guide "The answer", "How adx reads a call" (an unknown command) |
+| 60 | `block` | `{ ok, result: { commands: [{ command, does }] } }`, each action as its whole call with what it does, in place of `{ ok, command, values }` | adx's own: guide "What every tool gets" (`tool <group>`) |
+| 61 | `block frobnicate` | refusal shape; adx's `UNKNOWN_COMMAND` wording, "oriko block has no command frobnicate", no path; the command `oriko block` stays | adx's own: guide "The answer", "How adx reads a call" (an unknown command) |
+| 62 | `plna --nmae x again` | refusal shape; `UNKNOWN_COMMAND` alone, "oriko has no command plna", no path, with the command `oriko` in place of `oriko schema`; the issue `UNKNOWN_OPTION` at `nmae` is gone | adx's own: guide "The answer", "How adx reads a call" (an unknown command), "Refusing bad input with a hint" (the layers) |
+| 127 | `--version` | exit 0 with `{ ok, result: "0.1.0" }` in place of `UNKNOWN_OPTION` | adx's own: guide "What every tool gets" (`tool --version`) |
 
 ## Decisions of the coordinator
 
@@ -1126,3 +1225,53 @@ work stops only when an approach cannot work at all, and everything else is deci
   reason: (a) refused a notes call that ran before and has no source in the plan. With (b) the
   check of the command holds the name to an id wherever it becomes a path, and for notes the
   name is only compared with the list of stored profiles, so no name reaches a path
+- D24, before package 9
+  question: the test kit of adx calls the whole program in a scratch working directory. The
+  examples of `photo set` (D9) and `read` (D22) name a file of the package relative to its root,
+  which is not there. How is the program held to the rules
+  variants: (a) a setting of the kit places the two files where the calls run, if it has one;
+  (b) oriko resolves a relative path at the root of the package when the working directory
+  lacks it; (c) the examples name a path of this machine; (d) the program is not checked by
+  the kit, the tool is, and the loss is logged
+  choice: a where the kit allows it, else d
+  reason: (b) would change what a relative path means for every caller, and (c) puts a path of
+  one machine into the schema. With (d) the tool is still held to every rule in the root of
+  the repository, and the golden calls the program itself 131 times
+  outcome, package 9: the kit has no such setting, so d holds. The program run under the kit
+  passes 13 of 15 probes; the two that fail call the examples of `read` and `photo set` in
+  the empty working directory (W57)
+- D25, package 9
+  question: two files still carry the suffix `.old`, the issues the pure code and the download
+  answer as data (D16). The plan removes every such file. What happens to them
+  variants: (a) they keep their names; (b) they are renamed after what they hold
+  choice: b, `core/issues.data.ts` and `read/issues.data.ts`
+  reason: nothing about them is old once the old shell is gone, and a name that says so would
+  send the next reader looking for a newer file to move to
+- D26, package 9
+  question: a command an answer names holds a value with a bidi or zero-width character, or a
+  folder of a root with a line break, raw inside its quotes, where the old shell wrote it
+  escaped. Does oriko refuse such values itself
+  variants: (a) the schemas of oriko refuse such characters in every field; (b) the loss is
+  taken and logged
+  choice: b
+  reason: every value sits in single quotes, so a copied command runs that one argument and
+  nothing else: the loss is what a reader sees, not what runs. (a) would close the fields and
+  leave the folder of a root open, which adx reads before any schema of oriko, so it would fix
+  one case and not the cause (W56)
+- D27, package 9
+  question: the old answer of `oriko schema` held the byte limits and the seconds of a
+  download and of a conversion as a table of their own. The schema of adx has no such table.
+  Where do these facts stand
+  variants: (a) nowhere, a logged loss; (b) in the references of the skill; (c) in the text of
+  the field or the hint they bound, built from the constant
+  choice: c
+  reason: with (c) one constant holds each number, and a caller reads it where it applies; (b)
+  would copy numbers into a text nobody checks
+- D28, package 9
+  question: the refusal the pure code and oriko's own reads answer held a kind, a step, a
+  reason, a state and next steps, which only the old shell read. What stays of it
+  variants: (a) all of it; (b) its issues and its cause
+  choice: b
+  reason: the kind of a refusal comes from the declaration of its code now, and the rest from
+  adx; a field no caller reads would be tested for nothing. A system error only the person
+  solves holds no issue, and its cause goes to adx whole

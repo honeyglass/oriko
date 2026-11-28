@@ -43,12 +43,13 @@ https://github.com/honeyglass/oriko#-quickstart; never run an installer yourself
 
 An option without a value lists the values it accepts, such as `oriko show --cv` for the CV names.
 
-`oriko schema` lists all commands and options.
-`oriko schema <name>` gives the accepted input of one, such as `oriko schema profile`.
+`oriko schema` lists every command with its input, the shapes, and every issue code with its kind and hint.
+`oriko schema <name>` gives the accepted input of one, such as `oriko schema profile`, with its fields and their limits.
 
 ## The data folder
 
 The data folder is `~/.oriko`; when the user names another one, pass `--home <folder>` to every command, as an absolute path.
+`oriko` alone, a group without its action, and `oriko schema` take no `--home`: put `ORIKO_HOME=<folder>` in front of them instead, as in `ORIKO_HOME=<folder> oriko`, whose steps then carry `--home`.
 
 | Path                 | Content                                                                              |
 | :------------------- | :----------------------------------------------------------------------------------- |
@@ -175,7 +176,7 @@ A back edge with bound 3 returns at most three times; the fourth trigger leads t
 
 ### 0 Setup
 
-Find how to run oriko, then run `oriko` alone: it answers the data folder, its CVs and profiles.
+Find how to run oriko, then run `oriko` alone: it answers the commands and the first steps for the data folder.
 Then run `oriko cvs` and `oriko profiles`.
 
 - `oriko cvs` lists every master with its name, language and person, and whether it fits its pages.

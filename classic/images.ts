@@ -71,12 +71,12 @@ const UNREAD: Record<string, Code | undefined> = {
   PATH_REFUSED: pathRefused,
 };
 
-// SYSTEM_REFUSED is adx's own code, so its system error goes to adx whole, which sorts it.
+// A system error only the person solves holds no issue, so it goes to adx whole, which sorts it.
 function unread(refused: Rejection): Issues<'file'> {
   const [found] = refused.issues;
   const declared = UNREAD[found?.code ?? ''];
   if (found === undefined || declared === undefined)
-    throw failed('Nothing was written.', refused.refusal.cause);
+    throw failed('Nothing was written.', refused.cause);
   return [declared.at('file', found.message)];
 }
 
