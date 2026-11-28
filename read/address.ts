@@ -8,7 +8,7 @@
  * IANA's IPv4 special-purpose registry and the multicast block; a mapped or embedded IPv4
  * address lies outside 2000::/3 and is refused.
  *
- * @example if (isPublic(address) === false) return rejected('read', [privateAddress(url)]);
+ * @example if (isPublic(address) === false) return rejected([privateAddress(url)]);
  */
 import { BlockList, isIP } from 'node:net';
 

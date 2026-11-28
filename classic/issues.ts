@@ -1,23 +1,35 @@
 /**
- * The issues of the classic look and its photo, each made by one function.
+ * The codes the classic look and its photo raise on adx, each declared once with its kind and hint.
  *
- * photoUnreadable: a photo that is neither a PNG nor a JPEG picture.
- * missingPicture: a photo set without the picture to store.
+ * photoUnreadable: a picture or a stored photo that is neither a PNG nor a JPEG picture.
+ * noPicture, pictureNotAFile, pictureTooLarge: a picture `photo set` cannot read.
  *
- * @example if (round.error !== null) return rejected('render', [issue.photoUnreadable()]);
+ * adx owns FILE_NOT_FOUND, NOT_A_FILE and INPUT_TOO_LARGE, and a tool that declares one does not
+ * start, so the read of the picture names its own; each keeps the kind and the hint it had.
+ *
+ * @example return [issue.photoUnreadable.at(['cv', 'person', 'photo'])];
  */
-import type { Issue } from '../core/errors.ts';
+import { code } from '@honeyglass/adx';
+import { FILE_LIMITS } from '../core/files.limits.ts';
 
-export const photoUnreadable = () => ({
-  code: 'PHOTO_UNREADABLE',
-  path: 'person.photo',
-  message: 'The photo is neither a PNG nor a JPEG picture',
-  hint: 'Use a PNG or JPEG file, for example with "oriko photo set <file>"',
-});
+export const photoUnreadable = code(
+  'PHOTO_UNREADABLE',
+  'fix',
+  'Use a PNG or JPEG file, for example with "oriko photo set --file <file>"',
+);
 
-export const missingPicture = (): Issue => ({
-  code: 'MISSING_INPUT',
-  path: 'file',
-  message: 'The command names no picture',
-  hint: 'Pass the path of a PNG or JPEG file: oriko photo set <file>',
-});
+export const noPicture = code(
+  'NO_PICTURE',
+  'fix',
+  'Check the path, or pass the full path of the file',
+);
+export const pictureNotAFile = code(
+  'PICTURE_NOT_A_FILE',
+  'fix',
+  'Pass the path of a file, not of a folder',
+);
+export const pictureTooLarge = code(
+  'PICTURE_TOO_LARGE',
+  'fix',
+  `Send at most ${FILE_LIMITS.photoBytes} bytes; a CV is a few thousand, a photo a few million`,
+);

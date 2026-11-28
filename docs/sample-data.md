@@ -19,7 +19,7 @@ oriko build --profile galeria-cook --home ~/.local/share/oriko/examples --out ga
 ```
 
 `build` writes the Word file into the folder you run it in. After a manual installation, run the
-commands in the oriko folder with `node bin/oriko.ts` and `--home examples`.
+commands in the oriko folder with `node bin/oriko.ts` and `--home "$PWD/examples"`.
 
 > [!TIP]
 > To change the sample data, for example with `block add`, copy the folder first with

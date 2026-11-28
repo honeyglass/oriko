@@ -1,68 +1,62 @@
 /**
- * The command that creates a new CV: a valid, empty CV file and a placeholder photo in cvs/.
+ * The command `oriko init` on adx: a valid, empty CV that names the shared placeholder photo.
  *
- * createCv: writes cvs/NAME.json and cvs/NAME.png, or answers why not.
+ * init: the command, which the tool lists under the word init.
  *
- * The name becomes a file name, so it passes the id pattern before any path is built from it.
+ * The CV goes to `cvs/NAME.json` as a new file, and init never replaces one (adx decision 70):
+ * `cv update` and the block commands change it. Every CV starts with the one placeholder
+ * `placeholder.png`, directly in the data folder, written once when it is missing, so no name
+ * of a CV can meet it. adx writes both files or none, the placeholder first, so a CV never
+ * names a photo that is not there. The placeholder's bytes are `assets/placeholder.png` of the
+ * package, which lies in no root, so oriko's own code reads them.
  *
- * @example const answer = await createCv({ home, name: 'erika', input, isDryRun: false });
+ * @example const { exit, out } = await run(oriko, ['init', '--cv', 'erika', '--json', input]);
  */
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { done, rejected } from '../core/errors.ts';
-import type { Result } from '../core/errors.ts';
-import * as issue from './issues.ts';
-import * as coreIssue from '../core/issues.ts';
-import { check } from '../core/check.ts';
+import { effect, fresh } from '@honeyglass/adx';
+import { shown } from '@honeyglass/utils/ts';
+import { z } from 'zod';
 import { Id, NewCv } from '../core/cv.schema.ts';
 import type { Master } from '../core/cv.schema.ts';
-import { writeAll } from '../core/files.ts';
-import { cvNames } from '../core/home.ts';
+import { cvFile, cvNames, home, targetIssue } from '../core/home.ts';
+import * as issue from './issues.ts';
 
-const PLACEHOLDER = join(import.meta.dirname, '..', 'assets', 'placeholder.png');
+const PLACEHOLDER = 'placeholder.png';
 
-type Request = { home: string; name: string | undefined; input: unknown; isDryRun: boolean };
+const ASSET = join(import.meta.dirname, '..', 'assets', PLACEHOLDER);
 
-/**
- * @param request - the data folder, the name of the new CV, its unchecked input, and whether to write
- * @returns the name and the files of the new CV
- */
-export async function createCv(request: Request): Promise<Result<Record<string, unknown>>> {
-  const { home, input, isDryRun } = request;
-  const name = Id.safeParse(request.name);
-  if (name.success === false)
-    return rejected('init', coreIssue.schemaIssues(name.error, ['cv'], 'init'));
-  if ((await cvNames(home)).includes(name.data))
-    return rejected('init', [issue.cvExists(name.data)]);
-  const fields = NewCv.safeParse(input);
-  if (fields.success === false)
-    return rejected('init', coreIssue.schemaIssues(fields.error, [], 'init'));
-  const master = emptyCv(name.data, fields.data);
-  const checked = check(master);
-  if (checked.error !== null) return checked;
-  const files = { cv: `cvs/${name.data}.json`, photo: master.person.photo };
-  if (isDryRun) return done({ command: 'init', ...files, written: false });
-  // The CV file moves in last, so a CV never lists a photo that is not there.
-  const written = await writeAll(
-    [
-      { path: join(home, files.photo), content: await readFile(PLACEHOLDER) },
-      { path: join(home, files.cv), content: `${JSON.stringify(master, null, 2)}\n` },
-    ],
-    'home',
-  );
-  if (written.error !== null) return written;
-  return done({ command: 'init', ...files, written: true });
-}
+export const init = effect({
+  does: 'creates a CV',
+  input: z.object({ cv: Id.describe('the name of the new CV'), ...NewCv.shape }),
+  example: {
+    cv: 'erika',
+    language: 'de',
+    firstName: 'Erika',
+    lastName: 'Muster',
+    role: 'Entwicklerin',
+  },
+  values: { cv: fresh(cvNames) },
+  replace: false,
+  plan: async ({ cv, ...fields }, { files, refuse }) => {
+    if ((await cvNames()).includes(cv))
+      return refuse(issue.cvExists.at('cv', `The data folder already holds a CV ${shown(cv)}`));
+    const file = cvFile(cv);
+    const blocked = await targetIssue('cv', home, file);
+    if (blocked !== undefined) return refuse(blocked);
+    const shared = home.file(PLACEHOLDER);
+    const placeholder = shared.exists ? undefined : files.write(shared, await readFile(ASSET));
+    const text = `${JSON.stringify(emptyCv(fields), null, 2)}\n`;
+    return { cv: files.write(file, text), photo: PLACEHOLDER, placeholder };
+  },
+});
 
 // Two pages and an English contact title, the same defaults as the example; cv update changes both.
-function emptyCv(
-  name: string,
-  fields: { language: string; firstName: string; lastName: string; role: string },
-): Master {
+function emptyCv(fields: z.output<typeof NewCv>): Master {
   const { language, ...person } = fields;
   return {
     language,
-    person: { ...person, photo: `cvs/${name}.png` },
+    person: { ...person, photo: PLACEHOLDER },
     contact: { title: 'Contact', items: [] },
     pages: 2,
     blocks: [],

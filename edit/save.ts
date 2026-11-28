@@ -1,50 +1,41 @@
 /**
- * The edit commands as the cli runs them: one edit applied to the stored CV, then written back.
+ * The plan every edit command shares: one edit applied to the stored CV, then staged on adx.
  *
- * saveEdit: applies one edit to the CV, writes it, and says whether it still fits its pages.
+ * saved: what the edit stages, and whether the CV still fits its pages, or every issue.
  *
- * @example const answer = await saveEdit({ home, cv: 'erika', command: 'block move', input, isDryRun: true });
+ * The CV is read through the root `home`, with the byte limit of the JSON input, and checked
+ * against its shape before the edit, so a broken CV is never written. An edit exists to change
+ * the CV file, so it updates it with files.update and takes no --replace (adx decision 70).
+ *
+ * @example const done = await saved(input.cv, files, master => apply(master, 'block add', input));
  */
-import { done } from '../core/errors.ts';
-import type { Result } from '../core/errors.ts';
-import { check } from '../core/check.ts';
+import type { Files, Written } from '@honeyglass/adx';
 import type { Master } from '../core/cv.schema.ts';
-import { place } from '../core/place.ts';
-import { readJson, writeAll } from '../core/files.ts';
-import { chosenCv } from '../core/home.ts';
-import { apply } from './apply.ts';
-
-type Fields = Record<string, unknown>;
-type Request = {
-  home: string;
-  cv: string | undefined;
-  command: string;
-  input: unknown;
-  isDryRun: boolean;
-};
+import { FILE_LIMITS } from '../core/files.limits.ts';
+import { cvFile } from '../core/home.ts';
+import type { Issues } from '../core/issues.ts';
+import { storedCv } from '../core/load.ts';
+import { fit } from '../core/place.ts';
+import type { Fit } from '../core/place.ts';
 
 /**
- * @param request - the data folder, the CV's name, the command, its parsed input, and whether to write
- * @returns the command, whether it wrote the CV, and whether the CV still fits its pages
+ * @param cv - the name `--cv` gives, which adx found among the stored CVs
+ * @param files - the files of the plan
+ * @param edit - the edit, which answers the changed CV or its issues
+ * @returns the staged CV file and whether the CV still fits its pages; NO_CV, CV_REQUIRED,
+ *   SCHEMA below `cv`, or the issues of the edit
  */
-export async function saveEdit(request: Request): Promise<Result<Fields>> {
-  const { command, isDryRun } = request;
-  const cv = await chosenCv(request.home, request.cv);
-  if (cv.error !== null) return cv;
-  const master = await readJson(cv.data.path, 'cv');
-  if (master.error !== null) return master;
-  const edited = apply(master.data, command, request.input);
-  if (edited.error !== null) return edited;
-  const content = `${JSON.stringify(edited.data, null, 2)}\n`;
-  const files = [{ path: cv.data.path, content }];
-  const written = isDryRun ? done(undefined) : await writeAll(files, 'home');
-  if (written.error !== null) return written;
-  return done({ command, written: isDryRun === false, ...fit(edited.data) });
-}
-
-// An edit may make the CV too long. The edit still stands; the answer says so, so the caller can act.
-function fit(master: Master) {
-  const cv = check(master);
-  const placed = cv.error === null ? place(cv.data) : cv;
-  return { fits: placed.error === null, layout: placed.error?.issues ?? [] };
+export async function saved<F extends string>(
+  cv: string | undefined,
+  files: Files,
+  edit: (master: Master) => Master | Issues<F>,
+): Promise<(Written & Fit) | Issues<F | 'cv'>> {
+  const stored = await storedCv(cv);
+  if (Array.isArray(stored)) return stored;
+  const edited = edit(stored.master);
+  if (Array.isArray(edited)) return edited;
+  const text = `${JSON.stringify(edited, null, 2)}\n`;
+  const written = await files.update(cvFile(stored.name), FILE_LIMITS.inputBytes, () => text);
+  // An edit may make the CV too long. The edit still stands; the answer says so.
+  return { ...written, ...fit(edited) };
 }

@@ -12,8 +12,8 @@
 import { trySync$ } from '@honeyglass/utils/ts';
 import { done, rejected } from '../core/errors.ts';
 import type { Result } from '../core/errors.ts';
-import * as issue from './issues.ts';
-import * as coreIssue from '../core/issues.ts';
+import * as issue from './issues.data.ts';
+import * as coreIssue from '../core/issues.data.ts';
 import { READ_LIMITS } from './limits.ts';
 import { cleanText } from './clean.ts';
 import { docxText } from './docx.ts';
@@ -33,7 +33,7 @@ export async function textOf(bytes: Buffer, option: string): Promise<Result<Read
   const raw = await rawText(bytes, option);
   if (raw.error !== null) return raw;
   const { text, replaced } = cleanText(raw.data.text);
-  if (text === '') return rejected('read', [issue.noText(option)]);
+  if (text === '') return rejected([issue.noText(option)]);
   return done({ kind: raw.data.kind, text, replaced });
 }
 
@@ -47,12 +47,12 @@ async function rawText(
 ): Promise<Result<{ kind: Kind; text: string }>> {
   if (startsWith(bytes, PDF)) {
     const read = await pdfText(bytes);
-    if (read.error !== null) return rejected('read', [issue.unreadable(option, 'PDF')], read.error);
+    if (read.error !== null) return rejected([issue.unreadable(option, 'PDF')], read.error);
     return done({ kind: 'pdf', text: read.data });
   }
   if (startsWith(bytes, ZIP)) return wordText(bytes, option);
   const decoded = utf8(bytes);
-  if (decoded === null) return rejected('read', [issue.unsupportedKind(option)]);
+  if (decoded === null) return rejected([issue.unsupportedKind(option)]);
   if (HTML_START.test(decoded)) return done({ kind: 'html', text: htmlText(decoded) });
   return done({ kind: 'text', text: decoded });
 }
@@ -68,11 +68,11 @@ async function wordText(
     case null:
       return done({ kind: 'docx', text: read.text });
     case 'no-word':
-      return rejected('read', [issue.unsupportedKind(option)]);
+      return rejected([issue.unsupportedKind(option)]);
     case 'too-large':
-      return rejected('read', [coreIssue.tooLarge(option, READ_LIMITS.documentBytes)]);
+      return rejected([coreIssue.tooLarge(option, READ_LIMITS.documentBytes)]);
     case 'broken':
-      return rejected('read', [issue.unreadable(option, 'Word file')]);
+      return rejected([issue.unreadable(option, 'Word file')]);
   }
 }
 

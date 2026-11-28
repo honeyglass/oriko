@@ -4,6 +4,7 @@
  * Master, Profile: one CV with every block, and the changes of one job posting.
  * NewCv: what 'oriko init' needs to create a CV.
  * Block, PATCH, ITEM, ITEM_PATCH: one block, and what may change in a block or in one item, per kind.
+ * Item, ContactItem: one item of any kind, and one contact line, as `oriko schema` shows them.
  *
  * Every text is one visible line: a control or an invisible character is refused, so no text
  * hides in the document or forges a line of output.
@@ -94,6 +95,11 @@ export const ITEM_PATCH = {
   list: text,
   entries: EntryItem.partial(),
 };
+
+// An item's shape depends on the kind of its block, so the one shape lists the kinds' shapes.
+export const Item = z
+  .union([ITEM.job, ITEM.rated, ITEM.entries])
+  .describe('job and list blocks take text, rated blocks {name, level}, entries {title, note}');
 
 // A path inside the data folder, written relative to it, on one visible line like every text.
 // This is its shape only; the place that opens the file checks where a link in it leads.

@@ -1,27 +1,16 @@
 /**
- * The issues the profile commands raise, each made by one function.
+ * The code the profile commands raise on adx, declared once with its kind and hint.
  *
- * profileExists: a profile set over a stored profile without --replace.
- * unknownProfile: a profile show for a name with neither a profile nor a posting.
+ * nothingToStore: a profile set that names no field of a profile, only its name.
  *
- * @example return rejected('profile set', [issue.profileExists(name)]);
+ * adx owns MISSING_INPUT, the code for a call without input, so this one has a name of oriko's.
+ *
+ * @example return [issue.nothingToStore.issue('The call names no field of the profile')];
  */
-import { shown } from '@honeyglass/utils/ts';
-import type { Issue } from '../core/errors.ts';
-import { optionText } from '../core/options.ts';
+import { code } from '@honeyglass/adx';
 
-export const profileExists = (name: string): Issue => ({
-  code: 'PROFILE_EXISTS',
-  path: 'profile',
-  message: `The profile ${shown(name)} is already stored`,
-  hint: 'Run the command to see it; add --replace to overwrite it, or pass another --profile',
-  command: `oriko profile show${optionText('profile', name)}`,
-});
-
-export const unknownProfile = (name: string): Issue => ({
-  code: 'UNKNOWN_PROFILE',
-  path: 'profile',
-  message: `The data folder has no profile ${shown(name)}, nor a posting read for it`,
-  hint: 'Run the command and use one of the profile names it lists',
-  command: 'oriko plan --profile',
-});
+export const nothingToStore = code(
+  'NOTHING_TO_STORE',
+  'fix',
+  'Run the command for the input shape, then pass it with --json, or through stdin with --json -',
+);

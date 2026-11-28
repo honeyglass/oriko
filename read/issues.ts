@@ -1,121 +1,95 @@
 /**
- * The issues the command read raises, each made by one function.
+ * The codes `oriko read` raises on adx, each declared once with its kind and hint.
  *
- * missingInput, postingExists: nothing to read, a posting already stored.
+ * nothingToRead, profileMissing: a call that names no source, and a posting without a profile.
+ * sourceNotFound, sourceNotAFile, sourceTooLarge: a source file that cannot be read.
  * unsupportedKind, unreadable, noText: a document oriko cannot turn into text.
- * urlNotAllowed, privateAddress, tooManyRedirects, encodingNotAllowed, notUnpacked: a download
+ * addressNotAllowed, privateAddress, tooManyRedirects, encodingNotAllowed, httpStatus: a download
  * the checks refuse.
- * lookupFailed, networkFailed, bodyFailed, serverBusy, httpStatus: a failed download.
+ * downloadFailed, siteBusy: a download a later call may finish.
  *
- * @example return rejected('read', [issue.tooManyRedirects(option)]);
+ * adx owns MISSING_INPUT, FILE_NOT_FOUND, NOT_A_FILE, INPUT_TOO_LARGE, URL_NOT_ALLOWED,
+ * NETWORK_FAILED and SERVER_BUSY, and a tool that declares one does not start, so these codes have
+ * names of their own. A code has one hint, so where the issues of ./issues.data.ts have several,
+ * the message names what differs.
+ *
+ * @example return [issue.nothingToRead.at('posting', 'The command names nothing to read')];
  */
-import { shown } from '@honeyglass/utils/ts';
-import { NETWORK_FAILED, SERVER_BUSY } from '../core/errors.ts';
-import type { Issue } from '../core/errors.ts';
+import { code } from '@honeyglass/adx';
 import { READ_LIMITS } from './limits.ts';
 
-export const missingInput = (): Issue => ({
-  code: 'MISSING_INPUT',
-  path: 'posting',
-  message: 'The command names nothing to read',
-  hint: 'Run the command and pass --posting, --notes or --resume with a file or an https:// address',
-  command: 'oriko schema read',
-});
+export const nothingToRead = code(
+  'NOTHING_TO_READ',
+  'fix',
+  'Run the command and pass --posting, --notes or --resume with a file or an https:// address',
+);
+export const profileMissing = code(
+  'MISSING_OPTION',
+  'fix',
+  'Run the command for the existing profiles, or pass a new name in lower-case words joined by hyphens',
+);
 
-export const postingExists = (path: string): Issue => ({
-  code: 'POSTING_EXISTS',
-  path: 'posting',
-  message: `${shown(path)} already holds another posting`,
-  hint: 'Add --replace to overwrite it, or pass another --profile',
-});
+export const sourceNotFound = code(
+  'SOURCE_NOT_FOUND',
+  'fix',
+  'Check the path, or pass the full path of the file',
+);
+export const sourceNotAFile = code(
+  'SOURCE_NOT_A_FILE',
+  'fix',
+  'Pass the path of a file, not of a folder',
+);
+export const sourceTooLarge = code(
+  'SOURCE_TOO_LARGE',
+  'fix',
+  'Pass a smaller document, or copy the text into a .txt or .md file and pass that file',
+);
 
-export const unsupportedKind = (option: string): Issue => ({
-  code: 'UNSUPPORTED_KIND',
-  path: option,
-  message: 'The document is no PDF, Word file, HTML page or UTF-8 text',
-  hint: 'Save it as PDF or as text, then pass that file',
-});
+export const unsupportedKind = code(
+  'UNSUPPORTED_KIND',
+  'fix',
+  'Save it as PDF or as text, then pass that file',
+);
+export const unreadable = code(
+  'DOCUMENT_UNREADABLE',
+  'fix',
+  'Save it again as a new file without a password, or save the page, and pass that file',
+);
+export const noText = code(
+  'NO_TEXT',
+  'fix',
+  'Copy the text into a .txt or .md file and pass that file',
+);
 
-export const unreadable = (option: string, kind: string): Issue => ({
-  code: 'DOCUMENT_UNREADABLE',
-  path: option,
-  message: `The ${kind} is broken, encrypted or cannot be opened`,
-  hint: `Open it, save it again as a new ${kind} without a password, and pass that file`,
-});
+export const addressNotAllowed = code(
+  'ADDRESS_NOT_ALLOWED',
+  'fix',
+  'Pass an https:// address without a port, a user or a password, or save the page and pass the file',
+);
+export const privateAddress = code(
+  'PRIVATE_ADDRESS',
+  'fix',
+  'oriko loads only from the public internet; save the page and pass the file',
+);
+export const tooManyRedirects = code(
+  'TOO_MANY_REDIRECTS',
+  'fix',
+  'Open it in a browser and pass the address it ends at, or save the page and pass the file',
+);
+export const encodingNotAllowed = code(
+  'ENCODING_NOT_ALLOWED',
+  'fix',
+  'Save the page and pass the file',
+);
+export const httpStatus = code(
+  'HTTP_STATUS',
+  'fix',
+  'Check the address, or save the page and pass the file',
+);
 
-export const noText = (option: string): Issue => ({
-  code: 'NO_TEXT',
-  path: option,
-  message: `The document behind --${shown(option)} holds no text, such as a scan`,
-  hint: 'Copy the text into a .txt or .md file and pass that file',
-});
-
-export const urlNotAllowed = (option: string, link: string, problem: string): Issue => ({
-  code: 'URL_NOT_ALLOWED',
-  path: option,
-  message: `The address ${shown(link)} ${problem}`,
-  hint: 'Pass an https:// address without a port, a user or a password, or save the page and pass the file',
-});
-
-export const privateAddress = (option: string, host: string): Issue => ({
-  code: 'PRIVATE_ADDRESS',
-  path: option,
-  message: `${shown(host)} leads to no public address`,
-  hint: 'oriko loads only from the public internet; save the page and pass the file',
-});
-
-export const tooManyRedirects = (option: string): Issue => ({
-  code: 'TOO_MANY_REDIRECTS',
-  path: option,
-  message: `The address leads on more than ${READ_LIMITS.redirects} times`,
-  hint: 'Open it in a browser and pass the address it ends at, or save the page and pass the file',
-});
-
-export const encodingNotAllowed = (option: string, encoding: string): Issue => ({
-  code: 'ENCODING_NOT_ALLOWED',
-  path: option,
-  message: `The server sent the body as ${shown(encoding)}`,
-  hint: 'Save the page and pass the file',
-});
-
-export const notUnpacked = (option: string, encoding: string): Issue => ({
-  code: 'DOCUMENT_UNREADABLE',
-  path: option,
-  message: `The body could not be unpacked from ${shown(encoding)}`,
-  hint: 'Save the page and pass the file',
-});
-
-export const lookupFailed = (option: string, host: string, error: Error): Issue => ({
-  code: NETWORK_FAILED,
-  path: option,
-  message: `The name ${shown(host)} could not be resolved: ${'code' in error ? `${error.code}` : error.name}`,
-  hint: 'Check the address and the connection, then call again',
-});
-
-export const networkFailed = (option: string, url: URL, error: Error): Issue => ({
-  code: NETWORK_FAILED,
-  path: option,
-  message: `The request to ${shown(url.host)} failed: ${'code' in error ? `${error.code}` : error.name}`,
-  hint: 'Check the connection, then call again; or save the page and pass the file',
-});
-
-export const bodyFailed = (option: string, error: Error): Issue => ({
-  code: NETWORK_FAILED,
-  path: option,
-  message: `The download stopped: ${'code' in error ? `${error.code}` : error.name}`,
-  hint: `Call again; a download may take at most ${READ_LIMITS.downloadSeconds} seconds`,
-});
-
-export const serverBusy = (option: string, status: number): Issue => ({
-  code: SERVER_BUSY,
-  path: option,
-  message: `The server answered ${status}`,
-  hint: 'Call again later',
-});
-
-export const httpStatus = (option: string, status: number): Issue => ({
-  code: 'HTTP_STATUS',
-  path: option,
-  message: `The server answered ${status}`,
-  hint: 'Check the address, or save the page and pass the file',
-});
+export const downloadFailed = code(
+  'DOWNLOAD_FAILED',
+  'retry',
+  `Check the address and the connection, then call again; a download may take at most ${READ_LIMITS.downloadSeconds} seconds, or save the page and pass the file`,
+);
+export const siteBusy = code('SITE_BUSY', 'retry', 'Call again later');

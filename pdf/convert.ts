@@ -1,16 +1,18 @@
 /**
  * The PDF of a .docx, set by LibreOffice, so a CV leaves oriko without a detour through Google Docs.
  *
- * toPdf: the PDF of a .docx, or a refusal when LibreOffice is missing or fails.
- * sofficePaths: where LibreOffice keeps its program on this system.
+ * toPdf: the PDF of a .docx, or the issue when LibreOffice is missing or fails.
+ * libreOffice: the one place that finds the program, so a test can stand in for it.
+ * sofficePaths: where LibreOffice keeps its program on this system; install.sh imports it.
  *
- * LibreOffice gets the fonts in assets/fonts, the versions Google Docs uses, so the PDF matches
- * the one Google Docs makes; render() writes the .docx for LibreOffice's way of setting it.
+ * LibreOffice runs outside adx, with a temporary folder of its own. It gets the fonts in
+ * assets/fonts, the versions Google Docs uses, so the PDF matches the one Google Docs makes;
+ * render() writes the .docx for LibreOffice's way of setting it.
  *
  * Inspired by libreoffice-convert (MIT, Copyright (c) 2020 René Rössler,
  * https://github.com/elwerene/libreoffice-convert), rewritten with promises and without its packages.
  *
- * @example const pdf = await toPdf(docx, sofficePaths());
+ * @example const pdf = await toPdf(docx);
  */
 import { execFile } from 'node:child_process';
 import { constants } from 'node:fs';
@@ -19,28 +21,40 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
-import { $try } from '@honeyglass/utils/ts';
-import { done, rejected } from '../core/errors.ts';
-import type { Result } from '../core/errors.ts';
+import { $try, causeText } from '@honeyglass/utils/ts';
+import type { Issues } from '../core/issues.ts';
 import * as issue from './issues.ts';
 import { PDF_LIMITS } from './limits.ts';
 
 const run = promisify(execFile);
 
 /**
+ * The file the call asks for is a PDF, so both issues stand at `out`.
+ *
  * @param docx - the Word file
- * @param candidates - the paths LibreOffice's program may have; the first one found runs
- * @returns the PDF; `ask` when LibreOffice is missing or refuses the file
+ * @returns the PDF; NOT_INSTALLED or CONVERSION_FAILED, both of kind ask
  */
-export async function toPdf(docx: Uint8Array, candidates: string[]): Promise<Result<Uint8Array>> {
-  const soffice = await firstInstalled(candidates);
-  if (soffice === undefined) return rejected('build', [issue.notInstalled()]);
+export async function toPdf(docx: Uint8Array): Promise<Uint8Array | Issues<'out'>> {
+  const soffice = await libreOffice.program();
+  if (soffice === undefined) return [issue.notInstalled.at('out', INSTALL_COMMANDS)];
   const folder = await mkdtemp(join(tmpdir(), 'oriko-pdf-'));
   const pdf = await $try(converted(soffice, folder, docx));
   await rm(folder, { recursive: true, force: true });
-  if (pdf.error !== null) return rejected('build', [issue.conversionFailed(pdf.error)], pdf.error);
-  return done(pdf.data);
+  if (pdf.error !== null)
+    return [issue.conversionFailed.at('out', `LibreOffice wrote no PDF: ${causeText(pdf.error)}`)];
+  return pdf.data;
 }
+
+const INSTALL_COMMANDS =
+  'A PDF needs LibreOffice, and it is not installed: on macOS brew install --cask libreoffice, ' +
+  'on Debian or Ubuntu sudo apt install libreoffice, on Windows winget install ' +
+  'TheDocumentFoundation.LibreOffice, or from https://www.libreoffice.org/download';
+
+/** The program is found through this object, so a test replaces `program` in its own process. */
+export const libreOffice = {
+  /** @returns the first path of sofficePaths() that runs, or undefined */
+  program: () => firstInstalled(sofficePaths()),
+};
 
 async function firstInstalled(candidates: string[]) {
   for (const path of candidates) {

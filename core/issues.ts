@@ -1,227 +1,235 @@
 /**
- * The issues core raises, and those several folders raise, each made by one function.
+ * The codes core raises on adx, and the turn of an issue of oriko's pure code into one of adx.
  *
- * schemaIssues, duplicateId, unknownBlock, untitledNotAlone: what the check of a CV finds.
- * itemsNotInMaster, levelRaised, factChanged, jobMoved: a fact of the master a profile changes.
- * fileNotFound, notAFile, notAFolder, tooLarge, invalidJson, pathOutside: the failures of a file.
- * pathRefused, systemRefused: a refusal of the system on a path, by who can solve it.
- * noCv, cvRequired, unknownCv, unknownCvOfProfile, cvMismatch, unknownProfile: what the data
- * folder does not hold.
- * roleTooLong, blockTooTall, pageOverflow: what does not fit the pages.
- * FILE_NOT_FOUND, UNKNOWN_BLOCK: the codes other files compare.
+ * Issues: what a helper answers in place of its value, at least one issue at a field of the call.
+ * noCv, cvRequired, unknownCv, cvMismatch: what the data folder does not hold for a call.
+ * pathRefused: a file the person names that the system refuses to open.
+ * targetNotAFile, oversized: a link at the target of a write, and an input past the byte limit.
+ * Stored, SHAPE, raised: the field that names a stored file, the shape of each, and an issue of
+ * the check of a CV or of the page plan below it.
+ * turnedEach: every issue of such a refusal, turned at a place the caller picks.
+ * issueAt, unknownBlock: one such issue at a field an edit picks, and a block id no block has.
  *
- * @example if (block === undefined) return rejected('show', [issue.unknownBlock(id, 'block')]);
+ * A code of adx has one hint. Where oriko's hint named the field or the column, the message of
+ * the issue already names it. The check and the page plan answer the issues of ./issues.data.ts,
+ * with code, path, message and hint as data, since `layout` answers them so and an issue of adx
+ * shows only its code and path; raised() turns each one.
+ *
+ * @example return raised(() => 'cv', placed.error);
  */
-import { shown } from '@honeyglass/utils/ts';
-import type { z } from 'zod';
-import { SYSTEM_REFUSED } from './errors.ts';
-import type { Issue } from './errors.ts';
+import { RefusalError } from '@honeyglass/utils/ts';
+import { check, code } from '@honeyglass/adx';
+import type { Code, Issue } from '@honeyglass/adx';
+import { z } from 'zod';
+import { Block, Master, Profile } from './cv.schema.ts';
+import type { Issue as OldIssue, Rejection } from './errors.ts';
 import { FILE_LIMITS } from './files.limits.ts';
 
-export const FILE_NOT_FOUND = 'FILE_NOT_FOUND';
-export const UNKNOWN_BLOCK = 'UNKNOWN_BLOCK';
+export type Issues<F extends string> = [Issue<F>, ...Issue<F>[]];
+
+// What the data folder does not hold.
+export const noCv = code(
+  'NO_CV',
+  'fix',
+  'Check --home, or create a CV with the command and the fields it needs',
+);
+export const cvRequired = code(
+  'CV_REQUIRED',
+  'fix',
+  'Run the command, then pass --cv with one of the CV names it lists',
+);
+export const unknownCv = code(
+  'UNKNOWN_CV',
+  'fix',
+  'Run the command and set the field cv of the profile to one of the CV names it lists',
+);
+export const cvMismatch = code(
+  'CV_MISMATCH',
+  'fix',
+  'Leave out --cv, or change the field cv of the profile',
+);
+
+// A file the person names anywhere on the disk, which the system refuses to open; photo set and
+// read both read one.
+export const pathRefused = code(
+  'PATH_REFUSED',
+  'fix',
+  'Check the path and that you may read and write there',
+);
+
+// What stands at the target of a write; adx owns NOT_A_FILE, so the name says what it is about.
+export const targetNotAFile = code(
+  'TARGET_NOT_A_FILE',
+  'fix',
+  'Remove the link that stands there, or name another target',
+);
+
+// The input of a command past the byte limit of a stored file; adx owns INPUT_TOO_LARGE.
+const jsonTooLarge = code(
+  'JSON_TOO_LARGE',
+  'fix',
+  `Send at most ${FILE_LIMITS.inputBytes} bytes; a CV is a few thousand`,
+);
 
 /**
- * @param error - the error of a failed safeParse
- * @param prefix - the path of the checked value inside the input
- * @param name - the schema to point the caller to
- * @returns one issue per schema issue
+ * adx reads the input and hands over its value, so the limit counts the value as compact JSON:
+ * an input past it is past it in any form the call gave.
+ *
+ * @param input - the input of a command, past its schema
+ * @returns JSON_TOO_LARGE, with no path, when the input is larger than a stored file may be
  */
-export function schemaIssues(error: z.ZodError, prefix: PropertyKey[], name: string): Issue[] {
-  return error.issues.map(issue => ({
-    code: 'SCHEMA',
-    path: [...prefix, ...issue.path].join('.'),
-    message: issue.message,
-    hint: 'Run the command for the accepted shape',
-    command: `oriko schema ${name}`,
-  }));
+export const oversized = (input: object) =>
+  Buffer.byteLength(JSON.stringify(input)) > FILE_LIMITS.inputBytes
+    ? [jsonTooLarge.issue(`The input holds more than ${FILE_LIMITS.inputBytes} bytes of JSON`)]
+    : [];
+
+// What the check of a CV and of its profile finds.
+const duplicateId = code('DUPLICATE_ID', 'fix', 'Give every block its own id');
+export const unknownBlock = code(
+  'UNKNOWN_BLOCK',
+  'fix',
+  'Run the command and use one of the block ids it lists',
+);
+const untitledNotAlone = code(
+  'UNTITLED_NOT_ALONE',
+  'fix',
+  'Give the block a title, or make it the only block of its section',
+);
+const itemNotInMaster = code(
+  'ITEM_NOT_IN_MASTER',
+  'fix',
+  'Keep only items of the master, or add the item to the master first',
+);
+const levelRaised = code('LEVEL_RAISED', 'fix', 'Keep the level of the master, or a lower one');
+const factChanged = code(
+  'FACT_CHANGED',
+  'fix',
+  'Leave the field out of the profile, so the job keeps the value of the master',
+);
+const jobMoved = code(
+  'JOB_MOVED',
+  'fix',
+  'Take the job out of order, and hide an old or unrelated job instead of moving it',
+);
+
+// What does not fit the pages.
+const roleTooLong = code(
+  'ROLE_TOO_LONG',
+  'fix',
+  'Shorten the role, in the master or with "person.role" in the profile',
+);
+const blockTooTall = code(
+  'BLOCK_TOO_TALL',
+  'fix',
+  'Shorten the block, for example by removing items',
+);
+const pageOverflow = code(
+  'PAGE_OVERFLOW',
+  'fix',
+  'Hide or shorten blocks of that column, remove a page pin, or raise "pages"',
+);
+
+const RAISED: Record<string, Code | undefined> = {
+  DUPLICATE_ID: duplicateId,
+  UNKNOWN_BLOCK: unknownBlock,
+  UNTITLED_NOT_ALONE: untitledNotAlone,
+  ITEM_NOT_IN_MASTER: itemNotInMaster,
+  LEVEL_RAISED: levelRaised,
+  FACT_CHANGED: factChanged,
+  JOB_MOVED: jobMoved,
+  ROLE_TOO_LONG: roleTooLong,
+  BLOCK_TOO_TALL: blockTooTall,
+  PAGE_OVERFLOW: pageOverflow,
+};
+
+/** The field of the call that names a stored file: `cv` for the CV, `profile` for the profile. */
+export type Stored = 'cv' | 'profile';
+
+/** The shape of each stored file, by the field that names it; the values the tool lists. */
+export const SHAPE = { cv: Master, profile: Profile };
+
+/**
+ * The path of a stored file starts with the field of the call that names the file (adx decision
+ * 69), so `blocks.nobody` of the profile is `profile.blocks.nobody`.
+ *
+ * @param fileOf - the file an issue lies in
+ * @param refused - the refusal of the check or of the page plan
+ * @returns its issues with the same codes, messages and paths, below the field of their file
+ * @throws a bug refusal for a code this file lacks, or a refusal without an issue
+ */
+export function raised<F extends Stored>(
+  fileOf: (found: OldIssue) => F,
+  refused: Rejection,
+): Issues<F> {
+  return turnedEach(refused, found => turned(fileOf(found), found));
 }
 
-export const duplicateId = (id: string): Issue => ({
-  code: 'DUPLICATE_ID',
-  path: `blocks.${id}`,
-  message: `Two blocks have the id ${shown(id)}`,
-  hint: 'Give every block its own id',
-});
-
-// The cli adds the command that lists the block ids, as only it knows the name of the CV.
-export const unknownBlock = (id: string, path: string): Issue => ({
-  code: UNKNOWN_BLOCK,
-  path,
-  message: `No block has the id ${shown(id)}`,
-  hint: 'Run the command and use one of the block ids it lists',
-});
-
-export const untitledNotAlone = (id: string): Issue => ({
-  code: 'UNTITLED_NOT_ALONE',
-  path: `blocks.${id}`,
-  message: `The block ${shown(id)} has no title but shares its section with a block next to it`,
-  hint: 'Give the block a title, or make it the only block of its section',
-});
-
-export const itemsNotInMaster = (id: string, items: string[]): Issue => ({
-  code: 'ITEM_NOT_IN_MASTER',
-  path: `blocks.${id}.items`,
-  message: `The block ${shown(id)} lists ${items.map(shown).join(', ')}, which the master does not hold`,
-  hint: 'Keep only items of the master, or add the item to the master first',
-});
-
-export const levelRaised = (id: string, names: string[]): Issue => ({
-  code: 'LEVEL_RAISED',
-  path: `blocks.${id}.items`,
-  message: `The block ${shown(id)} rates ${names.map(shown).join(', ')} higher than the master does`,
-  hint: 'Keep the level of the master, or a lower one',
-});
-
-export const factChanged = (id: string, field: string): Issue => ({
-  code: 'FACT_CHANGED',
-  path: `blocks.${id}.${field}`,
-  message: `The profile changes the ${field} of the job ${shown(id)}, a fact only the master holds`,
-  hint: `Leave ${field} out of the profile, so the job keeps the value of the master`,
-});
-
-export const jobMoved = (): Issue => ({
-  code: 'JOB_MOVED',
-  path: 'order',
-  message: 'The profile moves a job out of the order of the master, where jobs stand newest first',
-  hint: 'Take the job out of order, and hide an old or unrelated job instead of moving it',
-});
-
-export const fileNotFound = (path: string, option: string): Issue => ({
-  code: FILE_NOT_FOUND,
-  path: option,
-  message: `There is no file ${shown(path)}`,
-  hint: 'Check the path, or pass the full path of the file',
-});
-
-export const notAFile = (path: string, option: string): Issue => ({
-  code: 'NOT_A_FILE',
-  path: option,
-  message: `${shown(path)} is no file`,
-  hint: 'Pass the path of a file, not of a folder',
-});
-
-export const notAFolder = (path: string, option: string): Issue => ({
-  code: 'NOT_A_FOLDER',
-  path: option,
-  message: `${shown(path)} is no folder`,
-  hint: 'Pass the path of a folder, not of a file',
-});
-
-export const tooLarge = (path: string, limit: number = FILE_LIMITS.inputBytes): Issue => ({
-  code: 'INPUT_TOO_LARGE',
-  path,
-  message: `The input is larger than ${limit} bytes`,
-  hint: `Send at most ${limit} bytes; a CV is a few thousand, a photo a few million`,
-});
-
-export const invalidJson = (what: string): Issue => ({
-  code: 'INVALID_JSON',
-  path: '',
-  message: `${what} is not valid JSON`,
-  hint: 'Send one valid JSON value',
-});
-
-export const pathOutside = (option: string, path: string, folder: string): Issue => ({
-  code: 'PATH_OUTSIDE',
-  path: option,
-  message: `The path ${shown(path)} leaves the folder ${shown(folder)}`,
-  hint: 'Use a path inside that folder, without a link that leads out of it',
-});
-
-export const pathRefused = (path: string, option: string, code: string): Issue => ({
-  code: 'PATH_REFUSED',
-  path: option,
-  message: `The system refused ${shown(path)}: ${code}`,
-  hint: 'Check the path and that you may read and write there',
-});
-
-export const systemRefused = (path: string, option: string, code: string): Issue => ({
-  code: SYSTEM_REFUSED,
-  path: option,
-  message: `The system refused ${shown(path)}: ${code}`,
-  hint: 'Tell the person what the system answered, such as a full disk, and call again once solved',
-});
-
-// A missing folder and an empty one are both no CV; the message says which it is.
-export const noCv = (home: string, exists: boolean): Issue => ({
-  code: 'NO_CV',
-  path: 'home',
-  message: `The data folder ${shown(home)} ${exists ? 'holds no CV' : 'does not exist'}`,
-  hint: 'Check --home, or run the command for the input of a new CV',
-  command: 'oriko schema init',
-});
-
-// --cv without a value lists the CVs, so the command answers every name the caller may pass.
-const LIST_CVS = 'oriko show --cv';
-
-export const cvRequired = (): Issue => ({
-  code: 'CV_REQUIRED',
-  path: 'cv',
-  message: 'The data folder holds several CVs and the call names none',
-  hint: 'Run the command, then pass --cv with one of the CV names it lists',
-  command: LIST_CVS,
-});
-
-export const unknownCvOfProfile = (name: string): Issue => ({
-  code: 'UNKNOWN_CV',
-  path: 'profile.cv',
-  message: `The profile names the CV ${shown(name)}, which the data folder does not hold`,
-  hint: 'Run the command and set the field cv of the profile to one of the CV names it lists',
-  command: LIST_CVS,
-});
-
-export const unknownCv = (name: string): Issue => ({
-  code: 'UNKNOWN_CV',
-  path: 'cv',
-  message: `The data folder has no CV ${shown(name)}`,
-  hint: 'Run the command and use one of the CV names it lists',
-  command: LIST_CVS,
-});
-
-export const cvMismatch = (explicit: string, fromProfile: string): Issue => ({
-  code: 'CV_MISMATCH',
-  path: 'cv',
-  message: `--cv names ${shown(explicit)}, but the profile belongs to ${shown(fromProfile)}`,
-  hint: 'Leave out --cv, or change the field cv of the profile',
-});
-
-export function unknownProfile(name: string, names: string[]): Issue {
-  const message = `The data folder has no profile ${shown(name)}`;
-  if (names.length === 0)
-    return {
-      code: 'UNKNOWN_PROFILE',
-      path: 'profile',
-      message,
-      hint: 'Run the command for the shape of a profile, then store one with oriko profile set',
-      command: 'oriko schema profile set',
-    };
-  return {
-    code: 'UNKNOWN_PROFILE',
-    path: 'profile',
-    message,
-    hint: 'Run the command and use one of the profile names it lists',
-    command: 'oriko plan --profile',
-  };
+/**
+ * Every issue of a refusal of the pure code, turned one by one, as the caller places it.
+ *
+ * @param refused - the refusal of the check or of the page plan
+ * @param turn - the issue of adx for one issue of the refusal
+ * @returns the turned issues, at least one
+ * @throws a bug refusal for a refusal without an issue
+ */
+export function turnedEach<F extends string>(
+  refused: Rejection,
+  turn: (found: OldIssue) => Issue<F>,
+): Issues<F> {
+  const [first, ...rest] = refused.issues.map(turn);
+  if (first === undefined) throw notTurned('a refusal of the check holds no issue');
+  return [first, ...rest];
 }
 
-export const roleTooLong = (role: string): Issue => ({
-  code: 'ROLE_TOO_LONG',
-  path: 'person.role',
-  message: `The role ${shown(role)} takes more than one line beside the photo`,
-  hint: 'Shorten the role, in the master or with "person.role" in the profile',
-});
+function turned<F extends Stored>(field: F, found: OldIssue): Issue<F> {
+  const path: [F, ...string[]] = [field, ...(found.path === '' ? [] : found.path.split('.'))];
+  return issueAt(path, found, shapeAt(path));
+}
 
-export const blockTooTall = (id: string, over: number): Issue => ({
-  code: 'BLOCK_TOO_TALL',
-  path: `blocks.${id}`,
-  message: `The block ${id} is about ${over} pt higher than a page holds`,
-  hint: 'Shorten the block, for example by removing items',
-});
+// A profile takes its patches as values of any shape, so an issue below `blocks.<id>` lies in a
+// patch, which the check holds against the block's shape.
+function shapeAt([field, first, id]: [Stored, ...string[]]) {
+  return field === 'profile' && first === 'blocks' && id !== undefined ? Block : SHAPE[field];
+}
 
-export const pageOverflow = (side: string, pages: number, late: string[]): Issue => ({
-  code: 'PAGE_OVERFLOW',
-  path: 'pages',
-  message: `These blocks of the ${side} column land after page ${pages}: ${late.join(', ')}`,
-  hint: `Hide or shorten blocks of the ${side} column, remove a page pin, or raise "pages"`,
-});
+/**
+ * One issue of the pure code at a place the caller picks, such as a field of an edit.
+ *
+ * @param path - the field of the call, then the place below it
+ * @param found - the issue of the check or of the page plan
+ * @param as - the shape a SCHEMA issue names in its command, one the tool lists
+ * @returns the issue with the same code and message at that path
+ * @throws a bug refusal for a code this file lacks
+ */
+export function issueAt<F extends string>(
+  path: [F, ...string[]],
+  found: OldIssue,
+  as: z.ZodType,
+): Issue<F> {
+  if (found.code === 'SCHEMA') return schemaIssue(path, found.message, as);
+  const declared = RAISED[found.code];
+  if (declared === undefined) throw notTurned(`the code ${found.code} has no code of adx`);
+  return declared.at(path, found.message);
+}
+
+// adx owns SCHEMA, so only its check() raises it: with a part that always fails with the message.
+// `as` names the shape the value lies in, so the command of the issue shows that shape.
+function schemaIssue<F extends string>(
+  path: [F, ...string[]],
+  message: string,
+  as: z.ZodType,
+): Issue<F> {
+  const { issues } = check(z.never(message), undefined, path, { as });
+  const [issue] = issues ?? [];
+  if (issue === undefined) throw notTurned('the check of adx passed a part that always fails');
+  return issue;
+}
+
+const notTurned = (reason: string) =>
+  new RefusalError({
+    kind: 'bug',
+    step: 'raised',
+    reason,
+    next: 'stop and tell the person; the maintainer of oriko fixes core/issues.ts',
+    state: 'Nothing was written.',
+  });

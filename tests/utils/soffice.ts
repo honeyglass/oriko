@@ -3,7 +3,7 @@
  *
  * fakeSoffice: a script that writes a small PDF where soffice puts it, or one that fails.
  *
- * @example const space = { ...workspace(), soffice: [fakeSoffice(folder, 'writes')] };
+ * @example t.mock.method(libreOffice, 'program', async () => fakeSoffice(folder, 'writes'));
  */
 import { chmodSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

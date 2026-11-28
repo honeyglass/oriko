@@ -23,7 +23,7 @@ for (const name of PROFILES)
   for (const { style, suffix, columnEdge, tolerance } of LOOKS) {
     const file = `${name}${suffix}`;
     test(`sets the example ${file} through LibreOffice as Google Docs does`, { skip }, async () => {
-      const space = { ...workspace(), home: EXAMPLES, soffice: sofficePaths() };
+      const space = { ...workspace(), home: EXAMPLES };
       const argv = ['build', '--profile', name, '--style', style, '--out', `${file}.pdf`];
       assert.equal((await call(space, argv)).exit, 0);
       const google = await textLines(

@@ -1,53 +1,46 @@
 /**
- * The command profile show: the stored profile of one job posting and the posting read for it.
+ * The command `oriko profile show` on adx: the stored profile of one posting, and the posting.
  *
- * showProfile: the stored profile and the posting, each null when there is none.
+ * show: the command, which the tool lists under the words profile show.
  *
- * @example const answer = await showProfile(home, 'acme');
+ * `oriko read` stores a posting before its profile exists, so a name counts when it has a
+ * profile or a posting, and adx refuses any other before the command runs. Both files are read
+ * through the root `home`, each with its byte limit; the profile is checked against its shape.
+ *
+ * @example const { exit, out } = await run(oriko, ['profile', 'show', '--profile', 'acme']);
  */
-import { join } from 'node:path';
-import { shown, trySync$ } from '@honeyglass/utils/ts';
-import { done, rejected } from '../core/errors.ts';
-import type { Result } from '../core/errors.ts';
-import * as issue from './issues.ts';
-import * as coreIssue from '../core/issues.ts';
-import { Profile } from '../core/cv.schema.ts';
-import { existingText } from '../core/files.ts';
-import { profileName } from './name.ts';
+import { multiline, read } from '@honeyglass/adx';
+import { z } from 'zod';
+import { Id, Profile } from '../core/cv.schema.ts';
+import { FILE_LIMITS } from '../core/files.limits.ts';
+import { home, postingFile, profileFile } from '../core/home.ts';
+import { storedShape } from '../core/load.ts';
 
-type Fields = Record<string, unknown>;
+// The steps after it, to profile set and to plan, stand in cli/next.ts, beside plan.
+export const show = read({
+  does: 'shows a stored profile and the posting read for it',
+  input: z.object({ profile: Id.describe('the name of the profile') }),
+  example: { profile: 'acme' },
+  values: { profile: shownChoices },
+  output: z.object({
+    name: Id.describe('the name of the profile'),
+    profile: Profile.nullable().describe('the stored profile, or null'),
+    posting: multiline().nullable().describe('the posting read for it, as Markdown, or null'),
+  }),
+  run: async ({ profile: name }, { refuse }) => {
+    const stored = profileFile(name);
+    const profile = stored.exists ? await storedShape('profile', stored) : null;
+    if (Array.isArray(profile)) return refuse(...profile);
+    const posting = postingFile(name);
+    const text = posting.exists ? await posting.text(FILE_LIMITS.readBytes) : null;
+    return { name, profile, posting: text };
+  },
+});
 
-/**
- * @param home - the data folder
- * @param name - the profile's name
- * @returns the stored profile and the posting read for it, each null when there is none
- */
-export async function showProfile(home: string, name: string | undefined): Promise<Result<Fields>> {
-  const checkedName = profileName(name, 'profile show');
-  if (checkedName.error !== null) return checkedName;
-  const profile = await storedProfile(join(home, 'profiles', `${checkedName.data}.json`));
-  if (profile.error !== null) return profile;
-  const posting = await existingText(join(home, 'profiles', `${checkedName.data}.posting.md`));
-  if (posting.error !== null) return posting;
-  if (profile.data === null && posting.data === null)
-    return rejected('profile show', [issue.unknownProfile(checkedName.data)]);
-  return done({ name: checkedName.data, profile: profile.data, posting: posting.data });
-}
-
-async function storedProfile(path: string): Promise<Result<Profile | null>> {
-  const text = await existingText(path);
-  if (text.error !== null) return text;
-  if (text.data === null) return done(null);
-  const raw = text.data;
-  const value = trySync$((): unknown => JSON.parse(raw));
-  if (value.error !== null)
-    return rejected(
-      'profile show',
-      [coreIssue.invalidJson(`The file ${shown(path)}`)],
-      value.error,
-    );
-  const profile = Profile.safeParse(value.data);
-  if (profile.success === false)
-    return rejected('profile show', coreIssue.schemaIssues(profile.error, [], 'profile'));
-  return done(profile.data);
+// The names with a profile or a posting, each once.
+async function shownChoices() {
+  const stored = await home.list('profiles', '.json');
+  const postings = await home.list('profiles', '.posting.md');
+  const names = new Set([...stored, ...postings].map(file => file.stem));
+  return [...names].sort().map(value => ({ value }));
 }

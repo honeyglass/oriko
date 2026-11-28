@@ -1,116 +1,70 @@
 /**
- * The data folder: every CV in cvs/, and one profile per job posting in profiles/.
+ * The two folders oriko may use on adx, and the files a command finds in them.
  *
- * cvNames, profileNames: the CVs and the profiles of a data folder, by name.
- * heldCvs: the CVs of a data folder, or the refusal that it holds none.
- * chosenCv: the CV a command works on, from --cv, the profile, or the only CV there is.
- * profilePath: the file of one profile.
+ * home, work: the data folder `~/.oriko`, and the working directory of the call.
+ * cvFile, profileFile, postingFile: the file of one CV, of one profile and of its posting.
+ * cvNames, profileNames: the CVs and the profiles of the data folder, by name.
+ * isListed, targetIssue: whether a regular file stands at a place, and the refusal of a write
+ * whose target is a link to a file inside its root.
  *
- * A CV or a profile is found by its name among the files that exist, never by a path built from
- * the name alone, so a name cannot lead out of the folder.
+ * `--home` and the variable ORIKO_HOME move the data folder; adx keeps every path inside it and
+ * follows no link out of it. A missing default folder holds no CV and no profile.
  *
- * @example const cv = await chosenCv(home, values.cv, profile.cv);
+ * @example const names = await cvNames();
  */
-import { readdir, stat } from 'node:fs/promises';
-import { join } from 'node:path';
-import { $try } from '@honeyglass/utils/ts';
-import { done, rejected } from './errors.ts';
-import type { Issue, Result } from './errors.ts';
-import { isMissing, pathIssue } from './files.ts';
-import * as issue from './issues.ts';
+import { dirname, extname } from 'node:path';
+import { Refused, cwd, envDir, root } from '@honeyglass/adx';
+import type { File, Issue, Root } from '@honeyglass/adx';
+import { $try, shown } from '@honeyglass/utils/ts';
+import { targetNotAFile } from './issues.ts';
 
-const SUFFIX = '.json';
-const NO_FILES: string[] = [];
+export const home = root('home', envDir('ORIKO_HOME'));
+export const work = root('work', cwd);
 
-export type CvFile = { name: string; path: string };
+export const cvFile = (name: string) => home.file(`cvs/${name}.json`);
+export const profileFile = (name: string) => home.file(`profiles/${name}.json`);
+export const postingFile = (name: string) => home.file(`profiles/${name}.posting.md`);
+
+export const cvNames = async () => (await home.list('cvs', '.json')).map(file => file.stem);
+export const profileNames = async () =>
+  (await home.list('profiles', '.json')).map(file => file.stem);
 
 /**
- * @param home - the data folder
- * @param folder - 'cvs' or 'profiles'
- * @returns the names of the JSON files in that folder, in alphabetical order; none when it is missing
+ * A list of a root answers regular files only and follows no link, so it tells a file apart
+ * from a link to one.
+ *
+ * @param from - the root of the file
+ * @param file - the place to look at
+ * @returns whether a regular file stands there
  */
-async function namesIn(home: string, folder: 'cvs' | 'profiles') {
-  const files = await $try(readdir(join(home, folder)), { or: NO_FILES, expected: isMissing });
-  return files
-    .filter(file => file.endsWith(SUFFIX))
-    .map(file => file.slice(0, -SUFFIX.length))
-    .sort();
-}
-
-export const cvNames = (home: string) => namesIn(home, 'cvs');
-export const profileNames = (home: string) => namesIn(home, 'profiles');
-
-/**
- * @param home - the data folder
- * @param explicit - the name the caller passed with --cv, if any
- * @param fromProfile - the name the profile names in its field cv, if any
- * @returns the name and the path of the CV
- */
-export async function chosenCv(
-  home: string,
-  explicit?: string,
-  fromProfile?: string,
-): Promise<Result<CvFile>> {
-  const isMismatch =
-    explicit !== undefined && fromProfile !== undefined && explicit !== fromProfile;
-  if (isMismatch) return rejected('home', [issue.cvMismatch(explicit, fromProfile)]);
-  const cvs = await heldCvs(home);
-  if (cvs.error !== null) return cvs;
-  const names = cvs.data;
-  const name = explicit ?? fromProfile ?? (names.length === 1 ? names[0] : undefined);
-  if (name === undefined) return rejected('home', [issue.cvRequired()]);
-  if (names.includes(name)) return done({ name, path: join(home, 'cvs', `${name}${SUFFIX}`) });
-  return rejected('home', [
-    explicit === undefined ? issue.unknownCvOfProfile(name) : issue.unknownCv(name),
-  ]);
+export async function isListed(from: Root, file: File) {
+  const listed = await from.list(dirname(file.rel), extname(file.rel));
+  return listed.some(other => other.rel === file.rel);
 }
 
 /**
- * @param home - the data folder
- * @param name - the name of a profile, as profileNames() lists it
- * @returns the path of its file
- */
-export async function profilePath(home: string, name: string): Promise<Result<string>> {
-  const cvs = await heldCvs(home);
-  if (cvs.error !== null) return cvs;
-  const names = await profileNames(home);
-  if (names.includes(name) === false) return rejected('home', [issue.unknownProfile(name, names)]);
-  return done(join(home, 'profiles', `${name}${SUFFIX}`));
-}
-
-/**
- * The one place that decides a data folder holds no CV, so every command answers it alike.
+ * A write of adx follows a link at its target to a file inside the root and changes that file,
+ * so a command that writes a place the call names asks here first. The target must
+ * be free or a regular file. A link that leads nowhere or out of the root passes: adx replaces
+ * such a link. An edit needs no such check, since it writes only a file the list of its folder
+ * found.
  *
- * @param home - the data folder
- * @returns the names of its CVs; NO_CV when it holds none
+ * @param field - the field of the call that names the target
+ * @param from - the root of the target
+ * @param file - the target of the write
+ * @returns TARGET_NOT_A_FILE at the field for a link to a file inside the root, else nothing
  */
-export async function heldCvs(home: string): Promise<Result<string[]>> {
-  const names = await cvNames(home);
-  return names.length === 0 ? rejected('home', [await noCv(home)]) : done(names);
+export async function targetIssue<F extends string>(
+  field: F,
+  from: Root,
+  file: File,
+): Promise<Issue<F> | undefined> {
+  const isFile = await $try(async () => file.exists, { or: false, expected: leadsOut });
+  if (isFile === false || (await isListed(from, file))) return undefined;
+  const message = `${shown(file.rel)} is a link to another file, which the write would change`;
+  return targetNotAFile.at(field, message);
 }
 
-async function noCv(home: string) {
-  const exists = (await $try(stat(home), { or: null, expected: isMissing })) !== null;
-  return issue.noCv(home, exists);
-}
-
-/**
- * The data folder is checked once where a call enters, so every later list of it reads folders
- * that open; a missing folder is no issue, it holds no CV.
- *
- * @param home - the data folder of a call
- * @returns an issue when the folder, cvs/ or profiles/ is no folder or the system refuses it
- */
-export async function homeIssues(home: string): Promise<Issue[]> {
-  const info = await $try(stat(home));
-  if (info.error !== null)
-    return isMissing(info.error) ? [] : [pathIssue(info.error, home, 'home')];
-  if (info.data.isDirectory() === false) return [issue.notAFolder(home, 'home')];
-  return [...(await listIssues(join(home, 'cvs'))), ...(await listIssues(join(home, 'profiles')))];
-}
-
-async function listIssues(folder: string) {
-  const listed = await $try(readdir(folder));
-  if (listed.error === null || isMissing(listed.error)) return [];
-  return [pathIssue(listed.error, folder, 'home')];
-}
+// adx answers a link that leads out of its root with its own PATH_OUTSIDE, before any write.
+const leadsOut = (error: Error) =>
+  error instanceof Refused && error.issues.every(found => found.code === 'PATH_OUTSIDE');

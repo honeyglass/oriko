@@ -43,19 +43,23 @@ https://github.com/honeyglass/oriko#-quickstart; never run an installer yourself
 
 An option without a value lists the values it accepts, such as `oriko show --cv` for the CV names.
 
-`oriko schema` lists all commands and options.
-`oriko schema <name>` gives the accepted input of one, such as `oriko schema profile`.
+`oriko schema` lists every command with its input, the shapes, and every issue code with its kind and hint.
+`oriko schema <name>` gives the accepted input of one, such as `oriko schema profile`, with its fields and their limits.
 
 ## The data folder
 
-The data folder is `~/.oriko`; when the user names another one, pass `--home <folder>` to every command.
+The data folder is `~/.oriko`; when the user names another one, pass `--home <folder>` to every command, as an absolute path.
+`oriko` alone, a group without its action, and `oriko schema` take no `--home`: put `ORIKO_HOME=<folder>` in front of them instead, as in `ORIKO_HOME=<folder> oriko`, whose steps then carry `--home`.
 
 | Path                 | Content                                                                              |
 | :------------------- | :----------------------------------------------------------------------------------- |
 | 'cvs/NAME.json'      | one master CV: 'language', person, contact, 'pages' (the most pages allowed), blocks |
 | 'cvs/NAME.png'       | the photo of that master, shared by its profiles                                     |
+| 'placeholder.png'    | the photo a new master names until its first 'oriko photo set'                       |
 | 'profiles/NAME.json' | one profile per job posting; its field 'cv' names its master                         |
-| 'profiles/NAME.png'  | the photo of one profile, set with 'oriko photo set --profile NAME'                  |
+| 'profiles/NAME.png'  | the photo of one profile, set with 'oriko photo set --file FILE --profile NAME'      |
+
+A master made by an older oriko already holds 'cvs/NAME.png', so its first `oriko photo set` answers `ALREADY_EXISTS`: ask the user before you repeat it with `--replace`.
 
 A command finds its master through the profile, or through `--cv NAME`.
 Without either, oriko takes the only master; with several, it answers `CV_REQUIRED` and lists them.
@@ -95,12 +99,12 @@ Each such back edge is bounded: at most three returns, and the fourth refusal is
 | 'SCHEMA', 'UNKNOWN_BLOCK'                             | 2 Inspect, 3 Draft, 8 Write | fix the named path                                                                                 |
 | 'ITEM_NOT_IN_MASTER'                                  | 3 Draft, 4 Check            | drop the named item from the profile; when the user asked for that item, STOP and ask: the master is theirs |
 | 'FACT_CHANGED', 'LEVEL_RAISED', 'JOB_MOVED'           | 3 Draft, 4 Check            | take the named field, level or job back to the master's; a wrong fact in the master: STOP and ask  |
-| 'PROFILE_EXISTS', 'POSTING_EXISTS'                    | 1 Posting, 3 Draft          | add '--replace' when the user asked to revise that profile or it is this run's draft; else STOP and ask |
+| 'ALREADY_EXISTS'                                      | 1 Posting, 3 Draft          | add '--replace' when the user asked to revise that profile or it is this run's draft; else STOP and ask |
 | 'CV_EXISTS'                                           | 8 Write                     | STOP and ask: another name, or changes to that master                                              |
-| 'WRONG_EXTENSION', 'PATH_OUTSIDE', 'FOLDER_NOT_FOUND' | 5 Build                     | pass '--out' as a '.docx' or '.pdf' file inside the working directory                              |
-| 'UNKNOWN_STYLE', 'CREDITS_NEED_TERMINAL'              | 5 Build                     | keep '--style' and '--credits' as the user asked; when the two clash, STOP and ask                 |
-| 'URL_NOT_ALLOWED', 'PRIVATE_ADDRESS', 'HTTP_STATUS', 'TOO_MANY_REDIRECTS', 'ENCODING_NOT_ALLOWED', 'DOCUMENT_UNREADABLE', 'UNSUPPORTED_KIND', 'NO_TEXT' | 1 Posting, 7 Facts | STOP and ask the user for the text or a saved file; never fetch or save the page yourself |
-| 'CV_REQUIRED', 'UNKNOWN_CV', 'CV_MISMATCH', 'UNKNOWN_PROFILE' | any state | pass the name the user gave or 1 Posting chose; with none, STOP and ask |
+| 'WRONG_EXTENSION', 'PATH_OUTSIDE' at 'out'            | 5 Build                     | pass '--out' as a relative '.docx' or '.pdf' path inside the working directory                     |
+| 'NOT_IN_LIST' at 'style', 'CREDITS_NEED_TERMINAL'     | 5 Build                     | keep '--style' and '--credits' as the user asked; when the two clash, STOP and ask                 |
+| 'ADDRESS_NOT_ALLOWED', 'PRIVATE_ADDRESS', 'HTTP_STATUS', 'TOO_MANY_REDIRECTS', 'ENCODING_NOT_ALLOWED', 'DOCUMENT_UNREADABLE', 'UNSUPPORTED_KIND', 'NO_TEXT' | 1 Posting, 7 Facts | STOP and ask the user for the text or a saved file; never fetch or save the page yourself |
+| 'CV_REQUIRED', 'UNKNOWN_CV', 'CV_MISMATCH', 'NOT_IN_LIST' | any state | pass the name the user gave or 1 Posting chose; with none, STOP and ask |
 | any other code                                        | the state that made it      | run the issue's 'command', follow its 'hint'                                                       |
 
 Raising `pages` in a master, or cutting a fact from it, is the user's decision: STOP and ask.
@@ -172,7 +176,7 @@ A back edge with bound 3 returns at most three times; the fourth trigger leads t
 
 ### 0 Setup
 
-Find how to run oriko, then run `oriko` alone: it answers the data folder, its CVs and profiles.
+Find how to run oriko, then run `oriko` alone: it answers the commands and the first steps for the data folder.
 Then run `oriko cvs` and `oriko profiles`.
 
 - `oriko cvs` lists every master with its name, language and person, and whether it fits its pages.
@@ -211,7 +215,8 @@ Run `oriko show --cv NAME` for the outline, then `oriko show --cv NAME --block <
 Store the profile with `oriko profile set --profile NAME --json '<profile>'`: its field `cv` names the master, the rest only what differs.
 
 - The JSON is the whole profile; `oriko profile show --profile NAME` answers the stored one and its posting.
-- Revising, add `--replace`, and check `removed` in the answer: each part named there is gone from this profile.
+- Pass the profile with `--json`; through stdin it needs `--json -`, since piped text alone is ignored and the call is refused with `NOTHING_TO_STORE`.
+- Revising, add `--replace`, and check `changes.removed` in the answer: each part named there is gone from this profile. The same profile again needs no `--replace` and writes nothing.
 - `oriko profile set` refuses a changed fact or a wrong shape; page fit it answers in `fits` and `layout` without refusing, and 4 Check refuses it. Fix a refusal by 'Fixing a refusal'.
 
 - Read `./references/profile.md` for the format before the first draft.
@@ -243,7 +248,7 @@ Run `oriko plan --profile NAME`.
 
 Run `oriko build --profile NAME --out NAME.docx` in the user's working directory.
 
-- `--out` must be a `.docx` or `.pdf` path inside the current folder.
+- `--out` must be a relative `.docx` or `.pdf` path inside the current folder; a missing folder in it is created.
 - Build `NAME.pdf` when the user asks for a PDF; a PDF needs LibreOffice on the user's machine.
   The issue `NOT_INSTALLED` names how to install it: tell the user, never install it yourself.
 - Add `--dry-run` only when the user asked for a dry run.
@@ -258,7 +263,7 @@ Run `oriko build --profile NAME --out NAME.docx` in the user's working directory
 
 Show the preview, then say what changed and why.
 
-- Run `oriko preview --profile NAME --output text` and print the output unchanged in a code block.
+- Run `oriko preview --profile NAME --output text` and print the pages unchanged in a code block; the lines from `Next:` on are for you, not the user.
 - Name the profile file and the file written.
 - List what you hid, reordered, shortened and reworded, each with its reason from the posting.
   For a stored profile this run did not change, say so instead.
@@ -304,7 +309,7 @@ Run `oriko plan --cv NAME`.
 
 Show the preview, then say what you wrote.
 
-- Run `oriko preview --cv NAME --output text` and print the output unchanged in a code block.
+- Run `oriko preview --cv NAME --output text` and print the pages unchanged in a code block; the lines from `Next:` on are for you, not the user.
 - List every level you derived from the user's words, with the word, so the user can correct it.
 - List what a CV usually holds and the text did not give: education, phone, photo (`oriko photo set`).
 - Build a `.docx` only when the user asks for one: `oriko build --cv NAME --out NAME.docx`.

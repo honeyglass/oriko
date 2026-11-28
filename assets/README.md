@@ -27,9 +27,9 @@ This contact line from `examples/cvs/jane-doe.json` gets `phone.png` in front of
 ## Connections
 
 - **Uses:** nothing outside itself.
-- **Used by:** [classic/](../classic/README.md) puts the icons into the Word file,
-  [cv/](../cv/README.md) copies the placeholder for a new CV, and [pdf/](../pdf/README.md) hands
-  `fonts/` to LibreOffice.
+- **Used by:** [classic/](../classic/README.md) puts the icons into the Word file and names the
+  placeholder in the example of `oriko photo set`, [cv/](../cv/README.md) copies the placeholder
+  for a new CV, and [pdf/](../pdf/README.md) hands `fonts/` to LibreOffice.
 
 ---
 

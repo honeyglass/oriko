@@ -3,7 +3,7 @@
 A complete data folder with made-up people, to try oriko without a CV of your own.
 
 `cvs/` and `profiles/` are laid out like your own `~/.oriko`, so every command runs against them
-with `--home examples`. `showcase/` holds one agent run per example: the job posting, the
+with `--home "$PWD/examples"` from the root of the repository. `showcase/` holds one agent run per example: the job posting, the
 agent's report, the preview, and the built files in both styles.
 
 The tests compare the builds of the examples with the showcase files. A tour of the examples:
@@ -28,10 +28,10 @@ The tests compare the builds of the examples with the showcase files. A tour of 
 ## Example
 
 ```sh
-node bin/oriko.ts cvs --home examples
-node bin/oriko.ts profiles --home examples
-node bin/oriko.ts preview --profile galeria-cook --home examples
-node bin/oriko.ts plan --profile galeria-cook --home examples
+node bin/oriko.ts cvs --home "$PWD/examples"
+node bin/oriko.ts profiles --home "$PWD/examples"
+node bin/oriko.ts preview --profile galeria-cook --home "$PWD/examples"
+node bin/oriko.ts plan --profile galeria-cook --home "$PWD/examples"
 ```
 
 Run these from the root of the repository; [Sample data](../docs/sample-data.md) shows the same

@@ -7,42 +7,47 @@
  * terminal, piped: run oriko as a person at a terminal sees it, or as a program reads it, as text.
  * NEW_CV: the input of a second CV, 'erika'.
  *
+ * A call runs through run() of adx's test kit, with ORIKO_HOME at the test's data folder, since
+ * oriko alone takes no --home; adx then names that folder in every command of an answer. A test
+ * stands in for LibreOffice by replacing libreOffice.program of pdf/convert.ts, and for the
+ * network by replacing the calls of NODE_WEB in read/web.ts.
+ *
  * @example const { exit, answer } = await call(workspace(), ['plan']);
  */
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { run } from '@honeyglass/adx/test';
 import { z } from 'zod';
-import { run } from '../../cli/run.ts';
-import type { Web } from '../../read/web.ts';
+import { oriko } from '../../cli/oriko.ts';
 import { FIXTURE_URL, photo } from './fixture.ts';
-import { fakeWeb } from './web.ts';
 
 const Answer = z.looseObject({
   ok: z.boolean(),
+  // An issue of adx at no field, such as NO_CV, has no path.
   issues: z
-    .array(z.looseObject({ code: z.string(), path: z.string(), command: z.string().optional() }))
+    .array(
+      z.looseObject({
+        code: z.string(),
+        path: z.string().optional(),
+        command: z.string().optional(),
+      }),
+    )
     .optional(),
-  // A refusal says its next step in a sentence; a success lists its steps.
+  // Only a success names its next steps.
   next: z
-    .union([
-      z.string(),
-      z.array(
-        z.strictObject({
-          does: z.string(),
-          command: z.string().optional(),
-          needs: z.array(z.string()).optional(),
-        }),
-      ),
-    ])
+    .array(
+      z.strictObject({
+        does: z.string(),
+        command: z.string().optional(),
+        needs: z.array(z.string()).optional(),
+      }),
+    )
     .optional(),
 });
 
-/**
- * The data folder, the working directory, the network, which by default reaches nothing, and the
- * paths of LibreOffice's program, by default none.
- */
-export type Space = { home: string; cwd: string; web?: Web; soffice?: string[] };
+/** The data folder and the working directory of a test. */
+export type Space = { home: string; cwd: string };
 
 export const workspace = (): Space => {
   const home = mkdtempSync(join(tmpdir(), 'oriko-home-'));
@@ -80,20 +85,9 @@ export const terminal = async (space: Space, argv: string[]) =>
 export const piped = async (space: Space, argv: string[]) =>
   (await ran(space, argv, null, false)).out;
 
-async function ran(space: Space, argv: string[], stdin: string | null, isTTY: boolean) {
-  const { home, cwd, web = fakeWeb({}, {}).web, soffice = [] } = space;
-  let out = '';
-  const exit = await run(argv, {
-    home,
-    cwd,
-    web,
-    soffice,
-    isTTY,
-    stdin: async () => stdin,
-    write: text => (out += text),
-  });
-  return { exit, out };
-}
+// The variable places the data folder for every call, oriko alone too; a --home of the call wins.
+const ran = (space: Space, argv: string[], stdin: string | null, tty: boolean) =>
+  run(oriko, argv, { env: { ORIKO_HOME: space.home }, cwd: space.cwd, stdin, tty });
 
 export const NEW_CV = JSON.stringify({
   language: 'de',

@@ -1,107 +1,159 @@
 /**
- * The commands preview and build: the CV set on its pages, in the terminal or as a file.
+ * The commands `oriko preview` and `oriko build` on adx: the CV set on its pages, as text or a file.
  *
- * previewed: the pages of the CV as the terminal shows them.
- * build: the .docx or .pdf of the CV, written to --out.
+ * preview: the pages of the CV as the terminal shows them.
+ * build: the .docx or .pdf of the CV, written to --out inside the working directory.
  *
- * @example return build(call);
+ * Both combine the page plan of core/ with a look of classic/ or terminal/ and with pdf/, so they
+ * live in cli/, where features meet. The file of build is derived: every build makes it again
+ * from the CV, so it is replaced without --replace (adx decision 70), and others may read it.
+ *
+ * @example const { exit, out } = await run(oriko, ['build', '--out', 'cv.docx']);
  */
-import { done, rejected } from '../core/errors.ts';
-import type { Result } from '../core/errors.ts';
-import * as issue from './issues.ts';
-import { withCredits } from '../terminal/credits.ts';
-import type { Master } from '../core/cv.schema.ts';
-import { place } from '../core/place.ts';
-import type { Plan } from '../core/place.ts';
+import { effect, multiline, outFile, read, tell } from '@honeyglass/adx';
+import { shown } from '@honeyglass/utils/ts';
+import { z } from 'zod';
 import { render } from '../classic/docx.ts';
 import type { Engine } from '../classic/docx.ts';
-import { renderTerminal } from '../terminal/docx.ts';
-import { toPdf } from '../pdf/convert.ts';
-import { preview } from '../terminal/sheets.ts';
-import { photoBytes, writeAll } from '../core/files.ts';
+import { FILE_LIMITS } from '../core/files.limits.ts';
+import { home, targetIssue, work } from '../core/home.ts';
+import type { Issues, Stored } from '../core/issues.ts';
 import { checked } from '../core/load.ts';
-import { STYLES } from './commands.ts';
-import { outputPath } from './out.ts';
-import type { Call, Fields } from './types.ts';
+import type { Checked } from '../core/load.ts';
+import { cv, profile } from '../core/options.ts';
+import { fileOf, place } from '../core/place.ts';
+import type { Plan } from '../core/place.ts';
+import { cvChoices, profileChoices } from '../core/sources.ts';
+import { toPdf } from '../pdf/convert.ts';
+import { PDF_LIMITS } from '../pdf/limits.ts';
+import { withCredits } from '../terminal/credits.ts';
+import { renderTerminal } from '../terminal/docx.ts';
+import { preview as drawn } from '../terminal/sheets.ts';
+import * as issue from './issues.ts';
 
-export async function previewed(call: Call): Promise<Result<Fields>> {
-  const cv = await checked(call.home, call.values.cv, call.values.profile);
-  if (cv.error !== null) return cv;
-  const sheet = planned(cv.data, call.values.credits === true);
-  if (sheet.placed.error !== null) return sheet.placed;
-  return done({ preview: preview(sheet.cv, sheet.placed.data) });
+const STYLES = ['classic', 'terminal'] as const;
+const OUTPUTS = ['.docx', '.pdf'];
+
+const credits = z
+  .boolean()
+  .default(false)
+  .describe(
+    'names oriko and its author on the right of the last page; build takes it with --style terminal only',
+  );
+
+export const preview = read({
+  does: 'draws the pages in the terminal',
+  input: z.object({ cv, profile, credits }),
+  example: {},
+  values: { cv: cvChoices, profile: profileChoices },
+  output: z.object({ preview: multiline().describe('the pages, 84 characters wide') }),
+  run: async ({ cv, profile, credits }, { refuse }) => {
+    const sheet = await planned(cv, profile, credits);
+    if (Array.isArray(sheet)) return refuse(...sheet);
+    return { preview: drawn(sheet.loaded.master, sheet.plan) };
+  },
+  text: out => out.preview,
+  next: (_, { cv, profile }) => [build.step({ cv, profile })],
+});
+
+export const build = effect({
+  does: 'writes the Word file, or its PDF through LibreOffice',
+  input: z.object({
+    cv,
+    profile,
+    out: outFile(work).describe(
+      `the .docx or .pdf to write, a path inside the working directory; a .pdf needs LibreOffice, which may take at most ${PDF_LIMITS.pdfSeconds} seconds`,
+    ),
+    style: z
+      .enum(STYLES)
+      .default('classic')
+      .describe('the look of the file: classic, or terminal like the preview'),
+    credits,
+  }),
+  example: { out: 'cv.docx' },
+  values: { cv: cvChoices, profile: profileChoices },
+  replace: 'always',
+  check: ({ out, style, credits }) => [
+    ...(OUTPUTS.some(extension => out.rel.endsWith(extension))
+      ? []
+      : [issue.wrongExtension.at('out', `The output ${shown(out.rel)} is no .docx or .pdf file`)]),
+    ...(credits && style !== 'terminal'
+      ? [
+          issue.creditsNeedTerminal.at(
+            'credits',
+            'The option --credits works only in the terminal look',
+          ),
+        ]
+      : []),
+  ],
+  // A dry run sets the PDF too, so it answers the bytes the real run writes.
+  plan: async ({ cv, profile, out, style, credits }, { files, refuse }) => {
+    const sheet = await planned(cv, profile, credits);
+    if (Array.isArray(sheet)) return refuse(...sheet);
+    const blocked = await targetIssue('out', work, out);
+    if (blocked !== undefined) return refuse(blocked);
+    const isPdf = out.rel.endsWith('.pdf');
+    const docx = await rendered(sheet, style, isPdf ? 'libreoffice' : 'google');
+    if (Array.isArray(docx)) return refuse(...docx);
+    const file = isPdf ? await toPdf(docx) : docx;
+    if (Array.isArray(file)) return refuse(...file);
+    const written = files.write(out, file, { mode: 0o644 });
+    return { ...written, style, pages: sheet.plan.pages.length };
+  },
+  // A PDF is the finished file; only a .docx still goes through Google Docs.
+  next: out =>
+    out.file.endsWith('.docx')
+      ? [
+          tell(
+            'upload the .docx to Google Docs, then choose File, Download, PDF; or build a .pdf with LibreOffice',
+          ),
+        ]
+      : [],
+});
+
+/** The checked CV, with the credits when asked, and its page plan. */
+type Sheet = { loaded: Checked; plan: z.output<typeof Plan> };
+
+/**
+ * The credits join the last page the CV fills without them, so the plan is made twice.
+ *
+ * @param cv - the name `--cv` gives
+ * @param profile - the name `--profile` gives
+ * @param hasCredits - whether the call asks for the credits
+ * @returns the sheet; what the check or the page plan finds, below the file it lies in
+ */
+async function planned(
+  cv: string | undefined,
+  profile: string | undefined,
+  hasCredits: boolean,
+): Promise<Sheet | Issues<Stored>> {
+  const loaded = await checked(cv, profile);
+  if (Array.isArray(loaded)) return loaded;
+  const plan = place(loaded);
+  if (Array.isArray(plan)) return plan;
+  if (hasCredits === false) return { loaded, plan };
+  const credited = { ...loaded, master: withCredits(loaded.master, plan.pages.length) };
+  const again = place(credited);
+  return Array.isArray(again) ? again : { loaded: credited, plan: again };
 }
 
 /**
- * The CV as the terminal look sets it, and its plan; the credits join the last page it fills.
+ * Only the classic look shows the photo, so only it reads the photo file, through the root home
+ * with the photo byte limit. The terminal look sets alike in Google Docs and LibreOffice, so only
+ * the classic one takes the engine.
  *
- * @param cv - a checked CV
- * @param hasCredits - whether the call asks for the credits
- * @returns the CV, with the credits when asked, and its plan
+ * @param sheet - the checked CV and its plan
+ * @param style - the look of the file
+ * @param engine - the program that sets the .docx
+ * @returns the .docx; PHOTO_UNREADABLE below the file that names the photo
  */
-function planned(cv: Master, hasCredits: boolean) {
-  const placed = place(cv);
-  if (placed.error !== null || hasCredits === false) return { cv, placed };
-  const credited = withCredits(cv, placed.data.pages.length);
-  return { cv: credited, placed: place(credited) };
-}
-
-export async function build(call: Call): Promise<Result<Fields>> {
-  const options = await buildOptions(call);
-  if (options.error !== null) return options;
-  const { style, hasCredits, out } = options.data;
-  const cv = await checked(call.home, call.values.cv, call.values.profile);
-  if (cv.error !== null) return cv;
-  const sheet = planned(cv.data, hasCredits);
-  const placed = sheet.placed;
-  if (placed.error !== null) return placed;
-  const isPdf = out.name.endsWith('.pdf');
-  const engine = isPdf ? 'libreoffice' : 'google';
-  const docx = await rendered(call.home, sheet.cv, placed.data, style, engine);
-  if (docx.error !== null) return docx;
-  const file = isPdf ? await toPdf(docx.data, call.io.soffice) : docx;
-  if (file.error !== null) return file;
-  const isDryRun = call.values['dry-run'] === true;
-  const files = [{ path: out.path, content: file.data }];
-  const written = isDryRun ? done(undefined) : await writeAll(files, 'out');
-  if (written.error !== null) return written;
-  return done({
-    out: out.name,
-    style,
-    bytes: file.data.length,
-    pages: placed.data.pages.length,
-    written: isDryRun === false,
-  });
-}
-
-// The look, the credits and the file of a build, checked together so one refusal names them all.
-async function buildOptions(call: Call) {
-  const style = STYLES.find(known => known === (call.values.style ?? 'classic'));
-  const hasCredits = call.values.credits === true;
-  // The shell refuses a build without --out before it runs; '' would fail the extension check.
-  const out = await outputPath(call.io.cwd, call.values.out ?? '');
-  const issues = [
-    ...(style === undefined ? [issue.unknownStyle(call.values.style ?? '')] : []),
-    ...(hasCredits && style !== 'terminal' ? [issue.creditsNeedTerminal()] : []),
-    ...(out.error?.issues ?? []),
-  ];
-  if (style === undefined || out.error !== null)
-    return rejected('build', issues, out.error?.refusal.cause);
-  if (issues.length > 0) return rejected('build', issues);
-  return done({ style, hasCredits, out: out.data });
-}
-
-// Only the classic look shows the photo, so only it reads the photo file. The terminal look sets
-// alike in Google Docs and LibreOffice, so only the classic one takes the engine.
-async function rendered(
-  home: string,
-  cv: Master,
-  plan: Plan,
-  style: (typeof STYLES)[number],
-  engine: Engine,
-) {
-  if (style === 'terminal') return renderTerminal(cv, plan);
-  const picture = await photoBytes(home, cv.person.photo);
-  if (picture.error !== null) return picture;
-  return render(cv, plan, picture.data, engine);
+async function rendered({ loaded, plan }: Sheet, style: (typeof STYLES)[number], engine: Engine) {
+  if (style === 'terminal') return renderTerminal(loaded.master, plan);
+  const bytes = await home.file(loaded.master.person.photo).bytes(FILE_LIMITS.photoBytes);
+  // The photo lies in the file that holds `person.photo`: the profile when it sets one.
+  const file = fileOf(
+    loaded.cv,
+    loaded.profile,
+  )({ code: 'PHOTO_UNREADABLE', path: 'person.photo' });
+  return render(loaded.master, plan, { bytes, file }, engine);
 }

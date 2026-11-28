@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { withCredits } from '../../terminal/credits.ts';
-import { place } from '../../core/place.ts';
+import { pagePlan } from '../../core/place.ts';
 import { preview } from '../../terminal/sheets.ts';
 import { fixture, unwrap } from '../utils/fixture.ts';
 
-const text = preview(fixture(), unwrap(place(fixture())));
+const text = preview(fixture(), unwrap(pagePlan(fixture())));
 const lines = text.split('\n');
 
 test('shows every page with the blocks the plan puts on it', () => {
@@ -32,7 +32,7 @@ test('continues a long job title on the timeline, below the title text', () => {
   const cv = fixture();
   const job = cv.blocks[0];
   if (job?.kind === 'job') job.title = 'Apprenticeship IT Specialist for System Integration';
-  const sheet = preview(cv, unwrap(place(cv))).split('\n');
+  const sheet = preview(cv, unwrap(pagePlan(cv))).split('\n');
   const first = sheet.findIndex(line => line.includes('● Apprenticeship IT Specialist for'));
   assert.match(sheet[first + 1] ?? '', /^│ │ System Integration +│/);
 });
@@ -41,7 +41,7 @@ test('wraps a long rated name instead of cutting it off', () => {
   const cv = fixture();
   const rated = cv.blocks.find(block => block.kind === 'rated');
   if (rated?.kind === 'rated') rated.items[0] = { name: 'Event-driven systems at scale', level: 5 };
-  const sheet = preview(cv, unwrap(place(cv))).split('\n');
+  const sheet = preview(cv, unwrap(pagePlan(cv))).split('\n');
   const first = sheet.findIndex(line => /│   Event-driven\s+●●●●● │$/.test(line));
   assert.match(sheet[first + 1] ?? '', /│   systems at scale {8}│$/);
 });
@@ -71,7 +71,7 @@ test('starts both columns of page 1 on one row, with a blank row below the conta
   assert.equal(rightCell(lines[10] ?? ''), '');
   const cv = fixture();
   cv.contact.items.pop();
-  const shorter = preview(cv, unwrap(place(cv))).split('\n');
+  const shorter = preview(cv, unwrap(pagePlan(cv))).split('\n');
   assert.equal(rowOf(shorter, 'SKILLS'), 10);
   assert.equal(rowOf(shorter, 'PROFESSIONAL EXPERIENCE'), 10);
 });
@@ -99,7 +99,7 @@ test('names only the page in the top edge of every sheet', () => {
 // The credits pin to the last page; only a word longer than the column breaks at its slash.
 test('shows the credits on the right of the last page, the address broken after a slash', () => {
   const cv = withCredits(fixture(), 2);
-  const sheet = preview(cv, unwrap(place(cv))).split('\n');
+  const sheet = preview(cv, unwrap(pagePlan(cv))).split('\n');
   const heading = sheet.findIndex(line => /│ MADE WITH ─+ │$/.test(line));
   assert.ok(heading > sheet.findIndex(line => line.startsWith('╭─ Page 2')));
   assert.deepEqual(

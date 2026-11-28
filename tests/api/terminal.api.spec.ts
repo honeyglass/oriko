@@ -2,13 +2,13 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import JSZip from 'jszip';
 import { withCredits } from '../../terminal/credits.ts';
-import { place } from '../../core/place.ts';
+import { pagePlan } from '../../core/place.ts';
 import { preview } from '../../terminal/sheets.ts';
 import { renderTerminal } from '../../terminal/docx.ts';
 import { fixture, unwrap } from '../utils/fixture.ts';
 
-const plan = () => unwrap(place(fixture()));
-const build = async () => unwrap(await renderTerminal(fixture(), plan()));
+const plan = () => unwrap(pagePlan(fixture()));
+const build = () => renderTerminal(fixture(), plan());
 
 // The text of each paragraph, page by page, as Google Docs reads it.
 async function pages() {
@@ -54,7 +54,7 @@ test('gives every page as many lines as the tallest page can hold', async () => 
 // The column breaks the address over two lines, so each of them is a link.
 test('links the address of oriko in the credits, and nothing without them', async () => {
   const cv = withCredits(fixture(), 2);
-  const zip = await JSZip.loadAsync(unwrap(await renderTerminal(cv, unwrap(place(cv)))));
+  const zip = await JSZip.loadAsync(await renderTerminal(cv, unwrap(pagePlan(cv))));
   const xml = (await zip.file('word/document.xml')?.async('string')) ?? '';
   const rels = (await zip.file('word/_rels/document.xml.rels')?.async('string')) ?? '';
   assert.equal(xml.split('<w:hyperlink').length - 1, 2);

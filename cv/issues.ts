@@ -1,16 +1,14 @@
 /**
- * The issues the CV commands raise, each made by one function.
+ * The code the CV commands raise on adx, declared once with its kind and hint.
  *
  * cvExists: an init with the name of a CV the data folder already holds.
  *
- * @example if (names.includes(name)) return rejected('init', [issue.cvExists(name)]);
+ * @example return refuse(issue.cvExists.at('cv', `The data folder already holds a CV ${shown(cv)}`));
  */
-import { shown } from '@honeyglass/utils/ts';
-import type { Issue } from '../core/errors.ts';
+import { code } from '@honeyglass/adx';
 
-export const cvExists = (name: string): Issue => ({
-  code: 'CV_EXISTS',
-  path: 'cv',
-  message: `The data folder already holds a CV ${shown(name)}`,
-  hint: 'Choose another name, or change that CV with cv update and the block commands',
-});
+export const cvExists = code(
+  'CV_EXISTS',
+  'fix',
+  'Choose another name, or change that CV with cv update and the block commands',
+);

@@ -19,8 +19,8 @@ import { brotliDecompressSync, gunzipSync, inflateSync } from 'node:zlib';
 import { $try, trySync$ } from '@honeyglass/utils/ts';
 import { done, rejected } from '../core/errors.ts';
 import type { Result } from '../core/errors.ts';
-import * as issue from './issues.ts';
-import * as coreIssue from '../core/issues.ts';
+import * as issue from './issues.data.ts';
+import * as coreIssue from '../core/issues.data.ts';
 import { FILE_LIMITS } from '../core/files.limits.ts';
 import { pipedBytes } from '../core/files.ts';
 import { isPublic } from './address.ts';
@@ -57,20 +57,20 @@ export async function download(link: string, web: Web, option: string): Promise<
     if (location === null) return bodyOf(answer, option);
     next = location;
   }
-  return rejected('read', [issue.tooManyRedirects(option)]);
+  return rejected([issue.tooManyRedirects(option)]);
 }
 
 // One hop: the URL and the address pass their lists before anything is sent.
 async function requested(link: string, web: Web, signal: AbortSignal, option: string) {
   const url = URL.parse(link);
-  if (url === null) return rejected('read', [issue.urlNotAllowed(option, link, 'is no URL')]);
+  if (url === null) return rejected([issue.urlNotAllowed(option, link, 'is no URL')]);
   const problem = urlProblem(url);
-  if (problem !== null) return rejected('read', [issue.urlNotAllowed(option, link, problem)]);
+  if (problem !== null) return rejected([issue.urlNotAllowed(option, link, problem)]);
   const address = await publicAddress(hostOf(url), web, option);
   if (address.error !== null) return address;
   const answer = await $try(web.get({ address: address.data, url, signal }));
   if (answer.error !== null)
-    return rejected('read', [issue.networkFailed(option, url, answer.error)], answer.error);
+    return rejected([issue.networkFailed(option, url, answer.error)], answer.error);
   return done({ url, answer: answer.data });
 }
 
@@ -86,11 +86,12 @@ const hostOf = (url: URL) => url.hostname.replace(/^\[|\]$/g, '');
 
 // A host written as an address is that address; a name is the first public address it resolves to.
 async function publicAddress(host: string, web: Web, option: string): Promise<Result<string>> {
-  const candidates = isIP(host) === 0 ? await $try(web.lookup(host)) : done([host]);
+  const candidates =
+    isIP(host) === 0 ? await $try(web.lookup(host)) : { data: [host], error: null };
   if (candidates.error !== null)
-    return rejected('read', [issue.lookupFailed(option, host, candidates.error)], candidates.error);
+    return rejected([issue.lookupFailed(option, host, candidates.error)], candidates.error);
   const address = candidates.data.find(isPublic);
-  if (address === undefined) return rejected('read', [issue.privateAddress(option, host)]);
+  if (address === undefined) return rejected([issue.privateAddress(option, host)]);
   return done(address);
 }
 
@@ -113,22 +114,21 @@ const UNPACK: Record<string, ((body: Buffer) => Buffer) | undefined> = {
 
 async function bodyOf(answer: Answer, option: string): Promise<Result<Buffer>> {
   if (answer.status === 429 || answer.status >= 500)
-    return rejected('read', [issue.serverBusy(option, answer.status)]);
+    return rejected([issue.serverBusy(option, answer.status)]);
   if (answer.status < 200 || answer.status > 299)
-    return rejected('read', [issue.httpStatus(option, answer.status)]);
+    return rejected([issue.httpStatus(option, answer.status)]);
   const encoding = (answer.encoding ?? 'identity').trim().toLowerCase();
   const unpack = Object.hasOwn(UNPACK, encoding) ? UNPACK[encoding] : undefined;
-  if (unpack === undefined) return rejected('read', [issue.encodingNotAllowed(option, encoding)]);
+  if (unpack === undefined) return rejected([issue.encodingNotAllowed(option, encoding)]);
   const body = await $try(pipedBytes(answer.body, FILE_LIMITS.readBytes));
-  if (body.error !== null)
-    return rejected('read', [issue.bodyFailed(option, body.error)], body.error);
+  if (body.error !== null) return rejected([issue.bodyFailed(option, body.error)], body.error);
   if (body.data.length > FILE_LIMITS.readBytes)
-    return rejected('read', [coreIssue.tooLarge(option, FILE_LIMITS.readBytes)]);
+    return rejected([coreIssue.tooLarge(option, FILE_LIMITS.readBytes)]);
   const unpacked = trySync$(() => unpack(body.data));
   if (unpacked.error === null) return done(unpacked.data);
   const isTooLarge = 'code' in unpacked.error && unpacked.error.code === 'ERR_BUFFER_TOO_LARGE';
-  if (isTooLarge) return rejected('read', [coreIssue.tooLarge(option, FILE_LIMITS.readBytes)]);
-  return rejected('read', [issue.notUnpacked(option, encoding)], unpacked.error);
+  if (isTooLarge) return rejected([coreIssue.tooLarge(option, FILE_LIMITS.readBytes)]);
+  return rejected([issue.notUnpacked(option, encoding)], unpacked.error);
 }
 
 // Node's calls; agent false, so no connection is shared with a host that passed another check.

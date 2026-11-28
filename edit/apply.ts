@@ -1,27 +1,34 @@
 /**
- * The edit commands on one CV: whole blocks, items inside a block, the person and the contact lines.
+ * One edit applied to a CV: whole blocks, items inside a block, the person and the contact lines.
  *
- * apply: the CV after one command, or the issues that refuse it.
- * COMMANDS: the names of the commands.
+ * apply: the CV after one edit, or the issues that refuse it, each at a field of the edit.
  *
- * A command never changes the master it was given, and its result passes the same check as a
- * master file read from disk, so an edit cannot write what a later read would refuse.
+ * An edit never changes the CV it was given, and its result passes the same check as a CV read
+ * from disk, so an edit cannot write what a later read would refuse. An issue that lies in the
+ * CV stands below `cv`, such as `cv.blocks.skills.items`; one the edit brings in stands at the
+ * field that names the change, such as `block.id` for a duplicate id (adx decision 69). A part
+ * whose shape the kind of the block picks is checked with adx's check (adx decision 78).
  *
  * @example const edited = apply(master, 'block move', { id: 'awards', page: 2 });
  */
-import { done, rejected } from '../core/errors.ts';
-import type { Issue, Result } from '../core/errors.ts';
-import * as issue from './issues.ts';
-import * as coreIssue from '../core/issues.ts';
+import { check } from '@honeyglass/adx';
+import type { Field, Issue } from '@honeyglass/adx';
+import { shown } from '@honeyglass/utils/ts';
+import type { z } from 'zod';
+import { check as checkCv, laidOver } from '../core/check.ts';
 import { COLUMN } from '../core/cv.limits.ts';
-import { check, patched } from '../core/check.ts';
-import { Block, ContactItem, ITEM, ITEM_PATCH, Master } from '../core/cv.schema.ts';
-import { INPUT } from './edit.schema.ts';
+import { Block, ContactItem, ITEM, ITEM_PATCH, Item, Master, PATCH } from '../core/cv.schema.ts';
+import type { Issue as Found } from '../core/errors.ts';
+import { issueAt, unknownBlock } from '../core/issues.ts';
+import type { Issues } from '../core/issues.ts';
+import type { EditName, INPUT } from './edit.schema.ts';
+import * as issue from './issues.ts';
 
-type Command = keyof typeof INPUT;
-type Handler = (master: Master, input: unknown) => Result<Master>;
+type Input<N extends EditName> = z.output<(typeof INPUT)[N]>;
+type Refused<N extends EditName> = Issues<Field<(typeof INPUT)[N]>>;
+type Handlers = { [N in EditName]: (master: Master, input: Input<N>) => Master | Refused<N> };
 
-const HANDLERS: Record<Command, Handler> = {
+const HANDLERS: Handlers = {
   'block add': addBlock,
   'block update': updateBlock,
   'block remove': removeBlock,
@@ -37,81 +44,100 @@ const HANDLERS: Record<Command, Handler> = {
   'contact move': moveContact,
 };
 
-export const COMMANDS = Object.keys(HANDLERS);
-
-const isCommand = (name: string): name is Command => Object.hasOwn(HANDLERS, name);
+/**
+ * @param master - the CV as stored, past its schema
+ * @param command - the name of the edit, such as 'item update'
+ * @param input - the input of the edit, past the schema of its command
+ * @returns the edited CV, checked like one read from disk, or every issue of the first check
+ *   that failed
+ */
+export function apply<N extends EditName>(
+  master: Master,
+  command: N,
+  input: Input<N>,
+): Master | Refused<N> {
+  const handler: Handlers[N] = HANDLERS[command];
+  return handler(master, input);
+}
 
 /**
- * @param master - the parsed master file
- * @param command - the name of the command, such as 'item update'
- * @param input - the input of the command, unchecked
- * @returns the edited master file, checked like one read from disk
+ * The check of a CV read from disk, on the edited CV. An issue the CV raised before the edit
+ * lies in the CV; any other the edit brought, at the field that names what it changed. Only a
+ * block edit can bring one, so every other edit names `cv`.
  */
-export function apply(master: unknown, command: string, input: unknown): Result<Master> {
-  if (isCommand(command) === false)
-    return rejected('edit', [issue.unknownCommand(command, COMMANDS)]);
-  const parsed = Master.safeParse(master);
-  if (parsed.success === false)
-    return rejected(command, coreIssue.schemaIssues(parsed.error, [], 'master'));
-  const edited = HANDLERS[command](parsed.data, input);
-  if (edited.error !== null) return edited;
-  const checked = check(edited.data);
-  if (checked.error !== null) return rejected(command, checked.error.issues);
-  return edited;
+function checked<F extends string>(
+  before: Master,
+  after: Master,
+  changed: F,
+): Master | Issues<F | 'cv'> {
+  const result = checkCv(after);
+  if (result.error === null) return after;
+  const old = new Set((checkCv(before).error?.issues ?? []).map(keyOf));
+  const [first, ...rest] = result.error.issues.map(found =>
+    old.has(keyOf(found)) ? inCv(found) : broughtIn(found, changed),
+  );
+  return first === undefined ? after : [first, ...rest];
 }
 
-function addBlock(master: Master, input: unknown): Result<Master> {
-  const parsed = INPUT['block add'].safeParse(input);
-  if (parsed.success === false)
-    return rejected('block add', coreIssue.schemaIssues(parsed.error, [], 'block add'));
-  const { block, before, after } = parsed.data;
-  const issues = anchorIssues(master, block, before, after);
-  if (issues.length > 0) return rejected('block add', issues);
-  return done({ ...master, blocks: inserted(master.blocks, block, before, after) });
+const keyOf = (found: Found) => `${found.code} ${found.path}`;
+
+const inCv = (found: Found) => issueAt(['cv', ...found.path.split('.')], found, Master);
+
+// A duplicate id lies in the id of the new block; any other issue in the change as a whole.
+const broughtIn = <F extends string>(found: Found, changed: F) =>
+  issueAt(found.code === 'DUPLICATE_ID' ? [changed, 'id'] : [changed], found, Master);
+
+const missing = <F extends string>(field: F, id: string) =>
+  unknownBlock.at(field, `No block has the id ${shown(id)}`);
+
+function addBlock(master: Master, input: Input<'block add'>): Master | Refused<'block add'> {
+  const { block, before, after } = input;
+  const anchor = anchorIssue(master, block, before, after);
+  if (anchor !== undefined) return [anchor];
+  return checked(
+    master,
+    { ...master, blocks: inserted(master.blocks, block, before, after) },
+    'block',
+  );
 }
 
-function updateBlock(master: Master, input: unknown): Result<Master> {
-  const parsed = INPUT['block update'].safeParse(input);
-  if (parsed.success === false)
-    return rejected('block update', coreIssue.schemaIssues(parsed.error, [], 'block update'));
-  const block = master.blocks.find(candidate => candidate.id === parsed.data.id);
-  if (block === undefined)
-    return rejected('block update', [coreIssue.unknownBlock(parsed.data.id, 'id')]);
-  const issues: Issue[] = [];
-  const changed = patched(block, parsed.data.set, issues);
-  if (issues.length > 0) return rejected('block update', issues);
-  return done(replaced(master, changed));
+function updateBlock(
+  master: Master,
+  input: Input<'block update'>,
+): Master | Refused<'block update'> {
+  const block = master.blocks.find(candidate => candidate.id === input.id);
+  if (block === undefined) return [missing('id', input.id)];
+  const patch = check(PATCH[block.kind], input.set, ['set'], { as: Block });
+  if (patch.issues !== null) return patch.issues;
+  const changed = check(Block, laidOver(block, patch.data), ['set']);
+  if (changed.issues !== null) return changed.issues;
+  return checked(master, replaced(master, changed.data), 'set');
 }
 
-function removeBlock(master: Master, input: unknown): Result<Master> {
-  const parsed = INPUT['block remove'].safeParse(input);
-  if (parsed.success === false)
-    return rejected('block remove', coreIssue.schemaIssues(parsed.error, [], 'block remove'));
-  const { id } = parsed.data;
-  const exists = master.blocks.some(block => block.id === id);
-  if (exists === false) return rejected('block remove', [coreIssue.unknownBlock(id, 'id')]);
-  return done({ ...master, blocks: master.blocks.filter(block => block.id !== id) });
+function removeBlock(
+  master: Master,
+  input: Input<'block remove'>,
+): Master | Refused<'block remove'> {
+  const exists = master.blocks.some(block => block.id === input.id);
+  if (exists === false) return [missing('id', input.id)];
+  const blocks = master.blocks.filter(block => block.id !== input.id);
+  return checked(master, { ...master, blocks }, 'id');
 }
 
-function moveBlock(master: Master, input: unknown): Result<Master> {
-  const parsed = INPUT['block move'].safeParse(input);
-  if (parsed.success === false)
-    return rejected('block move', coreIssue.schemaIssues(parsed.error, [], 'block move'));
-  const { id, before, after, page } = parsed.data;
+function moveBlock(master: Master, input: Input<'block move'>): Master | Refused<'block move'> {
+  const { id, before, after, page } = input;
   const block = master.blocks.find(candidate => candidate.id === id);
-  if (block === undefined) return rejected('block move', [coreIssue.unknownBlock(id, 'id')]);
+  if (block === undefined) return [missing('id', id)];
   const hasNothing = before === undefined && after === undefined && page === undefined;
-  if (hasNothing) return rejected('block move', [issue.nothingToDo()]);
-  const issues = anchorIssues(master, block, before, after);
-  const pinned = page === undefined ? block : patched(block, { page }, issues);
-  if (issues.length > 0) return rejected('block move', issues);
+  if (hasNothing) return [issue.nothingToDo.issue('The input names no new place for the block')];
+  const anchor = anchorIssue(master, block, before, after);
+  if (anchor !== undefined) return [anchor];
+  // The page passed the input's schema, so the block with it passes its own.
+  const pinned = page === undefined ? block : Block.parse(laidOver(block, { page }));
   const others = master.blocks.filter(candidate => candidate.id !== id);
   const stays = before === undefined && after === undefined;
-  return done(
-    stays
-      ? replaced(master, pinned)
-      : { ...master, blocks: inserted(others, pinned, before, after) },
-  );
+  const blocks = stays ? replaced(master, pinned).blocks : inserted(others, pinned, before, after);
+  return checked(master, { ...master, blocks }, 'id');
 }
 
 const replaced = (master: Master, block: Block): Master => ({
@@ -120,25 +146,26 @@ const replaced = (master: Master, block: Block): Master => ({
 });
 
 // An anchor is a block of the same column, since the order of a column is all a move can change.
-function anchorIssues(
+function anchorIssue(
   master: Master,
   block: Block,
   before: string | undefined,
   after: string | undefined,
-): Issue[] {
-  if (before !== undefined && after !== undefined) return [issue.bothAnchors()];
+): Issue<'before' | 'after'> | undefined {
+  if (before !== undefined && after !== undefined)
+    return issue.bothAnchors.at('after', 'The input names two anchors');
   const id = before ?? after;
-  if (id === undefined) return [];
+  if (id === undefined) return undefined;
   const path = before === undefined ? 'after' : 'before';
   const anchor = master.blocks.find(candidate => candidate.id === id);
-  if (anchor === undefined) return [coreIssue.unknownBlock(id, path)];
+  if (anchor === undefined) return missing(path, id);
   const column = COLUMN[block.kind];
-  if (COLUMN[anchor.kind] === column) return [];
-  const sameColumn = master.blocks.filter(
-    candidate => COLUMN[candidate.kind] === column && candidate.id !== block.id,
-  );
-  const others = sameColumn.map(candidate => candidate.id);
-  return [issue.otherColumn(block.id, id, column, path, others)];
+  if (COLUMN[anchor.kind] === column) return undefined;
+  const others = master.blocks
+    .filter(candidate => COLUMN[candidate.kind] === column && candidate.id !== block.id)
+    .map(candidate => candidate.id);
+  const message = `The block ${shown(block.id)} stands in the ${column} column, the anchor ${shown(id)} does not; the anchors of the ${column} column: ${others.join(', ')}`;
+  return issue.otherColumn.at(path, message);
 }
 
 // Without an anchor a block goes to the end, which is the end of its own column too.
@@ -154,176 +181,141 @@ function inserted(
   return [...blocks.slice(0, at), block, ...blocks.slice(at)];
 }
 
-function addItem(master: Master, input: unknown): Result<Master> {
-  const parsed = INPUT['item add'].safeParse(input);
-  if (parsed.success === false)
-    return rejected('item add', coreIssue.schemaIssues(parsed.error, [], 'item add'));
-  const block = master.blocks.find(candidate => candidate.id === parsed.data.block);
-  if (block === undefined)
-    return rejected('item add', [coreIssue.unknownBlock(parsed.data.block, 'block')]);
-  const value = ITEM[block.kind].safeParse(parsed.data.value);
-  if (value.success === false)
-    return rejected('item add', coreIssue.schemaIssues(value.error, ['value'], 'item'));
-  const items = added(itemsOf(block), value.data, parsed.data.index, 'item add');
-  if (items.error !== null) return items;
-  return withItems(master, block, items.data, 'item add');
+function addItem(master: Master, input: Input<'item add'>): Master | Refused<'item add'> {
+  const block = master.blocks.find(candidate => candidate.id === input.block);
+  if (block === undefined) return [missing('block', input.block)];
+  const value = check(ITEM[block.kind], input.value, ['value'], { as: Item });
+  if (value.issues !== null) return value.issues;
+  const items = added(itemsOf(block), value.data, input.index);
+  if (Array.isArray(items) === false) return [items];
+  return withItems(master, block, items);
 }
 
-function updateItem(master: Master, input: unknown): Result<Master> {
-  const parsed = INPUT['item update'].safeParse(input);
-  if (parsed.success === false)
-    return rejected('item update', coreIssue.schemaIssues(parsed.error, [], 'item update'));
-  const block = master.blocks.find(candidate => candidate.id === parsed.data.block);
-  if (block === undefined)
-    return rejected('item update', [coreIssue.unknownBlock(parsed.data.block, 'block')]);
-  const value = ITEM_PATCH[block.kind].safeParse(parsed.data.value);
-  if (value.success === false)
-    return rejected('item update', coreIssue.schemaIssues(value.error, ['value'], 'item'));
-  const items = updated(itemsOf(block), parsed.data.index, value.data, 'item update');
-  if (items.error !== null) return items;
-  return withItems(master, block, items.data, 'item update');
+function updateItem(master: Master, input: Input<'item update'>): Master | Refused<'item update'> {
+  const block = master.blocks.find(candidate => candidate.id === input.block);
+  if (block === undefined) return [missing('block', input.block)];
+  const value = check(ITEM_PATCH[block.kind], input.value, ['value'], { as: Item });
+  if (value.issues !== null) return value.issues;
+  const items = updated(itemsOf(block), input.index, value.data);
+  if (Array.isArray(items) === false) return [items];
+  return withItems(master, block, items);
 }
 
-function removeItem(master: Master, input: unknown): Result<Master> {
-  const parsed = INPUT['item remove'].safeParse(input);
-  if (parsed.success === false)
-    return rejected('item remove', coreIssue.schemaIssues(parsed.error, [], 'item remove'));
-  const block = master.blocks.find(candidate => candidate.id === parsed.data.block);
-  if (block === undefined)
-    return rejected('item remove', [coreIssue.unknownBlock(parsed.data.block, 'block')]);
-  const items = removed(itemsOf(block), parsed.data.index, 'item remove');
-  if (items.error !== null) return items;
-  return withItems(master, block, items.data, 'item remove');
+function removeItem(master: Master, input: Input<'item remove'>): Master | Refused<'item remove'> {
+  const block = master.blocks.find(candidate => candidate.id === input.block);
+  if (block === undefined) return [missing('block', input.block)];
+  const items = removed(itemsOf(block), input.index);
+  if (Array.isArray(items) === false) return [items];
+  return withItems(master, block, items);
 }
 
-function moveItem(master: Master, input: unknown): Result<Master> {
-  const parsed = INPUT['item move'].safeParse(input);
-  if (parsed.success === false)
-    return rejected('item move', coreIssue.schemaIssues(parsed.error, [], 'item move'));
-  const block = master.blocks.find(candidate => candidate.id === parsed.data.block);
-  if (block === undefined)
-    return rejected('item move', [coreIssue.unknownBlock(parsed.data.block, 'block')]);
-  const items = moved(itemsOf(block), parsed.data.index, parsed.data.to, 'item move');
-  if (items.error !== null) return items;
-  return withItems(master, block, items.data, 'item move');
+function moveItem(master: Master, input: Input<'item move'>): Master | Refused<'item move'> {
+  const block = master.blocks.find(candidate => candidate.id === input.block);
+  if (block === undefined) return [missing('block', input.block)];
+  const items = moved(itemsOf(block), input.index, input.to);
+  if (Array.isArray(items) === false) return [items];
+  return withItems(master, block, items);
 }
 
 const itemsOf = (block: Block): unknown[] => (block.kind === 'job' ? block.bullets : block.items);
 
-// The new items are unchecked, so the block passes its schema again before it enters the master.
-function withItems(master: Master, block: Block, items: unknown[], step: string): Result<Master> {
+// The new items are unchecked, so the block passes its schema again before it enters the CV.
+function withItems(master: Master, block: Block, items: unknown[]): Master | Issues<'cv'> {
   const candidate = block.kind === 'job' ? { ...block, bullets: items } : { ...block, items };
-  const parsed = Block.safeParse(candidate);
-  if (parsed.success === false)
-    return rejected(step, coreIssue.schemaIssues(parsed.error, ['blocks', block.id], 'block'));
-  return done(replaced(master, parsed.data));
+  const parsed = check(Block, candidate, ['cv', 'blocks', block.id]);
+  if (parsed.issues !== null) return parsed.issues;
+  return checked(master, replaced(master, parsed.data), 'cv');
 }
 
 // The photo stays out of reach here: 'oriko photo set' writes the picture and its path together.
-function updateCv(master: Master, input: unknown): Result<Master> {
-  const parsed = INPUT['cv update'].safeParse(input);
-  if (parsed.success === false)
-    return rejected('cv update', coreIssue.schemaIssues(parsed.error, [], 'cv update'));
-  const { person, contact, ...rest } = parsed.data;
-  return done({
+function updateCv(master: Master, input: Input<'cv update'>): Master | Refused<'cv update'> {
+  const { cv, person, contact, ...rest } = input;
+  const edited = {
     ...master,
     ...rest,
     person: { ...master.person, ...person },
     contact: { ...master.contact, ...contact },
-  });
+  };
+  return checked(master, edited, 'cv');
 }
 
-function addContact(master: Master, input: unknown): Result<Master> {
-  const parsed = INPUT['contact add'].safeParse(input);
-  if (parsed.success === false)
-    return rejected('contact add', coreIssue.schemaIssues(parsed.error, [], 'contact add'));
-  const value = ContactItem.safeParse(parsed.data.value);
-  if (value.success === false)
-    return rejected('contact add', coreIssue.schemaIssues(value.error, ['value'], 'contact'));
-  const items = added(master.contact.items, value.data, parsed.data.index, 'contact add');
-  if (items.error !== null) return items;
-  return withContact(master, items.data, 'contact add');
+function addContact(master: Master, input: Input<'contact add'>): Master | Refused<'contact add'> {
+  const items = added(master.contact.items, input.value, input.index);
+  if (Array.isArray(items) === false) return [items];
+  return withContact(master, items);
 }
 
-function updateContact(master: Master, input: unknown): Result<Master> {
-  const parsed = INPUT['contact update'].safeParse(input);
-  if (parsed.success === false)
-    return rejected('contact update', coreIssue.schemaIssues(parsed.error, [], 'contact update'));
-  const value = ContactItem.partial().safeParse(parsed.data.value);
-  if (value.success === false)
-    return rejected('contact update', coreIssue.schemaIssues(value.error, ['value'], 'contact'));
-  const items = updated(master.contact.items, parsed.data.index, value.data, 'contact update');
-  if (items.error !== null) return items;
-  return withContact(master, items.data, 'contact update');
+function updateContact(
+  master: Master,
+  input: Input<'contact update'>,
+): Master | Refused<'contact update'> {
+  const value = check(ContactItem.partial(), input.value, ['value'], { as: ContactItem });
+  if (value.issues !== null) return value.issues;
+  const items = updated(master.contact.items, input.index, value.data);
+  if (Array.isArray(items) === false) return [items];
+  return withContact(master, items);
 }
 
-function removeContact(master: Master, input: unknown): Result<Master> {
-  const parsed = INPUT['contact remove'].safeParse(input);
-  if (parsed.success === false)
-    return rejected('contact remove', coreIssue.schemaIssues(parsed.error, [], 'contact remove'));
-  const items = removed(master.contact.items, parsed.data.index, 'contact remove');
-  if (items.error !== null) return items;
-  return withContact(master, items.data, 'contact remove');
+function removeContact(
+  master: Master,
+  input: Input<'contact remove'>,
+): Master | Refused<'contact remove'> {
+  const items = removed(master.contact.items, input.index);
+  if (Array.isArray(items) === false) return [items];
+  return withContact(master, items);
 }
 
-function moveContact(master: Master, input: unknown): Result<Master> {
-  const parsed = INPUT['contact move'].safeParse(input);
-  if (parsed.success === false)
-    return rejected('contact move', coreIssue.schemaIssues(parsed.error, [], 'contact move'));
-  const items = moved(master.contact.items, parsed.data.index, parsed.data.to, 'contact move');
-  if (items.error !== null) return items;
-  return withContact(master, items.data, 'contact move');
+function moveContact(
+  master: Master,
+  input: Input<'contact move'>,
+): Master | Refused<'contact move'> {
+  const items = moved(master.contact.items, input.index, input.to);
+  if (Array.isArray(items) === false) return [items];
+  return withContact(master, items);
 }
 
-// The new lines are unchecked, so the master passes its schema again before it is answered.
-function withContact(master: Master, items: unknown[], step: string): Result<Master> {
-  const parsed = Master.safeParse({ ...master, contact: { ...master.contact, items } });
-  if (parsed.success === false)
-    return rejected(step, coreIssue.schemaIssues(parsed.error, [], 'master'));
-  return done(parsed.data);
+// The new lines are unchecked, so the CV passes its schema again before it is answered.
+function withContact(master: Master, items: unknown[]): Master | Issues<'cv'> {
+  const parsed = check(Master, { ...master, contact: { ...master.contact, items } }, ['cv']);
+  if (parsed.issues !== null) return parsed.issues;
+  return checked(master, parsed.data, 'cv');
 }
 
 // ---------- one place for every edit of a list by position ----------
 
-function added(
-  items: unknown[],
-  value: unknown,
-  at: number | undefined,
-  step: string,
-): Result<unknown[]> {
+function added(items: unknown[], value: unknown, at: number | undefined) {
   const index = at ?? items.length;
-  if (index > items.length) return rejected(step, [issue.outOfRange('index', index, items.length)]);
-  return done([...items.slice(0, index), value, ...items.slice(index)]);
+  if (index > items.length) return outOfRange('index', index, items.length);
+  return [...items.slice(0, index), value, ...items.slice(index)];
 }
 
-function updated(
-  items: unknown[],
-  index: number,
-  change: unknown,
-  step: string,
-): Result<unknown[]> {
-  if (index >= items.length)
-    return rejected(step, [issue.outOfRange('index', index, items.length - 1)]);
-  return done(items.map((item, at) => (at === index ? merged(item, change) : item)));
+function updated(items: unknown[], index: number, change: unknown) {
+  if (index >= items.length) return outOfRange('index', index, items.length - 1);
+  return items.map((item, at) => (at === index ? mergedItem(item, change) : item));
 }
 
 // A text item is replaced; an item with fields keeps the fields the input leaves out.
-function merged(item: unknown, change: unknown) {
+function mergedItem(item: unknown, change: unknown) {
   const haveFields =
     typeof item === 'object' && item !== null && typeof change === 'object' && change !== null;
   return haveFields ? { ...item, ...change } : change;
 }
 
-function removed(items: unknown[], index: number, step: string): Result<unknown[]> {
-  if (index >= items.length)
-    return rejected(step, [issue.outOfRange('index', index, items.length - 1)]);
-  return done(items.filter((_, at) => at !== index));
+function removed(items: unknown[], index: number) {
+  if (index >= items.length) return outOfRange('index', index, items.length - 1);
+  return items.filter((_, at) => at !== index);
 }
 
-function moved(items: unknown[], index: number, to: number, step: string): Result<unknown[]> {
+function moved(items: unknown[], index: number, to: number) {
   const last = items.length - 1;
-  if (index > last) return rejected(step, [issue.outOfRange('index', index, last)]);
-  if (to > last) return rejected(step, [issue.outOfRange('to', to, last)]);
+  if (index > last) return outOfRange('index', index, last);
+  if (to > last) return outOfRange('to', to, last);
   const rest = items.filter((_, at) => at !== index);
-  return done([...rest.slice(0, to), items[index], ...rest.slice(to)]);
+  return [...rest.slice(0, to), items[index], ...rest.slice(to)];
+}
+
+// `last` is the highest place the edit takes; for an add it is the one past the end, which appends.
+function outOfRange<F extends 'index' | 'to'>(path: F, index: number, last: number) {
+  const takes = last < 0 ? 'the list is empty' : `the edit takes the places 0 to ${last}`;
+  return issue.outOfRange.at(path, `There is no place ${index} for this edit; ${takes}`);
 }

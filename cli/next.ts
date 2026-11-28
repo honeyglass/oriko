@@ -1,140 +1,84 @@
 /**
- * The next steps after a successful answer, so a person or an agent always sees where to go on.
+ * The steps on adx that lead from one folder into another, where the features meet.
  *
- * nextSteps: the steps that follow one answer, from the call and the facts of the answer.
- * Step: one step; its command runs as it stands, unless it names what it still needs.
+ * next: the steps the tool adds after a command of a feature, with after().
  *
- * The cli only names a step and never follows one. A step without a command is for the person.
+ * A feature imports no other feature, and plan and build live in cli/, so the next steps of a
+ * feature that name them stand here.
  *
- * @example const next = nextSteps({ command: 'plan', selector: ' --profile go-e', data, isDryRun });
+ * @example tool({ ..., next });
  */
-import { optionText } from '../core/options.ts';
-import { COMMANDS } from './commands.ts';
-import type { CommandName } from './commands.ts';
+import { after, schema } from '@honeyglass/adx';
+import { set as photoSet } from '../classic/photo.ts';
+import { init } from '../cv/init.ts';
+import { cvs } from '../cv/list.ts';
+import { show } from '../cv/show.ts';
+import { commands as edit } from '../edit/commands.ts';
+import { profiles } from '../profile/list.ts';
+import { set as profileSet } from '../profile/set.ts';
+import { show as profileShow } from '../profile/show.ts';
+import { read } from '../read/documents.ts';
+import { build, preview } from './build.ts';
+import { plan } from './plan.ts';
 
-export type Step = { does: string; command?: string; needs?: string[] };
+// The one step after every edit: a CV that still fits its pages is ready to draw and to build.
+const fitted = (out: { fits: boolean }, { cv }: { cv?: string | undefined }) =>
+  out.fits ? [preview.step({ cv }), build.step({ cv })] : [];
 
-type Facts = {
-  command: CommandName | undefined;
-  /** The --cv or --profile of the call, so a step works on the same CV. */
-  selector: string;
-  data: Record<string, unknown>;
-  isDryRun: boolean;
-  /** The options and words of the call without --dry-run, so the step after a dry run repeats it. */
-  repeated: string;
-  /** The input came through stdin, which a repeated call does not hold. */
-  isPiped: boolean;
-};
-
-const UPLOAD: Step = {
-  does: 'upload the .docx to Google Docs, then choose File, Download, PDF; or build a .pdf with LibreOffice',
-};
-
-/**
- * @param facts - the command of the call, its --cv or --profile, its answer, and --dry-run
- * @returns 0 to 3 steps, the main path first; none when nothing follows
- */
-export function nextSteps(facts: Facts): Step[] {
-  const { data, selector } = facts;
-  if ('option' in data) return [];
-  if (facts.isDryRun) return data.written === false ? again(facts) : [];
-  switch (facts.command) {
-    case undefined:
-      return Array.isArray(data.cvs) ? startSteps(data) : [];
-    case 'cvs':
-      return cvsSteps(data.cvs);
-    case 'profiles':
-      return count(data.profiles) > 0
-        ? [step('plan', '', ['profile'])]
-        : [step('schema', ' profile')];
-    case 'show':
-      return data.block === undefined ? [step('show', selector, ['block'])] : [];
-    case 'init':
-      return [
-        step('contact add', selector, ['json']),
-        step('block add', selector, ['json']),
-        step('photo set', selector, ['file']),
-      ];
-    case 'plan':
-      return [step('preview', selector), step('build', selector, ['out'])];
-    case 'preview':
-    case 'photo set':
-      return [step('build', selector, ['out'])];
-    case 'build':
-      return isDocxWritten(data) ? [UPLOAD] : [];
-    case 'schema':
-      return [];
-    case 'read':
-      return readSteps(data);
-    case 'profile show':
-      return data.profile === null
-        ? [step('profile set', selector, ['json'])]
-        : [step('plan', selector)];
-    default:
-      return data.fits === true
-        ? [step('preview', selector), step('build', selector, ['out'])]
-        : [];
-  }
-}
-
-// The call itself without --dry-run; a piped input is not part of it, so the step needs it.
-function again({ command, repeated, isPiped }: Facts): Step[] {
-  // Only a named command takes --dry-run; a call without one is refused before it runs.
-  if (command === undefined) return [];
-  const base = {
-    does: 'repeat the call without --dry-run to write',
-    command: `oriko ${command}${repeated}`,
-  };
-  return [isPiped ? { ...base, needs: ['json'] } : base];
-}
-
-const step = (name: CommandName, args = '', needs?: string[]): Step => {
-  const command: { does: string } = COMMANDS[name];
-  const base = { does: command.does, command: `oriko ${name}${args}` };
-  return needs === undefined ? base : { ...base, needs };
-};
-
-// Where to start depends on what the data folder holds: no CV, CVs only, or CVs and profiles.
-function startSteps(data: Record<string, unknown>): Step[] {
-  if (count(data.cvs) === 0)
-    return [step('read', '', ['resume']), step('init', '', ['cv', 'json'])];
-  const posting = step('read', '', ['posting', 'profile']);
-  if (count(data.profiles) === 0) return [step('cvs'), posting];
-  return [step('profiles'), posting];
-}
+export const next = [
+  after(cvs, () => [profiles.step()]),
+  // A new CV is empty and names the placeholder photo.
+  after(init, (_, { cv }) => [
+    edit.contact.add.step({ cv }),
+    edit.block.add.step({ cv }),
+    photoSet.step({ cv }),
+  ]),
+  after(photoSet, (_, { cv, profile }) => [build.step({ cv, profile })]),
+  after(
+    [
+      edit.block.add,
+      edit.block.update,
+      edit.block.remove,
+      edit.block.move,
+      edit.item.add,
+      edit.item.update,
+      edit.item.remove,
+      edit.item.move,
+      edit.cv.update,
+      edit.contact.add,
+      edit.contact.update,
+      edit.contact.remove,
+      edit.contact.move,
+    ],
+    fitted,
+  ),
+  // Without a profile, the shape of one comes first.
+  after(profiles, out =>
+    out.items.length === 0 ? [schema.step('profile')] : [plan.step().needs('profile')],
+  ),
+  after(profileSet, (out, { profile }) =>
+    out.fits ? [preview.step({ profile }), build.step({ profile })] : [],
+  ),
+  // A posting without a profile leads to storing one, which names its fields.
+  after(profileShow, out =>
+    out.profile === null
+      ? [profileSet.step({ profile: out.name }).needs('cv', 'blocks')]
+      : [plan.step({ profile: out.name })],
+  ),
+  after(read, readSteps),
+];
 
 // A posting leads to storing its profile, notes to the CV they belong to, an old CV to a new one.
-function readSteps(data: Record<string, unknown>): Step[] {
-  const roles = Array.isArray(data.read) ? data.read.map(roleOf) : [];
-  const steps: Step[] = [];
-  if (roles.includes('posting') && typeof data.profile === 'string')
-    steps.push(
-      step('schema', ' profile'),
-      step('profile set', optionText('profile', data.profile), ['json']),
-    );
-  if (roles.includes('notes') && typeof data.cv === 'string')
-    steps.push(step('show', optionText('cv', data.cv)));
-  if (steps.length > 0) return steps;
-  return [step('init', '', ['cv', 'json']), step('schema', ' init')];
+function readSteps(out: {
+  profile?: string | undefined;
+  cv?: string | undefined;
+  posting?: object | undefined;
+}) {
+  const posting =
+    out.posting === undefined || out.profile === undefined
+      ? []
+      : [schema.step('profile'), profileSet.step({ profile: out.profile }).needs('cv', 'blocks')];
+  const notes = out.cv === undefined ? [] : [show.step({ cv: out.cv })];
+  const steps = [...posting, ...notes];
+  return steps.length > 0 ? steps : [init.step(), schema.step('init')];
 }
-
-const roleOf = (entry: unknown) =>
-  typeof entry === 'object' && entry !== null && 'role' in entry ? entry.role : undefined;
-
-// With one CV the step names it; with several the caller picks one.
-function cvsSteps(cvs: unknown): Step[] {
-  const only = Array.isArray(cvs) && cvs.length === 1 ? nameOf(cvs[0]) : undefined;
-  const show = only === undefined ? step('show', '', ['cv']) : step('show', optionText('cv', only));
-  return [show, step('profiles')];
-}
-
-// A PDF is the finished file; only a .docx still goes through Google Docs.
-const isDocxWritten = (data: Record<string, unknown>) =>
-  data.written === true && typeof data.out === 'string' && data.out.endsWith('.docx');
-
-const count = (list: unknown) => (Array.isArray(list) ? list.length : 0);
-
-const nameOf = (entry: unknown) =>
-  typeof entry === 'object' && entry !== null && 'name' in entry && typeof entry.name === 'string'
-    ? entry.name
-    : undefined;
